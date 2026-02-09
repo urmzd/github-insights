@@ -26,7 +26,10 @@ describe("generateFullSvg", () => {
         filename: "a.svg",
         title: "Section A",
         subtitle: "Subtitle A",
-        renderBody: (y) => ({ svg: `<text y="${y}">A body</text>`, height: 50 }),
+        renderBody: (y) => ({
+          svg: `<text y="${y}">A body</text>`,
+          height: 50,
+        }),
       },
       {
         filename: "b.svg",

@@ -13,7 +13,11 @@ describe("h – HTML tags", () => {
   });
 
   it("renders non-self-closing tag with children", () => {
-    const result = <text x="10" y="20">hello</text>;
+    const result = (
+      <text x="10" y="20">
+        hello
+      </text>
+    );
     expect(result).toBe('<text x="10" y="20">hello</text>');
   });
 
@@ -24,7 +28,11 @@ describe("h – HTML tags", () => {
   });
 
   it("filters null and false props", () => {
-    const result = <text x="10" y={null} data-hidden={false}>ok</text>;
+    const result = (
+      <text x="10" y={null} data-hidden={false}>
+        ok
+      </text>
+    );
     expect(result).toContain('x="10"');
     expect(result).not.toContain("y=");
     expect(result).not.toContain("data-hidden");

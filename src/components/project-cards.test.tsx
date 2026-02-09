@@ -7,8 +7,18 @@ void Fragment;
 
 describe("renderProjectCards", () => {
   const projects: ComplexityItem[] = [
-    { name: "big-app", url: "https://github.com/u/big-app", description: "A large app", value: 90 },
-    { name: "small-lib", url: "https://github.com/u/small-lib", description: "", value: 45 },
+    {
+      name: "big-app",
+      url: "https://github.com/u/big-app",
+      description: "A large app",
+      value: 90,
+    },
+    {
+      name: "small-lib",
+      url: "https://github.com/u/small-lib",
+      description: "",
+      value: 45,
+    },
   ];
   const domainMap: DomainMap = new Map([["big-app", ["web", "ml"]]]);
 

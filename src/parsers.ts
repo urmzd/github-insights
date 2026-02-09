@@ -80,9 +80,7 @@ export const PyprojectParser: PackageParser = {
       const deps: string[] = [];
 
       // PEP 621: project.dependencies array
-      const project = parsed.project as
-        | { dependencies?: string[] }
-        | undefined;
+      const project = parsed.project as { dependencies?: string[] } | undefined;
       if (project?.dependencies) {
         for (const raw of project.dependencies) {
           const name = raw.split(/[>=<!~;\s[]/)[0].trim();
