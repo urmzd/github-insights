@@ -31745,7 +31745,7 @@ const fetchManifestsForRepos = async (token, username, repos) => {
             .map((repo, idx) => {
             const alias = `repo_${idx}`;
             const fileQueries = MANIFEST_FILES.map((file) => {
-                const fieldName = file.replace(/[.\-]/g, "_");
+                const fieldName = file.replace(/[-.]/g, "_");
                 return `${fieldName}: object(expression: "HEAD:${file}") { ... on Blob { text } }`;
             }).join("\n            ");
             return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
@@ -31761,7 +31761,7 @@ const fetchManifestsForRepos = async (token, username, repos) => {
                     return;
                 const files = {};
                 for (const file of MANIFEST_FILES) {
-                    const fieldName = file.replace(/[.\-]/g, "_");
+                    const fieldName = file.replace(/[-.]/g, "_");
                     const entry = repoData[fieldName];
                     if (entry?.text) {
                         files[file] = entry.text;
@@ -32004,7 +32004,7 @@ const parsePyprojectToml = (text) => {
             const items = depArrayMatch[1].matchAll(/"([^"]+)"|'([^']+)'/g);
             for (const m of items) {
                 const raw = m[1] || m[2];
-                const name = raw.split(/[>=<!~;\s\[]/)[0].trim();
+                const name = raw.split(/[>=<!~;\s[]/)[0].trim();
                 if (name)
                     deps.push(name);
             }
@@ -32035,7 +32035,7 @@ const parseRequirementsTxt = (text) => {
             .split("\n")
             .map((line) => line.trim())
             .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"))
-            .map((line) => line.split(/[>=<!~;\s\[]/)[0].trim())
+            .map((line) => line.split(/[>=<!~;\s[]/)[0].trim())
             .filter(Boolean);
     }
     catch {
@@ -32086,7 +32086,7 @@ function h(tag, props, ...children) {
         return `<${tag}${attrs}/>`;
     return `<${tag}${attrs}>${content}</${tag}>`;
 }
-function Fragment({ children, }) {
+function Fragment({ children }) {
     return (children || []).flat().filter(Boolean).join("");
 }
 
@@ -32177,8 +32177,7 @@ function renderContributionCards(highlights, y) {
     })));
     return {
         svg,
-        height: highlights.length * (cardH + gap) -
-            (highlights.length > 0 ? gap : 0),
+        height: highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
     };
 }
 
@@ -32287,9 +32286,7 @@ function renderDonutChart(items, y) {
     const legend = items.map((item, i) => {
         const ly = y + 10 + i * legendItemH;
         const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        const trendingSvg = item.trending
-            ? FIRE_ICON(legendX + 250, ly - 6)
-            : "";
+        const trendingSvg = item.trending ? FIRE_ICON(legendX + 250, ly - 6) : "";
         return (h(Fragment, null,
             h("rect", { x: legendX, y: ly, width: "12", height: "12", rx: "2", fill: color, opacity: "0.85" }),
             h("text", { x: legendX + 20, y: ly + 10, className: "t t-label" }, escapeXml(item.name)),
@@ -32363,12 +32360,7 @@ function renderBarChart(items, y, options = {}) {
             ? `${item.percent}%`
             : String(item.value);
         const trendingSvg = item.trending
-            ? FIRE_ICON(padX +
-                barLabelWidth +
-                barWidth +
-                8 +
-                valueLabel.length * 7 +
-                6, ry + 2)
+            ? FIRE_ICON(padX + barLabelWidth + barWidth + 8 + valueLabel.length * 7 + 6, ry + 2)
             : "";
         return (h(Fragment, null,
             h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
@@ -32430,45 +32422,180 @@ void Fragment;
 // ── Category Sets ───────────────────────────────────────────────────────────
 const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
 const FRAMEWORK_TOPICS = new Set([
-    "react", "nextjs", "next-js", "vue", "vuejs", "angular", "svelte",
-    "sveltekit", "astro", "remix", "gatsby", "nuxt", "fastapi", "django",
-    "flask", "express", "nestjs", "spring", "spring-boot", "rails",
-    "ruby-on-rails", "laravel", "pytorch", "tensorflow", "keras",
-    "scikit-learn", "huggingface", "langchain", "axum", "actix", "rocket",
-    "gin", "fiber", "echo",
+    "react",
+    "nextjs",
+    "next-js",
+    "vue",
+    "vuejs",
+    "angular",
+    "svelte",
+    "sveltekit",
+    "astro",
+    "remix",
+    "gatsby",
+    "nuxt",
+    "fastapi",
+    "django",
+    "flask",
+    "express",
+    "nestjs",
+    "spring",
+    "spring-boot",
+    "rails",
+    "ruby-on-rails",
+    "laravel",
+    "pytorch",
+    "tensorflow",
+    "keras",
+    "scikit-learn",
+    "huggingface",
+    "langchain",
+    "axum",
+    "actix",
+    "rocket",
+    "gin",
+    "fiber",
+    "echo",
 ]);
 const FRAMEWORK_DEPS = new Set([
-    "react", "react-dom", "next", "vue", "angular", "svelte", "@sveltejs/kit",
-    "astro", "remix", "gatsby", "nuxt", "fastapi", "django", "flask",
-    "express", "nestjs", "@nestjs/core", "torch", "pytorch", "tensorflow",
-    "tf", "keras", "scikit-learn", "sklearn", "transformers", "langchain",
-    "axum", "actix-web", "rocket", "gin", "fiber", "echo", "hono", "elysia",
-    "solid-js", "qwik", "htmx",
+    "react",
+    "react-dom",
+    "next",
+    "vue",
+    "angular",
+    "svelte",
+    "@sveltejs/kit",
+    "astro",
+    "remix",
+    "gatsby",
+    "nuxt",
+    "fastapi",
+    "django",
+    "flask",
+    "express",
+    "nestjs",
+    "@nestjs/core",
+    "torch",
+    "pytorch",
+    "tensorflow",
+    "tf",
+    "keras",
+    "scikit-learn",
+    "sklearn",
+    "transformers",
+    "langchain",
+    "axum",
+    "actix-web",
+    "rocket",
+    "gin",
+    "fiber",
+    "echo",
+    "hono",
+    "elysia",
+    "solid-js",
+    "qwik",
+    "htmx",
 ]);
 const DB_INFRA_TOPICS = new Set([
-    "postgresql", "postgres", "mysql", "mongodb", "redis", "sqlite",
-    "dynamodb", "cassandra", "elasticsearch", "docker", "kubernetes", "k8s",
-    "aws", "gcp", "azure", "terraform", "ansible", "nginx", "graphql",
-    "grpc", "kafka", "rabbitmq", "supabase", "firebase", "vercel", "netlify",
+    "postgresql",
+    "postgres",
+    "mysql",
+    "mongodb",
+    "redis",
+    "sqlite",
+    "dynamodb",
+    "cassandra",
+    "elasticsearch",
+    "docker",
+    "kubernetes",
+    "k8s",
+    "aws",
+    "gcp",
+    "azure",
+    "terraform",
+    "ansible",
+    "nginx",
+    "graphql",
+    "grpc",
+    "kafka",
+    "rabbitmq",
+    "supabase",
+    "firebase",
+    "vercel",
+    "netlify",
 ]);
 const DB_INFRA_DEPS = new Set([
-    "pg", "mysql2", "mongoose", "mongodb", "redis", "ioredis", "prisma",
-    "@prisma/client", "typeorm", "sequelize", "knex", "drizzle-orm", "sqlx",
-    "diesel", "sea-orm", "sqlalchemy", "psycopg2", "pymongo", "boto3",
-    "docker", "docker-compose", "supabase", "@supabase/supabase-js",
-    "firebase", "firebase-admin", "@google-cloud/storage", "aws-sdk",
-    "@aws-sdk/client-s3", "graphql", "apollo-server", "@apollo/client",
-    "grpc", "tonic",
+    "pg",
+    "mysql2",
+    "mongoose",
+    "mongodb",
+    "redis",
+    "ioredis",
+    "prisma",
+    "@prisma/client",
+    "typeorm",
+    "sequelize",
+    "knex",
+    "drizzle-orm",
+    "sqlx",
+    "diesel",
+    "sea-orm",
+    "sqlalchemy",
+    "psycopg2",
+    "pymongo",
+    "boto3",
+    "docker",
+    "docker-compose",
+    "supabase",
+    "@supabase/supabase-js",
+    "firebase",
+    "firebase-admin",
+    "@google-cloud/storage",
+    "aws-sdk",
+    "@aws-sdk/client-s3",
+    "graphql",
+    "apollo-server",
+    "@apollo/client",
+    "grpc",
+    "tonic",
 ]);
 const ML_AI_NAMES = new Set([
-    "pytorch", "torch", "tensorflow", "tf", "keras", "scikit-learn", "sklearn",
-    "huggingface", "transformers", "langchain",
+    "pytorch",
+    "torch",
+    "tensorflow",
+    "tf",
+    "keras",
+    "scikit-learn",
+    "sklearn",
+    "huggingface",
+    "transformers",
+    "langchain",
 ]);
 const DATABASE_NAMES = new Set([
-    "postgresql", "postgres", "mysql", "mongodb", "redis", "sqlite", "dynamodb",
-    "cassandra", "elasticsearch", "pg", "mysql2", "mongoose", "prisma",
-    "typeorm", "sequelize", "knex", "drizzle-orm", "sqlx",
-    "diesel", "sea-orm", "sqlalchemy", "psycopg2", "pymongo", "ioredis",
+    "postgresql",
+    "postgres",
+    "mysql",
+    "mongodb",
+    "redis",
+    "sqlite",
+    "dynamodb",
+    "cassandra",
+    "elasticsearch",
+    "pg",
+    "mysql2",
+    "mongoose",
+    "prisma",
+    "typeorm",
+    "sequelize",
+    "knex",
+    "drizzle-orm",
+    "sqlx",
+    "diesel",
+    "sea-orm",
+    "sqlalchemy",
+    "psycopg2",
+    "pymongo",
+    "ioredis",
 ]);
 // ── Aggregation ─────────────────────────────────────────────────────────────
 const aggregateLanguages = (repos) => {

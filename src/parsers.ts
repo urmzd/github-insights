@@ -76,7 +76,7 @@ export const parsePyprojectToml = (text: string): string[] => {
       const items = depArrayMatch[1].matchAll(/"([^"]+)"|'([^']+)'/g);
       for (const m of items) {
         const raw = m[1] || m[2];
-        const name = raw.split(/[>=<!~;\s\[]/)[0].trim();
+        const name = raw.split(/[>=<!~;\s[]/)[0].trim();
         if (name) deps.push(name);
       }
     }
@@ -109,7 +109,7 @@ export const parseRequirementsTxt = (text: string): string[] => {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"))
-      .map((line) => line.split(/[>=<!~;\s\[]/)[0].trim())
+      .map((line) => line.split(/[>=<!~;\s[]/)[0].trim())
       .filter(Boolean);
   } catch {
     console.warn("Warning: failed to parse requirements.txt");

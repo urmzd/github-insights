@@ -14,6 +14,12 @@ export default tseslint.config(
         process: "readonly",
       },
     },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { varsIgnorePattern: "^(h|Fragment)$" },
+      ],
+    },
   },
   { ignores: ["dist/", "node_modules/"] },
 );
