@@ -8,7 +8,10 @@ export const escapeXml = (str: string | null | undefined): string => {
     .replace(/'/g, "&apos;");
 };
 
-export const truncate = (str: string | null | undefined, max: number): string => {
+export const truncate = (
+  str: string | null | undefined,
+  max: number,
+): string => {
   if (!str) return "";
   return str.length > max ? str.slice(0, max - 1) + "\u2026" : str;
 };

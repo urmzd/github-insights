@@ -31,8 +31,7 @@ async function run(): Promise<void> {
     const commitPush = (core.getInput("commit-push") || "true") === "true";
     const commitMessage =
       core.getInput("commit-message") || "chore: update metrics";
-    const commitName =
-      core.getInput("commit-name") || "github-actions[bot]";
+    const commitName = core.getInput("commit-name") || "github-actions[bot]";
     const commitEmail =
       core.getInput("commit-email") ||
       "41898282+github-actions[bot]@users.noreply.github.com";
