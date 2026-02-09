@@ -157,3 +157,17 @@ export interface ContributionData {
 export type ManifestMap = Map<string, Record<string, string>>;
 export type DomainMap = Map<string, string[]>;
 export type ReadmeMap = Map<string, string>;
+
+// ── Package parser ─────────────────────────────────────────────────────────
+
+export interface PackageParser {
+  /** Filenames this parser handles (e.g. ["package.json"]) */
+  filenames: string[];
+  /** Extract dependency names from file content */
+  parseDependencies(text: string): string[];
+}
+
+export interface TechHighlight {
+  category: string;
+  items: string[];
+}

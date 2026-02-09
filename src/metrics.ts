@@ -4,207 +4,23 @@ import { renderStatCards } from "./components/stat-cards.js";
 import { renderProjectCards } from "./components/project-cards.js";
 import { renderDonutChart } from "./components/donut-chart.js";
 import { renderDomainCloud } from "./components/domain-cloud.js";
-import { renderBarChart } from "./components/bar-chart.js";
-import { renderSubHeader, renderDivider } from "./components/section.js";
+import { renderTechHighlights } from "./components/tech-highlights.js";
 import type {
   RepoNode,
   ManifestMap,
   DomainMap,
   LanguageItem,
-  TechItem,
+  TechHighlight,
   ComplexityItem,
   DomainItem,
   ContributionData,
   ContributionsByRepo,
   SectionDef,
-  RenderResult,
 } from "./types.js";
 
 // ── Category Sets ───────────────────────────────────────────────────────────
 
 const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
-
-const FRAMEWORK_TOPICS = new Set([
-  "react",
-  "nextjs",
-  "next-js",
-  "vue",
-  "vuejs",
-  "angular",
-  "svelte",
-  "sveltekit",
-  "astro",
-  "remix",
-  "gatsby",
-  "nuxt",
-  "fastapi",
-  "django",
-  "flask",
-  "express",
-  "nestjs",
-  "spring",
-  "spring-boot",
-  "rails",
-  "ruby-on-rails",
-  "laravel",
-  "pytorch",
-  "tensorflow",
-  "keras",
-  "scikit-learn",
-  "huggingface",
-  "langchain",
-  "axum",
-  "actix",
-  "rocket",
-  "gin",
-  "fiber",
-  "echo",
-]);
-
-const FRAMEWORK_DEPS = new Set([
-  "react",
-  "react-dom",
-  "next",
-  "vue",
-  "angular",
-  "svelte",
-  "@sveltejs/kit",
-  "astro",
-  "remix",
-  "gatsby",
-  "nuxt",
-  "fastapi",
-  "django",
-  "flask",
-  "express",
-  "nestjs",
-  "@nestjs/core",
-  "torch",
-  "pytorch",
-  "tensorflow",
-  "tf",
-  "keras",
-  "scikit-learn",
-  "sklearn",
-  "transformers",
-  "langchain",
-  "axum",
-  "actix-web",
-  "rocket",
-  "gin",
-  "fiber",
-  "echo",
-  "hono",
-  "elysia",
-  "solid-js",
-  "qwik",
-  "htmx",
-]);
-
-const DB_INFRA_TOPICS = new Set([
-  "postgresql",
-  "postgres",
-  "mysql",
-  "mongodb",
-  "redis",
-  "sqlite",
-  "dynamodb",
-  "cassandra",
-  "elasticsearch",
-  "docker",
-  "kubernetes",
-  "k8s",
-  "aws",
-  "gcp",
-  "azure",
-  "terraform",
-  "ansible",
-  "nginx",
-  "graphql",
-  "grpc",
-  "kafka",
-  "rabbitmq",
-  "supabase",
-  "firebase",
-  "vercel",
-  "netlify",
-]);
-
-const DB_INFRA_DEPS = new Set([
-  "pg",
-  "mysql2",
-  "mongoose",
-  "mongodb",
-  "redis",
-  "ioredis",
-  "prisma",
-  "@prisma/client",
-  "typeorm",
-  "sequelize",
-  "knex",
-  "drizzle-orm",
-  "sqlx",
-  "diesel",
-  "sea-orm",
-  "sqlalchemy",
-  "psycopg2",
-  "pymongo",
-  "boto3",
-  "docker",
-  "docker-compose",
-  "supabase",
-  "@supabase/supabase-js",
-  "firebase",
-  "firebase-admin",
-  "@google-cloud/storage",
-  "aws-sdk",
-  "@aws-sdk/client-s3",
-  "graphql",
-  "apollo-server",
-  "@apollo/client",
-  "grpc",
-  "tonic",
-]);
-
-const ML_AI_NAMES = new Set([
-  "pytorch",
-  "torch",
-  "tensorflow",
-  "tf",
-  "keras",
-  "scikit-learn",
-  "sklearn",
-  "huggingface",
-  "transformers",
-  "langchain",
-]);
-
-const DATABASE_NAMES = new Set([
-  "postgresql",
-  "postgres",
-  "mysql",
-  "mongodb",
-  "redis",
-  "sqlite",
-  "dynamodb",
-  "cassandra",
-  "elasticsearch",
-  "pg",
-  "mysql2",
-  "mongoose",
-  "prisma",
-  "typeorm",
-  "sequelize",
-  "knex",
-  "drizzle-orm",
-  "sqlx",
-  "diesel",
-  "sea-orm",
-  "sqlalchemy",
-  "psycopg2",
-  "pymongo",
-  "ioredis",
-]);
 
 // ── Aggregation ─────────────────────────────────────────────────────────────
 
@@ -233,67 +49,32 @@ export const aggregateLanguages = (repos: RepoNode[]): LanguageItem[] => {
     }));
 };
 
-// ── Classification ──────────────────────────────────────────────────────────
+// ── Dependency & Topic Collection ────────────────────────────────────────────
 
-export const classifyDependencies = (
+export const collectAllDependencies = (
   repos: RepoNode[],
   manifests: ManifestMap,
-): { frameworks: TechItem[]; dbInfra: TechItem[]; tools: TechItem[] } => {
-  const frameworks = new Map<string, Set<string>>();
-  const dbInfra = new Map<string, Set<string>>();
-  const tools = new Map<string, Set<string>>();
-
+): string[] => {
+  const seen = new Set<string>();
   for (const repo of repos) {
-    const topics = (repo.repositoryTopics?.nodes || []).map(
-      (n) => n.topic.name,
-    );
-    for (const topic of topics) {
-      if (FRAMEWORK_TOPICS.has(topic)) {
-        if (!frameworks.has(topic)) frameworks.set(topic, new Set());
-        frameworks.get(topic)!.add(repo.name);
-      } else if (DB_INFRA_TOPICS.has(topic)) {
-        if (!dbInfra.has(topic)) dbInfra.set(topic, new Set());
-        dbInfra.get(topic)!.add(repo.name);
-      }
-    }
-
     const files = manifests.get(repo.name) || {};
-    const allDeps = Object.entries(files).flatMap(([filename, text]) =>
-      parseManifest(filename, text),
-    );
-
-    const seen = new Set<string>();
-    for (const raw of allDeps) {
-      const dep = raw.startsWith("@") ? raw.split("/").pop()! : raw;
-      const lower = dep.toLowerCase();
-      if (seen.has(lower)) continue;
-      seen.add(lower);
-
-      if (FRAMEWORK_DEPS.has(lower)) {
-        if (!frameworks.has(dep)) frameworks.set(dep, new Set());
-        frameworks.get(dep)!.add(repo.name);
-      } else if (DB_INFRA_DEPS.has(lower)) {
-        if (!dbInfra.has(dep)) dbInfra.set(dep, new Set());
-        dbInfra.get(dep)!.add(repo.name);
-      } else {
-        if (!tools.has(dep)) tools.set(dep, new Set());
-        tools.get(dep)!.add(repo.name);
+    for (const [filename, text] of Object.entries(files)) {
+      for (const dep of parseManifest(filename, text)) {
+        seen.add(dep);
       }
     }
   }
+  return [...seen].sort();
+};
 
-  const toSorted = (map: Map<string, Set<string>>): TechItem[] =>
-    [...map.entries()]
-      .map(([name, repos]) => ({ name, value: repos.size }))
-      .sort((a, b) => b.value - a.value);
-
-  return {
-    frameworks: toSorted(frameworks).slice(0, 10),
-    dbInfra: toSorted(dbInfra).slice(0, 10),
-    tools: toSorted(tools)
-      .filter((t) => t.value >= 2)
-      .slice(0, 10),
-  };
+export const collectAllTopics = (repos: RepoNode[]): string[] => {
+  const seen = new Set<string>();
+  for (const repo of repos) {
+    for (const node of repo.repositoryTopics?.nodes || []) {
+      seen.add(node.topic.name);
+    }
+  }
+  return [...seen].sort();
 };
 
 // ── Scoring ─────────────────────────────────────────────────────────────────
@@ -323,25 +104,6 @@ export const computeComplexityScores = (repos: RepoNode[]): ComplexityItem[] =>
     })
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
-
-// ── Sub-classification ──────────────────────────────────────────────────────
-
-export const subClassify = (
-  frameworks: TechItem[],
-  dbInfra: TechItem[],
-): {
-  webFrameworks: TechItem[];
-  mlAi: TechItem[];
-  databases: TechItem[];
-  cloudInfra: TechItem[];
-} => ({
-  webFrameworks: frameworks.filter(
-    (f) => !ML_AI_NAMES.has(f.name.toLowerCase()),
-  ),
-  mlAi: frameworks.filter((f) => ML_AI_NAMES.has(f.name.toLowerCase())),
-  databases: dbInfra.filter((d) => DATABASE_NAMES.has(d.name.toLowerCase())),
-  cloudInfra: dbInfra.filter((d) => !DATABASE_NAMES.has(d.name.toLowerCase())),
-});
 
 // ── Domain Aggregation ──────────────────────────────────────────────────────
 
@@ -412,20 +174,14 @@ export const markRecentlyActive = (
 
 export const buildSections = ({
   languages,
-  webFrameworks,
-  mlAi,
-  databases,
-  cloudInfra,
+  techHighlights,
   complexity,
   domains,
   domainMap,
   contributionData,
 }: {
   languages: LanguageItem[];
-  webFrameworks: TechItem[];
-  mlAi: TechItem[];
-  databases: TechItem[];
-  cloudInfra: TechItem[];
+  techHighlights: TechHighlight[];
   complexity: ComplexityItem[];
   domains: DomainItem[];
   domainMap: DomainMap;
@@ -452,42 +208,13 @@ export const buildSections = ({
   });
 
   // 3. Tech Stack
-  const techStackParts = [
-    { label: "WEB FRAMEWORKS", items: webFrameworks },
-    { label: "ML & AI", items: mlAi },
-    { label: "DATABASES", items: databases },
-    { label: "CLOUD & INFRASTRUCTURE", items: cloudInfra },
-  ].filter((p) => p.items.length > 0);
-
-  if (techStackParts.length > 0) {
+  if (techHighlights.length > 0) {
     sections.push({
       filename: "metrics-tech-stack.svg",
       title: "Tech Stack",
-      subtitle: "Detected from topics and dependency manifests",
-      renderBody: (y: number): RenderResult => {
-        let svg = "";
-        let height = 0;
-
-        for (let i = 0; i < techStackParts.length; i++) {
-          const part = techStackParts[i];
-
-          if (i > 0) {
-            const div = renderDivider(y + height + 6);
-            svg += div.svg;
-            height += 18;
-          }
-
-          const sub = renderSubHeader(part.label, y + height);
-          svg += sub.svg;
-          height += sub.height + 6;
-
-          const bars = renderBarChart(part.items, y + height);
-          svg += bars.svg;
-          height += bars.height + 10;
-        }
-
-        return { svg, height };
-      },
+      subtitle:
+        "Curated from dependencies, topics, and languages via AI analysis",
+      renderBody: (y: number) => renderTechHighlights(techHighlights, y),
     });
   }
 

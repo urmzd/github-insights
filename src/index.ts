@@ -7,12 +7,13 @@ import {
   fetchContributionData,
   fetchReadmeForRepos,
   fetchDomainAnalysis,
+  fetchTechAnalysis,
 } from "./api.js";
 import {
   aggregateLanguages,
-  classifyDependencies,
+  collectAllDependencies,
+  collectAllTopics,
   computeComplexityScores,
-  subClassify,
   computeRecentlyActive,
   markRecentlyActive,
   aggregateDomains,
@@ -70,7 +71,6 @@ async function run(): Promise<void> {
 
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
-    const categories = classifyDependencies(repos, manifests);
     const complexity = computeComplexityScores(repos);
 
     const recentlyActiveSet = computeRecentlyActive(
@@ -78,24 +78,25 @@ async function run(): Promise<void> {
       repos,
     );
 
-    markRecentlyActive(
-      [languages, categories.frameworks, categories.dbInfra, complexity],
-      recentlyActiveSet,
-    );
+    markRecentlyActive([languages, complexity], recentlyActiveSet);
 
     const domains = aggregateDomains(domainMap);
 
-    const { webFrameworks, mlAi, databases, cloudInfra } = subClassify(
-      categories.frameworks,
-      categories.dbInfra,
+    const allDeps = collectAllDependencies(repos, manifests);
+    const allTopics = collectAllTopics(repos);
+
+    core.info("Fetching tech analysis from GitHub Models...");
+    const techHighlights = await fetchTechAnalysis(
+      token,
+      languages,
+      allDeps,
+      allTopics,
     );
+    core.info(`Tech analysis: ${techHighlights.length} categories`);
 
     const sectionDefs = buildSections({
       languages,
-      webFrameworks,
-      mlAi,
-      databases,
-      cloudInfra,
+      techHighlights,
       complexity,
       domains,
       domainMap,
