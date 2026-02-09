@@ -221,13 +221,12 @@ describe("parseManifest", () => {
   });
 
   it("dispatches to CargoParser for Cargo.toml", () => {
-    const toml = "[dependencies]\nserde = \"1.0\"\n";
+    const toml = '[dependencies]\nserde = "1.0"\n';
     expect(parseManifest("Cargo.toml", toml)).toEqual(["serde"]);
   });
 
   it("dispatches to GoModParser for go.mod", () => {
-    const gomod =
-      "module x\nrequire (\n\tgithub.com/foo/bar v1.0\n)\n";
+    const gomod = "module x\nrequire (\n\tgithub.com/foo/bar v1.0\n)\n";
     expect(parseManifest("go.mod", gomod)).toEqual(["bar"]);
   });
 

@@ -9,7 +9,11 @@ import {
   markRecentlyActive,
   buildSections,
 } from "./metrics.js";
-import { makeRepo, makeContributionsByRepo, makeContributionData } from "./__fixtures__/repos.js";
+import {
+  makeRepo,
+  makeContributionsByRepo,
+  makeContributionData,
+} from "./__fixtures__/repos.js";
 import type { ManifestMap, DomainMap, TechHighlight } from "./types.js";
 
 // ── aggregateLanguages ──────────────────────────────────────────────────────
@@ -22,7 +26,13 @@ describe("aggregateLanguages", () => {
         languages: {
           totalSize: 1000 * (i + 1),
           edges: [
-            { size: 1000 * (i + 1), node: { name: `Lang${i}`, color: `#${String(i).padStart(6, "0")}` } },
+            {
+              size: 1000 * (i + 1),
+              node: {
+                name: `Lang${i}`,
+                color: `#${String(i).padStart(6, "0")}`,
+              },
+            },
           ],
         },
       }),
@@ -99,8 +109,18 @@ describe("collectAllDependencies", () => {
   it("collects deps from manifests across repos", () => {
     const repos = [makeRepo({ name: "my-app" }), makeRepo({ name: "other" })];
     const manifests: ManifestMap = new Map([
-      ["my-app", { "package.json": JSON.stringify({ dependencies: { express: "^4", lodash: "^4" } }) }],
-      ["other", { "package.json": JSON.stringify({ dependencies: { react: "^18" } }) }],
+      [
+        "my-app",
+        {
+          "package.json": JSON.stringify({
+            dependencies: { express: "^4", lodash: "^4" },
+          }),
+        },
+      ],
+      [
+        "other",
+        { "package.json": JSON.stringify({ dependencies: { react: "^18" } }) },
+      ],
     ]);
     const result = collectAllDependencies(repos, manifests);
     expect(result).toContain("express");
@@ -111,8 +131,14 @@ describe("collectAllDependencies", () => {
   it("deduplicates across repos", () => {
     const repos = [makeRepo({ name: "a" }), makeRepo({ name: "b" })];
     const manifests: ManifestMap = new Map([
-      ["a", { "package.json": JSON.stringify({ dependencies: { express: "^4" } }) }],
-      ["b", { "package.json": JSON.stringify({ dependencies: { express: "^4" } }) }],
+      [
+        "a",
+        { "package.json": JSON.stringify({ dependencies: { express: "^4" } }) },
+      ],
+      [
+        "b",
+        { "package.json": JSON.stringify({ dependencies: { express: "^4" } }) },
+      ],
     ]);
     const result = collectAllDependencies(repos, manifests);
     expect(result.filter((d) => d === "express")).toHaveLength(1);
@@ -121,7 +147,14 @@ describe("collectAllDependencies", () => {
   it("returns sorted array", () => {
     const repos = [makeRepo({ name: "app" })];
     const manifests: ManifestMap = new Map([
-      ["app", { "package.json": JSON.stringify({ dependencies: { zod: "^3", axios: "^1" } }) }],
+      [
+        "app",
+        {
+          "package.json": JSON.stringify({
+            dependencies: { zod: "^3", axios: "^1" },
+          }),
+        },
+      ],
     ]);
     const result = collectAllDependencies(repos, manifests);
     expect(result).toEqual([...result].sort());
@@ -141,7 +174,12 @@ describe("collectAllTopics", () => {
     const repos = [
       makeRepo({
         name: "a",
-        repositoryTopics: { nodes: [{ topic: { name: "react" } }, { topic: { name: "typescript" } }] },
+        repositoryTopics: {
+          nodes: [
+            { topic: { name: "react" } },
+            { topic: { name: "typescript" } },
+          ],
+        },
       }),
       makeRepo({
         name: "b",
@@ -172,7 +210,9 @@ describe("collectAllTopics", () => {
   it("returns sorted array", () => {
     const repos = [
       makeRepo({
-        repositoryTopics: { nodes: [{ topic: { name: "zod" } }, { topic: { name: "api" } }] },
+        repositoryTopics: {
+          nodes: [{ topic: { name: "zod" } }, { topic: { name: "api" } }],
+        },
       }),
     ];
     const result = collectAllTopics(repos);
@@ -294,7 +334,9 @@ describe("computeRecentlyActive", () => {
         repositoryTopics: { nodes: [{ topic: { name: "react" } }] },
         languages: {
           totalSize: 1000,
-          edges: [{ size: 1000, node: { name: "TypeScript", color: "#3178c6" } }],
+          edges: [
+            { size: 1000, node: { name: "TypeScript", color: "#3178c6" } },
+          ],
         },
       }),
     ];
@@ -328,8 +370,12 @@ describe("markRecentlyActive", () => {
   });
 
   it("handles multiple lists", () => {
-    const list1: { name: string; value: number; trending?: boolean }[] = [{ name: "react", value: 3 }];
-    const list2: { name: string; value: number; trending?: boolean }[] = [{ name: "docker", value: 2 }];
+    const list1: { name: string; value: number; trending?: boolean }[] = [
+      { name: "react", value: 3 },
+    ];
+    const list2: { name: string; value: number; trending?: boolean }[] = [
+      { name: "docker", value: 2 },
+    ];
     markRecentlyActive([list1, list2], new Set(["react", "docker"]));
     expect(list1[0].trending).toBe(true);
     expect(list2[0].trending).toBe(true);
@@ -349,7 +395,12 @@ describe("buildSections", () => {
       { category: "Backend", items: ["Express", "PostgreSQL"] },
     ] as TechHighlight[],
     complexity: [
-      { name: "big-project", url: "https://github.com/user/big-project", description: "A complex project", value: 85 },
+      {
+        name: "big-project",
+        url: "https://github.com/user/big-project",
+        description: "A complex project",
+        value: 85,
+      },
     ],
     domains: [{ name: "web", count: 3, repos: ["a", "b", "c"] }],
     domainMap: new Map([["big-project", ["web"]]]) as DomainMap,
@@ -370,14 +421,18 @@ describe("buildSections", () => {
     const input = baseSectionsInput();
     input.domains = [];
     const sections = buildSections(input);
-    expect(sections.map((s) => s.filename)).not.toContain("metrics-domains.svg");
+    expect(sections.map((s) => s.filename)).not.toContain(
+      "metrics-domains.svg",
+    );
   });
 
   it("tech stack section is conditional on non-empty techHighlights", () => {
     const input = baseSectionsInput();
     input.techHighlights = [];
     const sections = buildSections(input);
-    expect(sections.map((s) => s.filename)).not.toContain("metrics-tech-stack.svg");
+    expect(sections.map((s) => s.filename)).not.toContain(
+      "metrics-tech-stack.svg",
+    );
   });
 
   it("contributions section conditional on externalRepos", () => {
@@ -397,12 +452,16 @@ describe("buildSections", () => {
       },
     });
     const sections = buildSections(input);
-    expect(sections.map((s) => s.filename)).toContain("metrics-contributions.svg");
+    expect(sections.map((s) => s.filename)).toContain(
+      "metrics-contributions.svg",
+    );
   });
 
   it("contributions section omitted when no external repos", () => {
     const sections = buildSections(baseSectionsInput());
-    expect(sections.map((s) => s.filename)).not.toContain("metrics-contributions.svg");
+    expect(sections.map((s) => s.filename)).not.toContain(
+      "metrics-contributions.svg",
+    );
   });
 
   it("each renderBody(0) does not throw", () => {
