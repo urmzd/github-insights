@@ -1,0 +1,30 @@
+name: "GitHub Metrics"
+description: "Generate SVG metrics visualizations for your GitHub profile README"
+branding:
+  icon: "bar-chart-2"
+  color: "blue"
+inputs:
+  github-token:
+    description: "GitHub token (needs repo read + models:read for AI domain analysis)"
+    default: ${{ github.token }}
+  username:
+    description: "GitHub username to generate metrics for"
+    default: ${{ github.repository_owner }}
+  output-dir:
+    description: "Directory to write SVG files to"
+    default: "metrics"
+  commit-push:
+    description: "Whether to commit and push generated files"
+    default: "true"
+  commit-message:
+    description: "Commit message when committing generated files"
+    default: "chore: update metrics"
+  commit-name:
+    description: "Git user name for commits"
+    default: "github-actions[bot]"
+  commit-email:
+    description: "Git user email for commits"
+    default: "41898282+github-actions[bot]@users.noreply.github.com"
+runs:
+  using: "node22"
+  main: "dist/index.js"

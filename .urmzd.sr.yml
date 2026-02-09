@@ -1,0 +1,17 @@
+branches:
+  - main
+
+version_files:
+  - package.json
+
+changelog:
+  file: CHANGELOG.md
+
+commit_types:
+  chore: patch
+
+hooks:
+  pre_release:
+    - npm run build
+    - npm test
+    - git add dist/
