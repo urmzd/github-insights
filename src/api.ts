@@ -69,7 +69,7 @@ export const fetchManifestsForRepos = async (
       .map((repo, idx) => {
         const alias = `repo_${idx}`;
         const fileQueries = MANIFEST_FILES.map((file) => {
-          const fieldName = file.replace(/[.\-]/g, "_"); // eslint-disable-line no-useless-escape
+          const fieldName = file.replace(/[-.]/g, "_");
           return `${fieldName}: object(expression: "HEAD:${file}") { ... on Blob { text } }`;
         }).join("\n            ");
         return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
@@ -88,7 +88,7 @@ export const fetchManifestsForRepos = async (
         if (!repoData) return;
         const files: Record<string, string> = {};
         for (const file of MANIFEST_FILES) {
-          const fieldName = file.replace(/[.\-]/g, "_"); // eslint-disable-line no-useless-escape
+          const fieldName = file.replace(/[-.]/g, "_");
           const entry = repoData[fieldName] as { text?: string } | null;
           if (entry?.text) {
             files[file] = entry.text;
