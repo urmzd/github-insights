@@ -108,9 +108,7 @@ export const parseRequirementsTxt = (text: string): string[] => {
     return text
       .split("\n")
       .map((line) => line.trim())
-      .filter(
-        (line) => line && !line.startsWith("#") && !line.startsWith("-"),
-      )
+      .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"))
       .map((line) => line.split(/[>=<!~;\s\[]/)[0].trim())
       .filter(Boolean);
   } catch {

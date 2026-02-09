@@ -29,12 +29,7 @@ export function renderBarChart(
 
         const trendingSvg = item.trending
           ? FIRE_ICON(
-              padX +
-                barLabelWidth +
-                barWidth +
-                8 +
-                valueLabel.length * 7 +
-                6,
+              padX + barLabelWidth + barWidth + 8 + valueLabel.length * 7 + 6,
               ry + 2,
             )
           : "";

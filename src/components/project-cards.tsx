@@ -39,14 +39,7 @@ export function renderProjectCards(
           stroke={THEME.border}
           stroke-width="1"
         />
-        <rect
-          x={padX}
-          y={cy}
-          width="4"
-          height={cardH}
-          rx="2"
-          fill={color}
-        />
+        <rect x={padX} y={cy} width="4" height={cardH} rx="2" fill={color} />
         <text x={padX + 16} y={cy + 18} className="t t-card-title">
           {escapeXml(truncate(p.name, 40))}
         </text>

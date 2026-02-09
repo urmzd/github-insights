@@ -53,7 +53,6 @@ export function renderContributionCards(
   return {
     svg,
     height:
-      highlights.length * (cardH + gap) -
-      (highlights.length > 0 ? gap : 0),
+      highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
   };
 }

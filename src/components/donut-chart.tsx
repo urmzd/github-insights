@@ -42,9 +42,7 @@ export function renderDonutChart(
   const legend = items.map((item, i) => {
     const ly = y + 10 + i * legendItemH;
     const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-    const trendingSvg = item.trending
-      ? FIRE_ICON(legendX + 250, ly - 6)
-      : "";
+    const trendingSvg = item.trending ? FIRE_ICON(legendX + 250, ly - 6) : "";
 
     return (
       <>
