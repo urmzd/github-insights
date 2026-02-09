@@ -5,6 +5,7 @@ import type {
   ReadmeMap,
   DomainMap,
   ContributionData,
+  TechHighlight,
 } from "./types.js";
 
 const MANIFEST_FILES = [
@@ -281,5 +282,97 @@ Reply with raw JSON only: {"domains": {"repoName": ["tag1", "tag2"]}}`;
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`Domain analysis failed (non-fatal): ${msg}`);
     return new Map();
+  }
+};
+
+export const fetchTechAnalysis = async (
+  token: string,
+  languages: { name: string; percent: string }[],
+  allDeps: string[],
+  allTopics: string[],
+): Promise<TechHighlight[]> => {
+  try {
+    const langLines = languages
+      .map((l) => `- ${l.name}: ${l.percent}%`)
+      .join("\n");
+
+    const prompt = `You are analyzing a developer's GitHub profile to create a curated tech stack showcase.
+
+Languages (by code volume):
+${langLines}
+
+Dependencies found across repositories:
+${allDeps.join(", ")}
+
+Repository topics:
+${allTopics.join(", ")}
+
+From this data, produce a curated tech highlights profile:
+- Group the most notable technologies into 3-6 categories
+- Use clear category names (e.g., "Frontend", "Backend & APIs", "ML & Data Science", "Databases", "Infrastructure & DevOps", "Testing & Quality")
+- Include 3-6 of the most relevant items per category
+- Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
+- Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
+- Only include categories where there's meaningful evidence of usage`;
+
+    const res = await fetch(
+      "https://models.github.ai/inference/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.1,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "tech_highlights",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  highlights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        category: { type: "string" },
+                        items: { type: "array", items: { type: "string" } },
+                      },
+                      required: ["category", "items"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["highlights"],
+                additionalProperties: false,
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      console.warn(`GitHub Models API error: ${res.status}`);
+      return [];
+    }
+
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content) as { highlights?: TechHighlight[] };
+    return (parsed.highlights || []).filter(
+      (h) => h.category && Array.isArray(h.items) && h.items.length > 0,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`Tech analysis failed (non-fatal): ${msg}`);
+    return [];
   }
 };
