@@ -51,9 +51,7 @@ export const fetchAllRepoData = async (
     }
   }`);
 
-  return data.user.repositories.nodes.filter(
-    (r) => !r.isArchived && !r.isFork,
-  );
+  return data.user.repositories.nodes.filter((r) => !r.isArchived && !r.isFork);
 };
 
 export const fetchManifestsForRepos = async (
@@ -71,7 +69,7 @@ export const fetchManifestsForRepos = async (
       .map((repo, idx) => {
         const alias = `repo_${idx}`;
         const fileQueries = MANIFEST_FILES.map((file) => {
-          const fieldName = file.replace(/[.\-]/g, "_");
+          const fieldName = file.replace(/[.\-]/g, "_"); // eslint-disable-line no-useless-escape
           return `${fieldName}: object(expression: "HEAD:${file}") { ... on Blob { text } }`;
         }).join("\n            ");
         return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
@@ -90,7 +88,7 @@ export const fetchManifestsForRepos = async (
         if (!repoData) return;
         const files: Record<string, string> = {};
         for (const file of MANIFEST_FILES) {
-          const fieldName = file.replace(/[.\-]/g, "_");
+          const fieldName = file.replace(/[.\-]/g, "_"); // eslint-disable-line no-useless-escape
           const entry = repoData[fieldName] as { text?: string } | null;
           if (entry?.text) {
             files[file] = entry.text;
@@ -157,12 +155,11 @@ export const fetchContributionData = async (
     const user = (data as Record<string, Record<string, unknown>>).user;
     return {
       contributions: user.contributionsCollection,
-      calendar:
-        (user.contributionsCollection as Record<string, unknown>)
-          .contributionCalendar || {
-          totalContributions: 0,
-          weeks: [],
-        },
+      calendar: (user.contributionsCollection as Record<string, unknown>)
+        .contributionCalendar || {
+        totalContributions: 0,
+        weeks: [],
+      },
       externalRepos: user.repositoriesContributedTo,
       mergedPRs: user.pullRequests,
     } as ContributionData;
@@ -208,10 +205,8 @@ export const fetchReadmeForRepos = async (
       .join("\n      ");
 
     try {
-      const data: Record<
-        string,
-        { readme?: { text?: string } } | null
-      > = await graphql(`{ ${aliases} }`);
+      const data: Record<string, { readme?: { text?: string } } | null> =
+        await graphql(`{ ${aliases} }`);
       batch.forEach((repo, idx) => {
         const repoData = data[`repo_${idx}`];
         if (repoData?.readme?.text) {
@@ -274,9 +269,9 @@ Reply with raw JSON only: {"domains": {"repoName": ["tag1", "tag2"]}}`;
       choices?: { message?: { content?: string } }[];
     };
     const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(
-      content.replace(/```json?\n?|\n?```/g, ""),
-    ) as { domains?: Record<string, string[]> };
+    const parsed = JSON.parse(content.replace(/```json?\n?|\n?```/g, "")) as {
+      domains?: Record<string, string[]>;
+    };
     const domainMap: DomainMap = new Map();
     for (const [repo, tags] of Object.entries(parsed.domains || {})) {
       domainMap.set(repo, tags);

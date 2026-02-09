@@ -41,10 +41,6 @@ export function h(
   return `<${tag}${attrs}>${content}</${tag}>`;
 }
 
-export function Fragment({
-  children,
-}: {
-  children?: unknown[];
-}): string {
+export function Fragment({ children }: { children?: unknown[] }): string {
   return (children || []).flat().filter(Boolean).join("");
 }
