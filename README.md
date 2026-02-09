@@ -2,7 +2,7 @@
 
 Generate SVG visualizations of your GitHub profile and embed them in your README.
 
-![metrics](metrics/index.svg)
+![languages](metrics/metrics-languages.svg)
 
 ## Quick Start
 
@@ -81,6 +81,10 @@ Or embed individual sections:
 ![Languages](https://github.com/<username>/<username>/raw/main/metrics/metrics-languages.svg)
 ![Tech Stack](https://github.com/<username>/<username>/raw/main/metrics/metrics-tech-stack.svg)
 ```
+
+## Full Example
+
+![metrics](metrics/index.svg)
 
 ## License
 
