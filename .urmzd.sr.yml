@@ -1,6 +1,8 @@
 branches:
   - main
 
+floating_tags: true
+
 version_files:
   - package.json
 
