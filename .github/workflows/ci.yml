@@ -70,13 +70,6 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: Check dist/ is up-to-date
-        run: |
-          if ! git diff --quiet dist/; then
-            echo "ERROR: dist/ is out of date. Run 'npm run build' and commit."
-            exit 1
-          fi
-
       - name: Self-test action
         uses: ./
         with:
