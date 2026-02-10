@@ -14,4 +14,4 @@ hooks:
   pre_release:
     - npm run build
     - npm test
-    - git add dist/
+    - git add -f dist/
