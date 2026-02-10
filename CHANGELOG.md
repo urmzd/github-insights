@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 (2026-02-10)
+
+### Bug Fixes
+
+- let semantic-release handle floating major-version tags natively ([4706c57](https://github.com/urmzd/github-metrics/commit/4706c5735fc2ed4979d4c0d4b75464ae13ff7ddc))
+
+### Contributors
+
+- @urmzd
+
+
 ## 0.1.0 (2026-02-10)
 
 ### Features
