@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.2 (2026-02-10)
+
+### Bug Fixes
+
+- move build steps to workflow and upload dist tarball as release artifact ([a553318](https://github.com/urmzd/github-metrics/commit/a5533186cd5da788afc460ca4e44dd08075a58de))
+
+### Contributors
+
+- @urmzd
+
+
 ## 0.1.1 (2026-02-10)
 
 ### Bug Fixes
