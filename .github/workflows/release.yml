@@ -35,13 +35,3 @@ jobs:
         uses: urmzd/semantic-release@v0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update major version tag
-        if: steps.sr.outputs.released == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG=$(git describe --tags --abbrev=0)
-          MAJOR=$(echo "$TAG" | sed 's/v\([0-9]*\).*/v\1/')
-          git tag -fa "$MAJOR" -m "Update $MAJOR to $TAG"
-          git push origin "$MAJOR" --force
