@@ -1,17 +1,4 @@
 {
-  "name": "github-metrics",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
-    "fmt": "prettier --check 'src/**/*.{ts,tsx}'",
-    "fmt:fix": "prettier --write 'src/**/*.{ts,tsx}'",
-    "test": "vitest run",
-    "generate": "tsx src/index.ts"
-  },
   "dependencies": {
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
@@ -27,5 +14,18 @@
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.54.0",
     "vitest": "^2.0.0"
-  }
+  },
+  "name": "github-metrics",
+  "private": true,
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "fmt": "prettier --check 'src/**/*.{ts,tsx}'",
+    "fmt:fix": "prettier --write 'src/**/*.{ts,tsx}'",
+    "generate": "tsx src/index.ts",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "version": "0.1.0"
 }
