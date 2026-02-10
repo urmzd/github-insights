@@ -12,8 +12,5 @@ changelog:
 commit_types:
   chore: patch
 
-hooks:
-  pre_release:
-    - npm run build
-    - npm test
-    - git add -f dist/
+artifacts:
+  - dist.tar.gz
