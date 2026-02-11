@@ -68,6 +68,60 @@ describe("generateReadme", () => {
     expect(result).toContain("![GitHub Metrics](metrics/index.svg)");
   });
 
+  it("preamble is not wrapped in code fences", () => {
+    const result = generateReadme({
+      name: "Urmzd",
+      preambleContent: "Hello, I build things.",
+      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+    });
+    expect(result).toContain("Hello, I build things.");
+    expect(result).not.toContain("```");
+  });
+
+  it("multi-paragraph preamble preserves structure", () => {
+    const preamble = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
+    const result = generateReadme({
+      name: "Urmzd",
+      preambleContent: preamble,
+      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+    });
+    expect(result).toContain(preamble);
+    expect(result).toContain(`# Urmzd\n\n${preamble}\n\n![GitHub Metrics]`);
+  });
+
+  it("preamble with markdown features inserted raw", () => {
+    const preamble =
+      "I am **bold** and have [![Badge](https://img.shields.io)](https://example.com) and a [link](https://example.com).";
+    const result = generateReadme({
+      name: "Urmzd",
+      preambleContent: preamble,
+      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+    });
+    expect(result).toContain("**bold**");
+    expect(result).toContain(
+      "[![Badge](https://img.shields.io)](https://example.com)",
+    );
+    expect(result).toContain("[link](https://example.com)");
+    expect(result).not.toContain("```");
+  });
+
+  it("preamble separated from adjacent sections by blank lines", () => {
+    const result = generateReadme({
+      name: "Urmzd",
+      pronunciation: "/ˈʊrm.zəd/",
+      title: "Senior Backend Engineer",
+      preambleContent: "Welcome to my profile!",
+      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      bio: "Building tools for developers",
+    });
+    expect(result).toContain(
+      "> Senior Backend Engineer\n\nWelcome to my profile!",
+    );
+    expect(result).toContain(
+      "Welcome to my profile!\n\n![GitHub Metrics](metrics/index.svg)",
+    );
+  });
+
   it("includes bio footer when set", () => {
     const result = generateReadme({
       name: "Urmzd",
