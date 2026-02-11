@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 (2026-02-11)
+
+### Features
+
+- add force re-release support to release workflow ([46fbe6d](https://github.com/urmzd/github-metrics/commit/46fbe6d60483a818af58b70b3c80b7d8f216ca7d))
+
+### Refactoring
+
+- replace ESLint + Prettier with Biome ([9a98708](https://github.com/urmzd/github-metrics/commit/9a98708596a48f527ff846d8943d0c8955712fb6))
+
+### Miscellaneous
+
+- update metrics ([b98290c](https://github.com/urmzd/github-metrics/commit/b98290caa3fc4fe0dd67a682f9e7a7c6fa547c3c))
+
+
 ## 0.1.2 (2026-02-10)
 
 ### Bug Fixes
