@@ -25,6 +25,15 @@ inputs:
   commit-email:
     description: "Git user email for commits"
     default: "41898282+github-actions[bot]@users.noreply.github.com"
+  config-file:
+    description: "Path to .github-metrics.toml config file"
+    default: ".github-metrics.toml"
+  readme-path:
+    description: "Output path for the generated profile README (set to 'none' to skip; defaults to _README.md locally)"
+    default: "README.md"
+  index-only:
+    description: "Embed only the combined index.svg; when false, embeds each section SVG individually"
+    default: "true"
 runs:
   using: "node24"
   main: "dist/index.js"

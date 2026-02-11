@@ -2,12 +2,16 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 import {
+  fetchAIPreamble,
   fetchAllRepoData,
   fetchContributionData,
   fetchExpertiseAnalysis,
   fetchManifestsForRepos,
   fetchReadmeForRepos,
+  fetchUserProfile,
 } from "./api.js";
+import { loadUserConfig } from "./config.js";
+import { generateReadme, loadPreamble } from "./readme.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
 import {
@@ -34,6 +38,13 @@ async function run(): Promise<void> {
     const commitEmail =
       core.getInput("commit-email") ||
       "41898282+github-actions[bot]@users.noreply.github.com";
+    const configPath = core.getInput("config-file") || undefined;
+    const readmePath =
+      core.getInput("readme-path") ||
+      (process.env.CI ? "README.md" : "_README.md");
+    const indexOnly =
+      (core.getInput("index-only") || "true") === "true";
+    const userConfig = loadUserConfig(configPath);
 
     if (!token) {
       core.setFailed("github-token is required");
@@ -50,18 +61,22 @@ async function run(): Promise<void> {
     core.info(`Found ${repos.length} public repos`);
 
     core.info("Fetching dependency manifests...");
-    const manifests = await fetchManifestsForRepos(token, username, repos);
-    core.info(`Fetched manifests for ${manifests.size} repos`);
-
     core.info("Fetching contribution data...");
-    const contributionData = await fetchContributionData(token, username);
+    core.info("Fetching READMEs...");
+    core.info("Fetching user profile...");
+    const [manifests, contributionData, readmeMap, userProfile] =
+      await Promise.all([
+        fetchManifestsForRepos(token, username, repos),
+        fetchContributionData(token, username),
+        fetchReadmeForRepos(token, username, repos),
+        fetchUserProfile(token, username),
+      ]);
+    core.info(`Fetched manifests for ${manifests.size} repos`);
     core.info(
       `Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`,
     );
-
-    core.info("Fetching READMEs...");
-    const readmeMap = await fetchReadmeForRepos(token, username, repos);
     core.info(`Fetched READMEs for ${readmeMap.size} repos`);
+    core.info(`User profile: ${userProfile.name || username}`);
 
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
@@ -78,6 +93,7 @@ async function run(): Promise<void> {
       allTopics,
       repos,
       readmeMap,
+      userConfig,
     );
     core.info(`Expertise analysis: ${techHighlights.length} categories`);
 
@@ -113,11 +129,48 @@ async function run(): Promise<void> {
     writeFileSync(`${outputDir}/index.svg`, combinedSvg);
     core.info(`Wrote ${outputDir}/index.svg`);
 
+    // ── README ─────────────────────────────────────────────────────────────
+    if (readmePath && readmePath !== "none") {
+      let preambleContent = loadPreamble(userConfig.preamble);
+      if (!preambleContent) {
+        core.info("No PREAMBLE.md found, generating with AI...");
+        preambleContent = await fetchAIPreamble(token, {
+          username,
+          profile: userProfile,
+          userConfig,
+          languages,
+          techHighlights,
+          contributionData,
+          projects,
+        });
+      }
+      const svgs = indexOnly
+        ? [{ label: "GitHub Metrics", path: `${outputDir}/index.svg` }]
+        : activeSections.map((s) => ({
+            label: s.title,
+            path: `${outputDir}/${s.filename}`,
+          }));
+      const readme = generateReadme({
+        name: userConfig.name || username,
+        pronunciation: userConfig.pronunciation,
+        title: userConfig.title,
+        preambleContent,
+        svgs,
+        bio: userConfig.bio,
+      });
+      writeFileSync(readmePath, readme);
+      core.info(`Wrote ${readmePath}`);
+    }
+
     // ── Commit + Push ─────────────────────────────────────────────────────
     if (commitPush) {
       await exec.exec("git", ["config", "user.name", commitName]);
       await exec.exec("git", ["config", "user.email", commitEmail]);
-      await exec.exec("git", ["add", `${outputDir}/`]);
+      const filesToAdd = [`${outputDir}/`];
+      if (readmePath && readmePath !== "none") {
+        filesToAdd.push(readmePath);
+      }
+      await exec.exec("git", ["add", ...filesToAdd]);
 
       const diffResult = await exec.exec(
         "git",
