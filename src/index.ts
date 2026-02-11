@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, relative } from "node:path";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 import {
@@ -143,11 +144,12 @@ async function run(): Promise<void> {
           projects,
         });
       }
+      const svgDir = relative(dirname(readmePath), outputDir) || ".";
       const svgs = indexOnly
-        ? [{ label: "GitHub Metrics", path: `${outputDir}/index.svg` }]
+        ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
         : activeSections.map((s) => ({
             label: s.title,
-            path: `${outputDir}/${s.filename}`,
+            path: `${svgDir}/${s.filename}`,
           }));
       const readme = generateReadme({
         name: userConfig.name || username,
