@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 (2026-02-11)
+
+### Bug Fixes
+
+- use relative SVG paths in generated README ([d280808](https://github.com/urmzd/github-metrics/commit/d280808a2851d0e836a7bc528b64a487270744a4))
+
+
 ## 0.3.0 (2026-02-11)
 
 ### Features
