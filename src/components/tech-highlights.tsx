@@ -2,7 +2,6 @@ import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
 import { BAR_COLORS, LAYOUT } from "../theme.js";
 import type { RenderResult, TechHighlight } from "../types.js";
-import { renderDivider, renderSubHeader } from "./section.js";
 
 export function renderTechHighlights(
   highlights: TechHighlight[],
@@ -10,12 +9,11 @@ export function renderTechHighlights(
 ): RenderResult {
   if (highlights.length === 0) return { svg: "", height: 0 };
 
-  const { padX } = LAYOUT;
-  const maxWidth = 760;
-  const gapX = 10;
-  const gapY = 10;
-  const fontSize = 11;
-  const pillH = 26;
+  const { padX, barHeight, barMaxWidth } = LAYOUT;
+  const barX = padX + 180;
+  const scoreX = barX + barMaxWidth + 10;
+  const skillY = 16;
+  const rowGap = 14;
 
   let svg = "";
   let height = 0;
@@ -23,61 +21,65 @@ export function renderTechHighlights(
   for (let hi = 0; hi < highlights.length; hi++) {
     const group = highlights[hi];
     const color = BAR_COLORS[hi % BAR_COLORS.length];
+    const score = Math.max(0, Math.min(100, group.score));
+    const fillWidth = (score / 100) * barMaxWidth;
 
-    if (hi > 0) {
-      const div = renderDivider(y + height + 6);
-      svg += div.svg;
-      height += 18;
-    }
+    const baseY = y + height;
 
-    const sub = renderSubHeader(group.category, y + height);
-    svg += sub.svg;
-    height += sub.height + 8;
+    // Category label (uppercase, left-aligned)
+    svg += (
+      <text x={padX} y={baseY + barHeight / 2 + 4} className="t t-subhdr">
+        {escapeXml(group.category.toUpperCase())}
+      </text>
+    );
 
-    let cx = padX;
-    let rowStartY = y + height;
+    // Bar track (full width, low opacity)
+    svg += (
+      <rect
+        x={barX}
+        y={baseY}
+        width={barMaxWidth}
+        height={barHeight}
+        rx={4}
+        fill={color}
+        fill-opacity="0.15"
+      />
+    );
 
-    for (const item of group.items) {
-      const text = truncate(item, 30);
-      const pillW = Math.ceil(text.length * fontSize * 0.55) + 28;
-
-      if (cx + pillW > padX + maxWidth && cx > padX) {
-        cx = padX;
-        rowStartY += pillH + gapY;
-        height += pillH + gapY;
-      }
-
+    // Bar fill (proportional to score)
+    if (fillWidth > 0) {
       svg += (
-        <>
-          <rect
-            x={cx}
-            y={rowStartY}
-            width={pillW}
-            height={pillH}
-            rx={pillH / 2}
-            fill={color}
-            fill-opacity="0.15"
-            stroke={color}
-            stroke-opacity="0.4"
-            stroke-width="1"
-          />
-          <text
-            x={cx + pillW / 2}
-            y={rowStartY + pillH / 2 + fontSize / 3}
-            fill={color}
-            font-size={fontSize}
-            className="t t-pill"
-            text-anchor="middle"
-          >
-            {escapeXml(text)}
-          </text>
-        </>
+        <rect
+          x={barX}
+          y={baseY}
+          width={fillWidth}
+          height={barHeight}
+          rx={4}
+          fill={color}
+          fill-opacity="0.85"
+        />
       );
-
-      cx += pillW + gapX;
     }
 
-    height += pillH + 10;
+    // Score label (right of bar)
+    svg += (
+      <text x={scoreX} y={baseY + barHeight / 2 + 4} className="t t-value">
+        {`${score}%`}
+      </text>
+    );
+
+    // Skill items text (below bar, muted)
+    const skillText = group.items
+      .map((item) => truncate(item, 30))
+      .join(" \u00B7 ");
+
+    svg += (
+      <text x={barX} y={baseY + barHeight + skillY} className="t t-card-detail">
+        {escapeXml(skillText)}
+      </text>
+    );
+
+    height += barHeight + skillY + rowGap;
   }
 
   return { svg, height };

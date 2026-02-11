@@ -272,8 +272,12 @@ describe("buildSections", () => {
       { name: "JavaScript", value: 25, percent: "20.0", color: "#f1e05a" },
     ],
     techHighlights: [
-      { category: "Frontend", items: ["React", "TypeScript", "Next.js"] },
-      { category: "Backend", items: ["Express", "PostgreSQL"] },
+      {
+        category: "Frontend",
+        items: ["React", "TypeScript", "Next.js"],
+        score: 90,
+      },
+      { category: "Backend", items: ["Express", "PostgreSQL"], score: 75 },
     ] as TechHighlight[],
     projects: [
       {
