@@ -104,4 +104,25 @@ export interface PackageParser {
 export interface TechHighlight {
     category: string;
     items: string[];
+    score: number;
+}
+export interface UserConfig {
+    title?: string;
+    desired_title?: string;
+    name?: string;
+    pronunciation?: string;
+    bio?: string;
+    preamble?: string;
+}
+export interface UserProfile {
+    name: string | null;
+    bio: string | null;
+    company: string | null;
+    location: string | null;
+    websiteUrl: string | null;
+    twitterUsername: string | null;
+    socialAccounts: {
+        provider: string;
+        url: string;
+    }[];
 }
