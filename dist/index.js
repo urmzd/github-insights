@@ -26008,7 +26008,7 @@ const MockPool = __nccwpck_require__(4004)
 const { matchValue, buildMockOptions } = __nccwpck_require__(3397)
 const { InvalidArgumentError, UndiciError } = __nccwpck_require__(8707)
 const Dispatcher = __nccwpck_require__(992)
-const Pluralizer = __nccwpck_require__(3910)
+const Pluralizer = __nccwpck_require__(1529)
 const PendingInterceptorsFormatter = __nccwpck_require__(6142)
 
 class FakeWeakRef {
@@ -26967,7 +26967,7 @@ module.exports = class PendingInterceptorsFormatter {
 
 /***/ }),
 
-/***/ 3910:
+/***/ 1529:
 /***/ ((module) => {
 
 
@@ -31692,6 +31692,8 @@ var __webpack_exports__ = {};
 
 ;// CONCATENATED MODULE: external "node:fs"
 const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(7484);
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
@@ -34005,6 +34007,7 @@ function loadPreamble(path) {
 
 
 
+
 async function run() {
     try {
         const token = core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
@@ -34087,11 +34090,12 @@ async function run() {
                     projects,
                 });
             }
+            const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(readmePath), outputDir) || ".";
             const svgs = indexOnly
-                ? [{ label: "GitHub Metrics", path: `${outputDir}/index.svg` }]
+                ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
                 : activeSections.map((s) => ({
                     label: s.title,
-                    path: `${outputDir}/${s.filename}`,
+                    path: `${svgDir}/${s.filename}`,
                 }));
             const readme = generateReadme({
                 name: userConfig.name || username,
