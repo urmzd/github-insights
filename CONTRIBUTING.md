@@ -1,79 +1,78 @@
 # Contributing
 
-## Prerequisites
-
-- Node.js 22 (see `.nvmrc`)
-- npm
-
-## Setup
-
-```bash
-npm ci
-```
-
-## Development Commands
-
-| Command | Description |
-|---|---|
-| `npm run fmt` | Check formatting (Prettier) |
-| `npm run fmt:fix` | Fix formatting |
-| `npm run lint` | Lint source (ESLint) |
-| `npm run typecheck` | Type-check (TypeScript) |
-| `npm test` | Run tests (Vitest) |
-| `npm run build` | Bundle to `dist/` (ncc) |
-| `npm run generate` | Generate metrics locally |
-
-## Local Generation
-
-To generate metrics locally against your own GitHub profile:
-
-```bash
-GITHUB_TOKEN=$(gh auth token) npx tsx src/index.ts
-```
-
-This writes SVGs to `metrics/`.
-
 ## Project Structure
 
 ```
 src/
-  index.ts          Entry point (GitHub Action runner)
-  api.ts            GitHub GraphQL queries
-  metrics.ts        Aggregation, classification, and section definitions
-  parsers.ts        Dependency manifest parsers
-  svg-utils.ts      SVG primitives and text measurement
-  theme.ts          Color palette and design tokens
-  jsx-factory.ts    Minimal JSX runtime for SVG generation
-  types.ts          TypeScript type definitions
-  components/       SVG rendering components
-    full-svg.tsx      Root SVG wrapper
-    section.tsx       Section header/divider
-    bar-chart.tsx     Horizontal bar charts
-    donut-chart.tsx   Language donut chart
-    stat-cards.tsx    Stat summary cards
-    project-cards.tsx Signature project cards
-    domain-cloud.tsx  Domain tag cloud
-    contribution-cards.tsx  OSS contribution cards
-    style-defs.tsx    Shared CSS-in-SVG styles
-dist/               Bundled action output (committed)
-metrics/            Generated SVG files
+  index.ts          # Entry point — orchestrates fetch, transform, render, write
+  api.ts            # GitHub GraphQL/REST API calls + AI model calls
+  metrics.ts        # Data aggregation and section definitions
+  config.ts         # TOML config parsing (UserConfig)
+  readme.ts         # Profile README generation
+  parsers.ts        # Dependency manifest parsers
+  types.ts          # Shared type definitions
+  components/       # SVG rendering components
+    full-svg.ts     # Combines sections into a single SVG
+    section.ts      # Individual section renderer
+    donut-chart.ts  # Language donut chart
+    tech-highlights.ts  # Expertise bars
+    stat-cards.ts   # Contribution stat cards
+    project-cards.ts    # Project cards
+    contribution-cards.ts # External contribution cards
 ```
 
-## Adding a New Visualization
+## Adding a New Metric Section
 
-1. Create a new component in `src/components/` (e.g., `my-chart.tsx`).
-2. Export a render function that takes data and a `y` offset, returning `{ svg: string; height: number }`.
-3. Register it in `buildSections()` in `src/metrics.ts` by pushing a new `SectionDef`.
-4. Run `npm run build` to rebundle.
+1. If your section needs a new render component, create it in `src/components/`. It should export a function that takes data + a `y` offset and returns `{ svg: string, height: number }`.
 
-## CI Pipeline
+2. Add your section to `buildSections` in `src/metrics.ts` (line ~91). Each section is a `SectionDef` (`src/types.ts:54`):
 
-The CI workflow runs these checks in order:
+```typescript
+sections.push({
+  filename: "metrics-your-section.svg",
+  title: "Your Section",
+  subtitle: "Description of this section",
+  renderBody: (y: number) => renderYourComponent(data, y),
+});
+```
 
-1. **Format** — `npm run fmt`
-2. **Lint** — `npm run lint`
-3. **Typecheck** — `npm run typecheck`
-4. **Test** — `npm test`
-5. **Integration** — `npm run build`, verify `dist/` is up-to-date, self-test the action
+3. The section is automatically included in the combined `index.svg` and written as a standalone SVG.
 
-**Important:** If you change source files, run `npm run build` and commit the updated `dist/` directory. CI will fail if `dist/` is out of date.
+## Adding a Package Parser
+
+Package parsers extract dependency names from manifest files so the AI expertise analysis can see what libraries you use.
+
+1. Create a `PackageParser` implementation (`src/types.ts:113`):
+
+```typescript
+export const MyParser: PackageParser = {
+  filenames: ["my-manifest.json"],
+  parseDependencies(text) {
+    // Parse and return dependency names
+    return [];
+  },
+};
+```
+
+2. Add it to the `PARSERS` array in `src/parsers.ts` (line ~129).
+
+3. Add the manifest filename to `MANIFEST_FILES` in `src/api.ts` (line ~13) so the API fetches it from repos.
+
+## Adding Config Fields
+
+1. Add the field to the `UserConfig` interface in `src/types.ts` (line ~126).
+
+2. Add parsing logic in `parseUserConfig` in `src/config.ts` — follow the existing pattern of type-checking and trimming.
+
+3. Use the new field wherever needed (e.g., in `src/index.ts`, `src/readme.ts`, or `src/metrics.ts`).
+
+## Testing
+
+- Tests use [Vitest](https://vitest.dev/) with the `*.test.ts` naming convention
+- Run tests: `just test` or `npm test`
+- Tests live alongside source files (e.g., `src/config.test.ts`)
+
+## Code Style
+
+- Enforced by [Biome](https://biomejs.dev/) — run `just fmt` to check, `just fmt-fix` to auto-fix
+- Run `just ci` before submitting a PR to catch formatting, lint, type, and test issues

@@ -2,9 +2,12 @@ import * as github from "@actions/github";
 import type {
   ContributionData,
   ManifestMap,
+  ProjectItem,
   ReadmeMap,
   RepoNode,
   TechHighlight,
+  UserConfig,
+  UserProfile,
 } from "./types.js";
 
 const MANIFEST_FILES = [
@@ -193,6 +196,177 @@ export const fetchReadmeForRepos = async (
   return readmeMap;
 };
 
+export const fetchUserProfile = async (
+  token: string,
+  username: string,
+): Promise<UserProfile> => {
+  const graphql = makeGraphql(token);
+  try {
+    const data = await graphql(`{
+      user(login: "${username}") {
+        name
+        bio
+        company
+        location
+        websiteUrl
+        twitterUsername
+        socialAccounts(first: 10) { nodes { provider url } }
+      }
+    }`);
+
+    const user = (data as Record<string, Record<string, unknown>>).user;
+    return {
+      name: (user.name as string) || null,
+      bio: (user.bio as string) || null,
+      company: (user.company as string) || null,
+      location: (user.location as string) || null,
+      websiteUrl: (user.websiteUrl as string) || null,
+      twitterUsername: (user.twitterUsername as string) || null,
+      socialAccounts: (
+        (user.socialAccounts as { nodes: { provider: string; url: string }[] })
+          ?.nodes || []
+      ),
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`User profile fetch failed (non-fatal): ${msg}`);
+    return {
+      name: null,
+      bio: null,
+      company: null,
+      location: null,
+      websiteUrl: null,
+      twitterUsername: null,
+      socialAccounts: [],
+    };
+  }
+};
+
+export interface PreambleContext {
+  username: string;
+  profile: UserProfile;
+  userConfig: UserConfig;
+  languages: { name: string; percent: string }[];
+  techHighlights: TechHighlight[];
+  contributionData: ContributionData;
+  projects: ProjectItem[];
+}
+
+export const fetchAIPreamble = async (
+  token: string,
+  context: PreambleContext,
+): Promise<string | undefined> => {
+  try {
+    const { username, profile, userConfig, languages, techHighlights, contributionData, projects } = context;
+
+    const langLines = languages.map((l) => `- ${l.name}: ${l.percent}%`).join("\n");
+    const techLines = techHighlights
+      .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
+      .join("\n");
+    const projectLines = projects
+      .slice(0, 10)
+      .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
+      .join("\n");
+
+    const profileLines = [
+      profile.name ? `Name: ${profile.name}` : null,
+      profile.bio ? `Bio: ${profile.bio}` : null,
+      profile.company ? `Company: ${profile.company}` : null,
+      profile.location ? `Location: ${profile.location}` : null,
+      userConfig.title ? `Title: ${userConfig.title}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const socialLines = [
+      `GitHub: https://github.com/${username}`,
+      profile.websiteUrl ? `Website: ${profile.websiteUrl}` : null,
+      profile.twitterUsername ? `Twitter/X: https://x.com/${profile.twitterUsername}` : null,
+      ...profile.socialAccounts.map((s) => `${s.provider}: ${s.url}`),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const prompt = `You are generating a concise markdown preamble for a developer's GitHub profile README.
+
+Profile:
+${profileLines}
+
+Languages (by code volume):
+${langLines}
+
+Expertise areas:
+${techLines}
+
+Notable projects:
+${projectLines}
+
+Contribution stats (last year):
+- Commits: ${contributionData.contributions.totalCommitContributions}
+- Pull requests: ${contributionData.contributions.totalPullRequestContributions}
+- Code reviews: ${contributionData.contributions.totalPullRequestReviewContributions}
+- Contributed to ${contributionData.externalRepos.totalCount} external repos
+
+Social/contact links available:
+${socialLines}
+
+Generate a markdown preamble (2-4 short paragraphs max) that:
+- Opens with a brief personal intro drawn from the profile bio/title
+- Highlights the developer's primary domains and strengths (from expertise areas + languages)
+- Mentions notable projects if applicable
+- Ends with a social/contact links section using shields.io badge-style markdown images. Use this format for each badge:
+  [![Badge](https://img.shields.io/badge/LABEL-COLOR?style=flat&logo=LOGO&logoColor=white)](URL)
+  Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g., logo=github for GitHub, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
+- Keep tone professional but friendly, no self-aggrandizing
+- Do NOT include a heading — the README already has one`;
+
+    const res = await fetch(
+      "https://models.github.ai/inference/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "preamble",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: { preamble: { type: "string" } },
+                required: ["preamble"],
+                additionalProperties: false,
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      console.warn(`GitHub Models API error (preamble): ${res.status}`);
+      return undefined;
+    }
+
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content) as { preamble?: string };
+    return parsed.preamble || undefined;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
+    return undefined;
+  }
+};
+
 export const fetchExpertiseAnalysis = async (
   token: string,
   languages: { name: string; percent: string }[],
@@ -200,6 +374,7 @@ export const fetchExpertiseAnalysis = async (
   allTopics: string[],
   repos: RepoNode[],
   readmeMap: ReadmeMap,
+  userConfig: UserConfig = {},
 ): Promise<TechHighlight[]> => {
   try {
     const langLines = languages
@@ -216,8 +391,18 @@ export const fetchExpertiseAnalysis = async (
       })
       .join("\n");
 
-    const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
+    const desiredTitle = userConfig.desired_title || userConfig.title;
+    let titleContext = "";
+    if (userConfig.title) {
+      titleContext = `\nDeveloper context:\n- Current title: ${userConfig.title}`;
+      if (desiredTitle && desiredTitle !== userConfig.title) {
+        titleContext += `\n- Desired title: ${desiredTitle}`;
+      }
+      titleContext += `\n- Tailor the expertise categories to highlight skills most relevant to ${desiredTitle}. Prioritize domains and technologies that align with this role.\n`;
+    }
 
+    const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
+${titleContext}
 Languages (by code volume):
 ${langLines}
 
