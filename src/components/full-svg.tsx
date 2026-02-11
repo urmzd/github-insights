@@ -1,9 +1,9 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { THEME, LAYOUT } from "../theme.js";
-import { StyleDefs } from "./style-defs.js";
-import { renderSectionHeader } from "./section.js";
-import { renderBarChart } from "./bar-chart.js";
+import { Fragment, h } from "../jsx-factory.js";
+import { LAYOUT, THEME } from "../theme.js";
 import type { SectionDef } from "../types.js";
+import { renderBarChart } from "./bar-chart.js";
+import { renderSectionHeader } from "./section.js";
+import { StyleDefs } from "./style-defs.js";
 
 export function wrapSectionSvg(bodySvg: string, height: number): string {
   const { width } = LAYOUT;

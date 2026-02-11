@@ -12,27 +12,18 @@ export interface LanguageItem {
   value: number;
   percent: string;
   color: string;
-  trending?: boolean;
 }
 
 export interface TechItem {
   name: string;
   value: number;
-  trending?: boolean;
 }
 
-export interface ComplexityItem {
+export interface ProjectItem {
   name: string;
   url: string;
   description: string;
-  value: number;
-  trending?: boolean;
-}
-
-export interface DomainItem {
-  name: string;
-  count: number;
-  repos: string[];
+  stars: number;
 }
 
 // ── Bar chart generics ──────────────────────────────────────────────────────
@@ -42,7 +33,6 @@ export interface BarItem {
   value: number;
   percent?: string;
   color?: string;
-  trending?: boolean;
 }
 
 // ── Stat cards ──────────────────────────────────────────────────────────────
@@ -93,36 +83,11 @@ export interface RepoNode {
   };
 }
 
-export interface ContributionsByRepo {
-  repository: {
-    nameWithOwner: string;
-    stargazerCount: number;
-    primaryLanguage: { name: string } | null;
-    isPrivate: boolean;
-  };
-  contributions: { totalCount: number };
-}
-
-export interface ContributionDay {
-  contributionCount: number;
-  date: string;
-  weekday: number;
-}
-
-export interface ContributionCalendar {
-  totalContributions: number;
-  weeks: { contributionDays: ContributionDay[] }[];
-}
-
 export interface ContributionsCollection {
   totalCommitContributions: number;
   totalPullRequestContributions: number;
   totalPullRequestReviewContributions: number;
-  totalIssueContributions: number;
   totalRepositoriesWithContributedCommits: number;
-  restrictedContributionsCount: number;
-  contributionCalendar: ContributionCalendar;
-  commitContributionsByRepository: ContributionsByRepo[];
 }
 
 export interface ExternalRepo {
@@ -133,29 +98,14 @@ export interface ExternalRepo {
   primaryLanguage: { name: string } | null;
 }
 
-export interface MergedPR {
-  title: string;
-  mergedAt: string;
-  additions: number;
-  deletions: number;
-  repository: {
-    nameWithOwner: string;
-    owner: { login: string };
-    stargazerCount: number;
-  };
-}
-
 export interface ContributionData {
   contributions: ContributionsCollection;
-  calendar: ContributionCalendar;
   externalRepos: { totalCount: number; nodes: ExternalRepo[] };
-  mergedPRs: { totalCount: number; nodes: MergedPR[] };
 }
 
 // ── Manifest types ──────────────────────────────────────────────────────────
 
 export type ManifestMap = Map<string, Record<string, string>>;
-export type DomainMap = Map<string, string[]>;
 export type ReadmeMap = Map<string, string>;
 
 // ── Package parser ─────────────────────────────────────────────────────────

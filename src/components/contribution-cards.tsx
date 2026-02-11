@@ -1,7 +1,7 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { LAYOUT, BAR_COLORS, THEME } from "../theme.js";
+import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
-import type { RenderResult, ContributionHighlight } from "../types.js";
+import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
+import type { ContributionHighlight, RenderResult } from "../types.js";
 
 export function renderContributionCards(
   highlights: ContributionHighlight[],

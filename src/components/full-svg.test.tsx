@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "../jsx-factory.js";
-import { wrapSectionSvg, generateFullSvg } from "./full-svg.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "../jsx-factory.js";
 import type { SectionDef } from "../types.js";
+import { generateFullSvg, wrapSectionSvg } from "./full-svg.js";
 
 void Fragment;
 

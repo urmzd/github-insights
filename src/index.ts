@@ -1,26 +1,22 @@
+import { mkdirSync, writeFileSync } from "node:fs";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
-import { writeFileSync, mkdirSync } from "fs";
 import {
   fetchAllRepoData,
-  fetchManifestsForRepos,
   fetchContributionData,
+  fetchExpertiseAnalysis,
+  fetchManifestsForRepos,
   fetchReadmeForRepos,
-  fetchDomainAnalysis,
-  fetchTechAnalysis,
 } from "./api.js";
+import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
+import { renderSection } from "./components/section.js";
 import {
   aggregateLanguages,
+  buildSections,
   collectAllDependencies,
   collectAllTopics,
-  computeComplexityScores,
-  computeRecentlyActive,
-  markRecentlyActive,
-  aggregateDomains,
-  buildSections,
+  getTopProjectsByStars,
 } from "./metrics.js";
-import { renderSection } from "./components/section.js";
-import { wrapSectionSvg, generateFullSvg } from "./components/full-svg.js";
 
 async function run(): Promise<void> {
   try {
@@ -65,41 +61,28 @@ async function run(): Promise<void> {
     const readmeMap = await fetchReadmeForRepos(token, username, repos);
     core.info(`Fetched READMEs for ${readmeMap.size} repos`);
 
-    core.info("Fetching domain analysis from GitHub Models...");
-    const domainMap = await fetchDomainAnalysis(token, repos, readmeMap);
-    core.info(`Domain analysis: ${domainMap.size} repos tagged`);
-
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
-    const complexity = computeComplexityScores(repos);
-
-    const recentlyActiveSet = computeRecentlyActive(
-      contributionData.contributions.commitContributionsByRepository,
-      repos,
-    );
-
-    markRecentlyActive([languages, complexity], recentlyActiveSet);
-
-    const domains = aggregateDomains(domainMap);
+    const projects = getTopProjectsByStars(repos);
 
     const allDeps = collectAllDependencies(repos, manifests);
     const allTopics = collectAllTopics(repos);
 
-    core.info("Fetching tech analysis from GitHub Models...");
-    const techHighlights = await fetchTechAnalysis(
+    core.info("Fetching expertise analysis from GitHub Models...");
+    const techHighlights = await fetchExpertiseAnalysis(
       token,
       languages,
       allDeps,
       allTopics,
+      repos,
+      readmeMap,
     );
-    core.info(`Tech analysis: ${techHighlights.length} categories`);
+    core.info(`Expertise analysis: ${techHighlights.length} categories`);
 
     const sectionDefs = buildSections({
       languages,
       techHighlights,
-      complexity,
-      domains,
-      domainMap,
+      projects,
       contributionData,
     });
 

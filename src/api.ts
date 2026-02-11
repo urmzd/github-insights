@@ -1,10 +1,9 @@
 import * as github from "@actions/github";
 import type {
-  RepoNode,
+  ContributionData,
   ManifestMap,
   ReadmeMap,
-  DomainMap,
-  ContributionData,
+  RepoNode,
   TechHighlight,
 } from "./types.js";
 
@@ -125,28 +124,11 @@ export const fetchContributionData = async (
             totalCommitContributions
             totalPullRequestContributions
             totalPullRequestReviewContributions
-            totalIssueContributions
             totalRepositoriesWithContributedCommits
-            restrictedContributionsCount
-            contributionCalendar {
-              totalContributions
-              weeks { contributionDays { contributionCount date weekday } }
-            }
-            commitContributionsByRepository(maxRepositories: 25) {
-              repository { nameWithOwner stargazerCount primaryLanguage { name } isPrivate }
-              contributions { totalCount }
-            }
           }
           repositoriesContributedTo(first: 50, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST]) {
             totalCount
             nodes { nameWithOwner url stargazerCount description primaryLanguage { name } }
-          }
-          pullRequests(first: 100, orderBy: {field: CREATED_AT, direction: DESC}, states: [MERGED]) {
-            totalCount
-            nodes {
-              title mergedAt additions deletions
-              repository { nameWithOwner owner { login } stargazerCount }
-            }
           }
         }
       }`,
@@ -156,13 +138,7 @@ export const fetchContributionData = async (
     const user = (data as Record<string, Record<string, unknown>>).user;
     return {
       contributions: user.contributionsCollection,
-      calendar: (user.contributionsCollection as Record<string, unknown>)
-        .contributionCalendar || {
-        totalContributions: 0,
-        weeks: [],
-      },
       externalRepos: user.repositoriesContributedTo,
-      mergedPRs: user.pullRequests,
     } as ContributionData;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -172,15 +148,9 @@ export const fetchContributionData = async (
         totalCommitContributions: 0,
         totalPullRequestContributions: 0,
         totalPullRequestReviewContributions: 0,
-        totalIssueContributions: 0,
         totalRepositoriesWithContributedCommits: 0,
-        restrictedContributionsCount: 0,
-        commitContributionsByRepository: [],
-        contributionCalendar: { totalContributions: 0, weeks: [] },
       },
-      calendar: { totalContributions: 0, weeks: [] },
       externalRepos: { totalCount: 0, nodes: [] },
-      mergedPRs: { totalCount: 0, nodes: [] },
     };
   }
 };
@@ -223,12 +193,19 @@ export const fetchReadmeForRepos = async (
   return readmeMap;
 };
 
-export const fetchDomainAnalysis = async (
+export const fetchExpertiseAnalysis = async (
   token: string,
+  languages: { name: string; percent: string }[],
+  allDeps: string[],
+  allTopics: string[],
   repos: RepoNode[],
   readmeMap: ReadmeMap,
-): Promise<DomainMap> => {
+): Promise<TechHighlight[]> => {
   try {
+    const langLines = languages
+      .map((l) => `- ${l.name}: ${l.percent}%`)
+      .join("\n");
+
     const repoSummaries = repos
       .slice(0, 20)
       .map((r) => {
@@ -239,64 +216,7 @@ export const fetchDomainAnalysis = async (
       })
       .join("\n");
 
-    const prompt = `Given these GitHub repo names, descriptions, and README excerpts, assign 1-3 domain tags per repo from categories like: "Computer Vision", "CLI Tools", "Web Apps", "Machine Learning", "Data Science", "DevOps", "Game Dev", "NLP", "API Development", "Mobile Apps", "Systems Programming", "Automation", "Education", or similar concise domain tags.
-
-${repoSummaries}
-
-Reply with raw JSON only: {"domains": {"repoName": ["tag1", "tag2"]}}`;
-
-    const res = await fetch(
-      "https://models.github.ai/inference/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      console.warn(`GitHub Models API error: ${res.status}`);
-      return new Map();
-    }
-
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content.replace(/```json?\n?|\n?```/g, "")) as {
-      domains?: Record<string, string[]>;
-    };
-    const domainMap: DomainMap = new Map();
-    for (const [repo, tags] of Object.entries(parsed.domains || {})) {
-      domainMap.set(repo, tags);
-    }
-    return domainMap;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`Domain analysis failed (non-fatal): ${msg}`);
-    return new Map();
-  }
-};
-
-export const fetchTechAnalysis = async (
-  token: string,
-  languages: { name: string; percent: string }[],
-  allDeps: string[],
-  allTopics: string[],
-): Promise<TechHighlight[]> => {
-  try {
-    const langLines = languages
-      .map((l) => `- ${l.name}: ${l.percent}%`)
-      .join("\n");
-
-    const prompt = `You are analyzing a developer's GitHub profile to create a curated tech stack showcase.
+    const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
 
 Languages (by code volume):
 ${langLines}
@@ -307,10 +227,13 @@ ${allDeps.join(", ")}
 Repository topics:
 ${allTopics.join(", ")}
 
-From this data, produce a curated tech highlights profile:
-- Group the most notable technologies into 3-6 categories
-- Use clear category names (e.g., "Frontend", "Backend & APIs", "ML & Data Science", "Databases", "Infrastructure & DevOps", "Testing & Quality")
-- Include 3-6 of the most relevant items per category
+Repository descriptions and README excerpts:
+${repoSummaries}
+
+From this data, produce a curated expertise profile:
+- Group the most notable technologies into 3-6 expertise categories
+- Use domain-oriented category names (e.g., "Machine Learning", "Web Development", "DevOps", "Backend & APIs", "Data Science", "Systems Programming")
+- Include 3-6 of the most relevant technologies/tools per category
 - Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
 - Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
 - Only include categories where there's meaningful evidence of usage`;
@@ -372,7 +295,7 @@ From this data, produce a curated tech highlights profile:
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`Tech analysis failed (non-fatal): ${msg}`);
+    console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
     return [];
   }
 };

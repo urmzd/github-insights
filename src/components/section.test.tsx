@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "../jsx-factory.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "../jsx-factory.js";
 import {
-  renderSectionHeader,
-  renderSubHeader,
   renderDivider,
   renderSection,
+  renderSectionHeader,
+  renderSubHeader,
 } from "./section.js";
 
 void Fragment;

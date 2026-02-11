@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "../jsx-factory.js";
-import { renderDonutChart } from "./donut-chart.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "../jsx-factory.js";
 import type { LanguageItem } from "../types.js";
+import { renderDonutChart } from "./donut-chart.js";
 
 void Fragment;
 
