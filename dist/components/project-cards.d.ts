@@ -1,2 +1,2 @@
-import type { RenderResult, ComplexityItem, DomainMap } from "../types.js";
-export declare function renderProjectCards(projects: ComplexityItem[], domainMap: DomainMap, y: number): RenderResult;
+import type { ProjectItem, RenderResult } from "../types.js";
+export declare function renderProjectCards(projects: ProjectItem[], y: number): RenderResult;

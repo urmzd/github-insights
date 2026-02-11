@@ -31690,12 +31690,12 @@ module.exports = parseParams
 /************************************************************************/
 var __webpack_exports__ = {};
 
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(7484);
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
 var exec = __nccwpck_require__(5236);
-// EXTERNAL MODULE: external "fs"
-var external_fs_ = __nccwpck_require__(9896);
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
 var github = __nccwpck_require__(3228);
 ;// CONCATENATED MODULE: ./src/api.ts
@@ -31791,41 +31791,18 @@ const fetchContributionData = async (token, username) => {
             totalCommitContributions
             totalPullRequestContributions
             totalPullRequestReviewContributions
-            totalIssueContributions
             totalRepositoriesWithContributedCommits
-            restrictedContributionsCount
-            contributionCalendar {
-              totalContributions
-              weeks { contributionDays { contributionCount date weekday } }
-            }
-            commitContributionsByRepository(maxRepositories: 25) {
-              repository { nameWithOwner stargazerCount primaryLanguage { name } isPrivate }
-              contributions { totalCount }
-            }
           }
           repositoriesContributedTo(first: 50, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST]) {
             totalCount
             nodes { nameWithOwner url stargazerCount description primaryLanguage { name } }
-          }
-          pullRequests(first: 100, orderBy: {field: CREATED_AT, direction: DESC}, states: [MERGED]) {
-            totalCount
-            nodes {
-              title mergedAt additions deletions
-              repository { nameWithOwner owner { login } stargazerCount }
-            }
           }
         }
       }`, { from: from.toISOString(), to: now.toISOString() });
         const user = data.user;
         return {
             contributions: user.contributionsCollection,
-            calendar: user.contributionsCollection
-                .contributionCalendar || {
-                totalContributions: 0,
-                weeks: [],
-            },
             externalRepos: user.repositoriesContributedTo,
-            mergedPRs: user.pullRequests,
         };
     }
     catch (err) {
@@ -31836,15 +31813,9 @@ const fetchContributionData = async (token, username) => {
                 totalCommitContributions: 0,
                 totalPullRequestContributions: 0,
                 totalPullRequestReviewContributions: 0,
-                totalIssueContributions: 0,
                 totalRepositoriesWithContributedCommits: 0,
-                restrictedContributionsCount: 0,
-                commitContributionsByRepository: [],
-                contributionCalendar: { totalContributions: 0, weeks: [] },
             },
-            calendar: { totalContributions: 0, weeks: [] },
             externalRepos: { totalCount: 0, nodes: [] },
-            mergedPRs: { totalCount: 0, nodes: [] },
         };
     }
 };
@@ -31878,8 +31849,11 @@ const fetchReadmeForRepos = async (token, username, repos) => {
     }
     return readmeMap;
 };
-const fetchDomainAnalysis = async (token, repos, readmeMap) => {
+const fetchExpertiseAnalysis = async (token, languages, allDeps, allTopics, repos, readmeMap) => {
     try {
+        const langLines = languages
+            .map((l) => `- ${l.name}: ${l.percent}%`)
+            .join("\n");
         const repoSummaries = repos
             .slice(0, 20)
             .map((r) => {
@@ -31889,48 +31863,7 @@ const fetchDomainAnalysis = async (token, repos, readmeMap) => {
             return `- ${r.name}: ${desc} | ${snippet}`;
         })
             .join("\n");
-        const prompt = `Given these GitHub repo names, descriptions, and README excerpts, assign 1-3 domain tags per repo from categories like: "Computer Vision", "CLI Tools", "Web Apps", "Machine Learning", "Data Science", "DevOps", "Game Dev", "NLP", "API Development", "Mobile Apps", "Systems Programming", "Automation", "Education", or similar concise domain tags.
-
-${repoSummaries}
-
-Reply with raw JSON only: {"domains": {"repoName": ["tag1", "tag2"]}}`;
-        const res = await fetch("https://models.github.ai/inference/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.1,
-            }),
-        });
-        if (!res.ok) {
-            console.warn(`GitHub Models API error: ${res.status}`);
-            return new Map();
-        }
-        const json = (await res.json());
-        const content = json.choices?.[0]?.message?.content || "{}";
-        const parsed = JSON.parse(content.replace(/```json?\n?|\n?```/g, ""));
-        const domainMap = new Map();
-        for (const [repo, tags] of Object.entries(parsed.domains || {})) {
-            domainMap.set(repo, tags);
-        }
-        return domainMap;
-    }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`Domain analysis failed (non-fatal): ${msg}`);
-        return new Map();
-    }
-};
-const fetchTechAnalysis = async (token, languages, allDeps, allTopics) => {
-    try {
-        const langLines = languages
-            .map((l) => `- ${l.name}: ${l.percent}%`)
-            .join("\n");
-        const prompt = `You are analyzing a developer's GitHub profile to create a curated tech stack showcase.
+        const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
 
 Languages (by code volume):
 ${langLines}
@@ -31941,10 +31874,13 @@ ${allDeps.join(", ")}
 Repository topics:
 ${allTopics.join(", ")}
 
-From this data, produce a curated tech highlights profile:
-- Group the most notable technologies into 3-6 categories
-- Use clear category names (e.g., "Frontend", "Backend & APIs", "ML & Data Science", "Databases", "Infrastructure & DevOps", "Testing & Quality")
-- Include 3-6 of the most relevant items per category
+Repository descriptions and README excerpts:
+${repoSummaries}
+
+From this data, produce a curated expertise profile:
+- Group the most notable technologies into 3-6 expertise categories
+- Use domain-oriented category names (e.g., "Machine Learning", "Web Development", "DevOps", "Backend & APIs", "Data Science", "Systems Programming")
+- Include 3-6 of the most relevant technologies/tools per category
 - Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
 - Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
 - Only include categories where there's meaningful evidence of usage`;
@@ -31997,10 +31933,416 @@ From this data, produce a curated tech highlights profile:
     }
     catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`Tech analysis failed (non-fatal): ${msg}`);
+        console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
         return [];
     }
 };
+
+;// CONCATENATED MODULE: ./src/jsx-factory.ts
+const SELF_CLOSING = new Set([
+    "circle",
+    "rect",
+    "line",
+    "path",
+    "ellipse",
+    "polygon",
+    "polyline",
+    "use",
+]);
+const escapeAttr = (s) => s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+function h(tag, props, ...children) {
+    if (typeof tag === "function")
+        return tag({ ...props, children: children.flat() });
+    const attrs = Object.entries(props || {})
+        .filter(([, v]) => v != null && v !== false)
+        .map(([k, v]) => {
+        const name = k === "className" ? "class" : k;
+        return ` ${name}="${escapeAttr(String(v))}"`;
+    })
+        .join("");
+    const content = children
+        .flat()
+        .filter((c) => c != null && c !== false)
+        .join("");
+    if (SELF_CLOSING.has(tag) && !content)
+        return `<${tag}${attrs}/>`;
+    return `<${tag}${attrs}>${content}</${tag}>`;
+}
+function Fragment({ children }) {
+    return (children || []).flat().filter(Boolean).join("");
+}
+
+;// CONCATENATED MODULE: ./src/theme.ts
+const THEME = {
+    bg: "#0d1117",
+    cardBg: "#161b22",
+    border: "#30363d",
+    link: "#58a6ff",
+    text: "#c9d1d9",
+    secondary: "#8b949e",
+    muted: "#6e7681",
+};
+const FONT = "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif";
+const LAYOUT = {
+    width: 808,
+    padX: 24,
+    padY: 24,
+    sectionGap: 30,
+    barLabelWidth: 150,
+    barHeight: 18,
+    barRowHeight: 28,
+    barMaxWidth: 500,
+};
+const BAR_COLORS = [
+    "#58a6ff",
+    "#3fb950",
+    "#d29922",
+    "#f85149",
+    "#bc8cff",
+    "#39d2c0",
+    "#db61a2",
+    "#79c0ff",
+];
+
+;// CONCATENATED MODULE: ./src/svg-utils.ts
+const escapeXml = (str) => {
+    if (!str)
+        return "";
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+};
+const truncate = (str, max) => {
+    if (!str)
+        return "";
+    return str.length > max ? `${str.slice(0, max - 1)}\u2026` : str;
+};
+const wrapText = (text, maxChars) => {
+    const words = text.split(/\s+/);
+    const lines = [];
+    let current = "";
+    for (const word of words) {
+        if (current && `${current} ${word}`.length > maxChars) {
+            lines.push(current);
+            current = word;
+        }
+        else {
+            current = current ? `${current} ${word}` : word;
+        }
+    }
+    if (current)
+        lines.push(current);
+    return lines;
+};
+
+;// CONCATENATED MODULE: ./src/components/bar-chart.tsx
+
+
+
+function renderBarChart(items, y, options = {}) {
+    if (items.length === 0)
+        return { svg: "", height: 0 };
+    const { barLabelWidth, barHeight, barRowHeight, barMaxWidth, padX } = LAYOUT;
+    const useItemColors = options.useItemColors === true;
+    const maxValue = Math.max(...items.map((d) => d.value));
+    const svg = (h(Fragment, null, items.map((item, i) => {
+        const ry = y + i * barRowHeight;
+        const barWidth = Math.max((item.value / maxValue) * barMaxWidth, 4);
+        const color = useItemColors
+            ? item.color || BAR_COLORS[i % BAR_COLORS.length]
+            : BAR_COLORS[i % BAR_COLORS.length];
+        const label = escapeXml(truncate(item.name, 20));
+        const valueLabel = item.percent
+            ? `${item.percent}%`
+            : String(item.value);
+        return (h(Fragment, null,
+            h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
+            h("rect", { x: padX + barLabelWidth, y: ry + 2, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
+            h("text", { x: padX + barLabelWidth + barWidth + 8, y: ry + 14, className: "t t-value" }, valueLabel)));
+    })));
+    return { svg, height: items.length * barRowHeight };
+}
+
+;// CONCATENATED MODULE: ./src/components/section.tsx
+
+
+
+
+function renderSectionHeader(title, subtitle, y) {
+    const svg = (h(Fragment, null,
+        h("text", { x: LAYOUT.padX, y: y + 16, className: "t t-h" }, escapeXml(title.toUpperCase())),
+        subtitle ? (h("text", { x: LAYOUT.padX, y: y + 32, className: "t t-sub" }, escapeXml(subtitle))) : ("")));
+    return { svg, height: subtitle ? 42 : 24 };
+}
+function renderSubHeader(text, y) {
+    const svg = (h("text", { x: LAYOUT.padX, y: y + 11, className: "t t-subhdr" }, escapeXml(text.toUpperCase())));
+    return { svg, height: 14 };
+}
+function renderDivider(y) {
+    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
+    return { svg, height: 1 };
+}
+function renderSection(title, subtitle, itemsOrRenderBody, options = {}) {
+    let y = LAYOUT.padY;
+    let svg = "";
+    const header = renderSectionHeader(title, subtitle, y);
+    svg += header.svg;
+    y += header.height;
+    if (typeof itemsOrRenderBody === "function") {
+        const body = itemsOrRenderBody(y);
+        svg += body.svg;
+        y += body.height + LAYOUT.padY;
+    }
+    else {
+        const bars = renderBarChart(itemsOrRenderBody, y, options);
+        svg += bars.svg;
+        y += bars.height + LAYOUT.padY;
+    }
+    return { svg, height: y };
+}
+void Fragment;
+
+;// CONCATENATED MODULE: ./src/components/style-defs.tsx
+
+
+function StyleDefs() {
+    return (h("defs", null,
+        h("style", null, `
+  .t { font-family: ${FONT}; }
+  .t-h { font-size: 13px; fill: ${THEME.text}; letter-spacing: 1.5px; font-weight: 600; }
+  .t-sub { font-size: 11px; fill: ${THEME.muted}; }
+  .t-label { font-size: 12px; fill: ${THEME.secondary}; }
+  .t-value { font-size: 11px; fill: ${THEME.muted}; }
+  .t-subhdr { font-size: 11px; fill: ${THEME.secondary}; letter-spacing: 1px; font-weight: 600; }
+  .t-stat-label { font-size: 10px; fill: ${THEME.secondary}; font-weight: 600; }
+  .t-stat-value { font-size: 22px; font-weight: 700; }
+  .t-card-title { font-size: 12px; fill: ${THEME.link}; font-weight: 700; }
+  .t-card-detail { font-size: 11px; fill: ${THEME.secondary}; }
+  .t-pill { font-size: 11px; font-weight: 600; }
+  .t-bullet { font-size: 12px; fill: ${THEME.text}; }
+`)));
+}
+void Fragment;
+
+;// CONCATENATED MODULE: ./src/components/full-svg.tsx
+
+
+
+
+
+function wrapSectionSvg(bodySvg, height) {
+    const { width } = LAYOUT;
+    return (h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
+        h(StyleDefs, null),
+        h("rect", { width: width, height: height, rx: "12", fill: THEME.bg }),
+        bodySvg));
+}
+function generateFullSvg(sections) {
+    const { width, padY, sectionGap } = LAYOUT;
+    let y = padY;
+    let bodySvg = "";
+    for (const section of sections) {
+        const header = renderSectionHeader(section.title, section.subtitle, y);
+        bodySvg += header.svg;
+        y += header.height;
+        if (section.renderBody) {
+            const body = section.renderBody(y);
+            bodySvg += body.svg;
+            y += body.height + sectionGap;
+        }
+        else if (section.items) {
+            const bars = renderBarChart(section.items, y, section.options || {});
+            bodySvg += bars.svg;
+            y += bars.height + sectionGap;
+        }
+    }
+    const totalHeight = y + padY;
+    return (h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
+        h(StyleDefs, null),
+        h("rect", { width: width, height: totalHeight, rx: "12", fill: THEME.bg }),
+        bodySvg));
+}
+
+;// CONCATENATED MODULE: ./src/components/contribution-cards.tsx
+
+
+
+function renderContributionCards(highlights, y) {
+    const { padX } = LAYOUT;
+    const cardW = 760;
+    const cardH = 44;
+    const gap = 8;
+    const svg = (h(Fragment, null, highlights.map((hl, i) => {
+        const cy = y + i * (cardH + gap);
+        const color = BAR_COLORS[i % BAR_COLORS.length];
+        return (h(Fragment, null,
+            h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
+            h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
+            h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, escapeXml(truncate(hl.project, 40))),
+            h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, escapeXml(truncate(hl.detail, 80)))));
+    })));
+    return {
+        svg,
+        height: highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
+    };
+}
+
+;// CONCATENATED MODULE: ./src/components/donut-chart.tsx
+
+
+
+function renderDonutChart(items, y) {
+    const { padX } = LAYOUT;
+    const cx = padX + 90;
+    const cy = y + 90;
+    const r = 70;
+    const strokeW = 28;
+    const circumference = 2 * Math.PI * r;
+    let offset = 0;
+    const segments = items.map((item, i) => {
+        const pct = parseFloat(item.percent) / 100;
+        const dash = pct * circumference;
+        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
+        const seg = (h("circle", { cx: cx, cy: cy, r: r, fill: "none", stroke: color, "stroke-width": strokeW, "stroke-dasharray": `${dash} ${circumference - dash}`, "stroke-dashoffset": -offset, transform: `rotate(-90 ${cx} ${cy})`, opacity: "0.85" }));
+        offset += dash;
+        return seg;
+    });
+    const legendX = padX + 220;
+    const legendItemH = 24;
+    const legend = items.map((item, i) => {
+        const ly = y + 10 + i * legendItemH;
+        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
+        return (h(Fragment, null,
+            h("rect", { x: legendX, y: ly, width: "12", height: "12", rx: "2", fill: color, opacity: "0.85" }),
+            h("text", { x: legendX + 20, y: ly + 10, className: "t t-label" }, escapeXml(item.name)),
+            h("text", { x: legendX + 200, y: ly + 10, className: "t t-value", "text-anchor": "end" },
+                item.percent,
+                "%")));
+    });
+    const height = Math.max(180, items.length * legendItemH + 20);
+    const svg = (h(Fragment, null,
+        segments.join(""),
+        h("text", { x: cx, y: cy + 5, className: "t", fill: THEME.text, "font-size": "14", "font-weight": "700", "text-anchor": "middle" }, String(items.length)),
+        h("text", { x: cx, y: cy + 20, className: "t", fill: THEME.muted, "font-size": "10", "text-anchor": "middle" }, "languages"),
+        legend.join("")));
+    return { svg, height };
+}
+
+;// CONCATENATED MODULE: ./src/components/project-cards.tsx
+
+
+
+function renderProjectCards(projects, y) {
+    const { padX } = LAYOUT;
+    const cardW = 760;
+    const gap = 10;
+    let svg = "";
+    let totalHeight = 0;
+    for (let i = 0; i < projects.length; i++) {
+        const cy = y + totalHeight;
+        const color = BAR_COLORS[i % BAR_COLORS.length];
+        const p = projects[i];
+        const desc = truncate(p.description, 90);
+        let innerH = 20;
+        if (desc)
+            innerH += 16;
+        const cardH = Math.max(innerH + 16, 44);
+        // Card background + accent bar
+        svg += (h(Fragment, null,
+            h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
+            h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
+            h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, escapeXml(truncate(p.name, 40))),
+            h("text", { x: padX + cardW - 16, y: cy + 18, className: "t t-value", "text-anchor": "end" }, `\u2605 ${p.stars.toLocaleString()}`)));
+        if (desc) {
+            svg += (h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, escapeXml(desc)));
+        }
+        totalHeight += cardH + gap;
+    }
+    return { svg, height: totalHeight > 0 ? totalHeight - gap : 0 };
+}
+
+;// CONCATENATED MODULE: ./src/components/stat-cards.tsx
+
+
+
+function renderStatCards(stats, y) {
+    const { padX } = LAYOUT;
+    const cardW = 140;
+    const cardH = 72;
+    const gap = 15;
+    const colors = [
+        BAR_COLORS[0],
+        BAR_COLORS[1],
+        BAR_COLORS[2],
+        BAR_COLORS[4],
+        BAR_COLORS[5],
+    ];
+    const svg = (h(Fragment, null, stats.map((stat, i) => {
+        const cx = padX + i * (cardW + gap);
+        const color = colors[i % colors.length];
+        return (h(Fragment, null,
+            h("rect", { x: cx, y: y, width: cardW, height: cardH, rx: "8", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
+            h("circle", { cx: cx + 14, cy: y + 16, r: "4", fill: color }),
+            h("text", { x: cx + 24, y: y + 20, className: "t t-stat-label" }, escapeXml(stat.label)),
+            h("text", { x: cx + cardW / 2, y: y + 52, fill: color, className: "t t-stat-value", "text-anchor": "middle" }, escapeXml(String(stat.value)))));
+    })));
+    return { svg, height: cardH };
+}
+
+;// CONCATENATED MODULE: ./src/components/tech-highlights.tsx
+
+
+
+
+function renderTechHighlights(highlights, y) {
+    if (highlights.length === 0)
+        return { svg: "", height: 0 };
+    const { padX } = LAYOUT;
+    const maxWidth = 760;
+    const gapX = 10;
+    const gapY = 10;
+    const fontSize = 11;
+    const pillH = 26;
+    let svg = "";
+    let height = 0;
+    for (let hi = 0; hi < highlights.length; hi++) {
+        const group = highlights[hi];
+        const color = BAR_COLORS[hi % BAR_COLORS.length];
+        if (hi > 0) {
+            const div = renderDivider(y + height + 6);
+            svg += div.svg;
+            height += 18;
+        }
+        const sub = renderSubHeader(group.category, y + height);
+        svg += sub.svg;
+        height += sub.height + 8;
+        let cx = padX;
+        let rowStartY = y + height;
+        for (const item of group.items) {
+            const text = truncate(item, 30);
+            const pillW = Math.ceil(text.length * fontSize * 0.55) + 28;
+            if (cx + pillW > padX + maxWidth && cx > padX) {
+                cx = padX;
+                rowStartY += pillH + gapY;
+                height += pillH + gapY;
+            }
+            svg += (h(Fragment, null,
+                h("rect", { x: cx, y: rowStartY, width: pillW, height: pillH, rx: pillH / 2, fill: color, "fill-opacity": "0.15", stroke: color, "stroke-opacity": "0.4", "stroke-width": "1" }),
+                h("text", { x: cx + pillW / 2, y: rowStartY + pillH / 2 + fontSize / 3, fill: color, "font-size": fontSize, className: "t t-pill", "text-anchor": "middle" }, escapeXml(text))));
+            cx += pillW + gapX;
+        }
+        height += pillH + 10;
+    }
+    return { svg, height };
+}
+void Fragment;
 
 ;// CONCATENATED MODULE: ./node_modules/smol-toml/dist/error.js
 /*!
@@ -33265,414 +33607,7 @@ for (const parser of PARSERS) {
 }
 const parseManifest = (filename, text) => PARSER_MAP.get(filename)?.parseDependencies(text) ?? [];
 
-;// CONCATENATED MODULE: ./src/jsx-factory.ts
-const SELF_CLOSING = new Set([
-    "circle",
-    "rect",
-    "line",
-    "path",
-    "ellipse",
-    "polygon",
-    "polyline",
-    "use",
-]);
-const escapeAttr = (s) => s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-function h(tag, props, ...children) {
-    if (typeof tag === "function")
-        return tag({ ...props, children: children.flat() });
-    const attrs = Object.entries(props || {})
-        .filter(([, v]) => v != null && v !== false)
-        .map(([k, v]) => {
-        const name = k === "className" ? "class" : k;
-        return ` ${name}="${escapeAttr(String(v))}"`;
-    })
-        .join("");
-    const content = children
-        .flat()
-        .filter((c) => c != null && c !== false)
-        .join("");
-    if (SELF_CLOSING.has(tag) && !content)
-        return `<${tag}${attrs}/>`;
-    return `<${tag}${attrs}>${content}</${tag}>`;
-}
-function Fragment({ children }) {
-    return (children || []).flat().filter(Boolean).join("");
-}
-
-;// CONCATENATED MODULE: ./src/theme.ts
-const THEME = {
-    bg: "#0d1117",
-    cardBg: "#161b22",
-    border: "#30363d",
-    link: "#58a6ff",
-    text: "#c9d1d9",
-    secondary: "#8b949e",
-    muted: "#6e7681",
-};
-const FONT = "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif";
-const LAYOUT = {
-    width: 808,
-    padX: 24,
-    padY: 24,
-    sectionGap: 30,
-    barLabelWidth: 150,
-    barHeight: 18,
-    barRowHeight: 28,
-    barMaxWidth: 500,
-};
-const BAR_COLORS = [
-    "#58a6ff",
-    "#3fb950",
-    "#d29922",
-    "#f85149",
-    "#bc8cff",
-    "#39d2c0",
-    "#db61a2",
-    "#79c0ff",
-];
-
-;// CONCATENATED MODULE: ./src/svg-utils.ts
-const escapeXml = (str) => {
-    if (!str)
-        return "";
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&apos;");
-};
-const truncate = (str, max) => {
-    if (!str)
-        return "";
-    return str.length > max ? str.slice(0, max - 1) + "\u2026" : str;
-};
-const wrapText = (text, maxChars) => {
-    const words = text.split(/\s+/);
-    const lines = [];
-    let current = "";
-    for (const word of words) {
-        if (current && (current + " " + word).length > maxChars) {
-            lines.push(current);
-            current = word;
-        }
-        else {
-            current = current ? current + " " + word : word;
-        }
-    }
-    if (current)
-        lines.push(current);
-    return lines;
-};
-const FIRE_ICON = (x, y) => `<g transform="translate(${x}, ${y}) scale(0.7)"><path d="M8 16c3.314 0 6-2 6-5.5 0-1.44-.714-2.89-1.166-3.778C12.024 5.143 10.9 3.5 8 0 5.1 3.5 3.976 5.143 3.166 6.722 2.714 7.61 2 9.06 2 10.5 2 14 4.686 16 8 16m0-1c-2.21 0-4-1.343-4-3.5 0-.93.258-1.695.672-2.528C5.2 7.865 6.1 6.5 8 4c1.9 2.5 2.8 3.865 3.328 4.972.414.833.672 1.598.672 2.528 0 2.157-1.79 3.5-4 3.5" fill="#f0883e"/></g>`;
-
-;// CONCATENATED MODULE: ./src/components/contribution-cards.tsx
-
-
-
-function renderContributionCards(highlights, y) {
-    const { padX } = LAYOUT;
-    const cardW = 760;
-    const cardH = 44;
-    const gap = 8;
-    const svg = (h(Fragment, null, highlights.map((hl, i) => {
-        const cy = y + i * (cardH + gap);
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        return (h(Fragment, null,
-            h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
-            h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
-            h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, escapeXml(truncate(hl.project, 40))),
-            h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, escapeXml(truncate(hl.detail, 80)))));
-    })));
-    return {
-        svg,
-        height: highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
-    };
-}
-
-;// CONCATENATED MODULE: ./src/components/stat-cards.tsx
-
-
-
-function renderStatCards(stats, y) {
-    const { padX } = LAYOUT;
-    const cardW = 140;
-    const cardH = 72;
-    const gap = 15;
-    const colors = [
-        BAR_COLORS[0],
-        BAR_COLORS[1],
-        BAR_COLORS[2],
-        BAR_COLORS[4],
-        BAR_COLORS[5],
-    ];
-    const svg = (h(Fragment, null, stats.map((stat, i) => {
-        const cx = padX + i * (cardW + gap);
-        const color = colors[i % colors.length];
-        return (h(Fragment, null,
-            h("rect", { x: cx, y: y, width: cardW, height: cardH, rx: "8", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
-            h("circle", { cx: cx + 14, cy: y + 16, r: "4", fill: color }),
-            h("text", { x: cx + 24, y: y + 20, className: "t t-stat-label" }, escapeXml(stat.label)),
-            h("text", { x: cx + cardW / 2, y: y + 52, fill: color, className: "t t-stat-value", "text-anchor": "middle" }, escapeXml(String(stat.value)))));
-    })));
-    return { svg, height: cardH };
-}
-
-;// CONCATENATED MODULE: ./src/components/project-cards.tsx
-
-
-
-function renderProjectCards(projects, domainMap, y) {
-    const { padX } = LAYOUT;
-    const cardW = 760;
-    const gap = 10;
-    let svg = "";
-    let totalHeight = 0;
-    for (let i = 0; i < projects.length; i++) {
-        const cy = y + totalHeight;
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        const p = projects[i];
-        const domains = domainMap?.get(p.name) || [];
-        const desc = truncate(p.description, 90);
-        let innerH = 20;
-        if (desc)
-            innerH += 16;
-        if (domains.length > 0)
-            innerH += 22;
-        const cardH = Math.max(innerH + 16, 44);
-        // Card background + accent bar
-        svg += (h(Fragment, null,
-            h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
-            h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
-            h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, escapeXml(truncate(p.name, 40))),
-            h("text", { x: padX + cardW - 16, y: cy + 18, className: "t t-value", "text-anchor": "end" }, `score ${p.value}`)));
-        let rowY = cy + 18;
-        if (desc) {
-            rowY += 16;
-            svg += (h("text", { x: padX + 16, y: rowY, className: "t t-card-detail" }, escapeXml(desc)));
-        }
-        if (domains.length > 0) {
-            rowY += 18;
-            let px = padX + 16;
-            for (let j = 0; j < domains.length; j++) {
-                const tag = escapeXml(truncate(domains[j], 20));
-                const pillW = Math.ceil(tag.length * 6) + 16;
-                const pillH = 16;
-                const tagColor = BAR_COLORS[(i + j + 2) % BAR_COLORS.length];
-                svg += (h(Fragment, null,
-                    h("rect", { x: px, y: rowY - 10, width: pillW, height: pillH, rx: "8", fill: tagColor, "fill-opacity": "0.15", stroke: tagColor, "stroke-opacity": "0.4", "stroke-width": "1" }),
-                    h("text", { x: px + pillW / 2, y: rowY + 1, fill: tagColor, "font-size": "9", className: "t t-pill", "text-anchor": "middle" }, tag)));
-                px += pillW + 6;
-            }
-        }
-        totalHeight += cardH + gap;
-    }
-    return { svg, height: totalHeight > 0 ? totalHeight - gap : 0 };
-}
-
-;// CONCATENATED MODULE: ./src/components/donut-chart.tsx
-
-
-
-function renderDonutChart(items, y) {
-    const { padX } = LAYOUT;
-    const cx = padX + 90;
-    const cy = y + 90;
-    const r = 70;
-    const strokeW = 28;
-    const circumference = 2 * Math.PI * r;
-    let offset = 0;
-    const segments = items.map((item, i) => {
-        const pct = parseFloat(item.percent) / 100;
-        const dash = pct * circumference;
-        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        const seg = (h("circle", { cx: cx, cy: cy, r: r, fill: "none", stroke: color, "stroke-width": strokeW, "stroke-dasharray": `${dash} ${circumference - dash}`, "stroke-dashoffset": -offset, transform: `rotate(-90 ${cx} ${cy})`, opacity: "0.85" }));
-        offset += dash;
-        return seg;
-    });
-    const legendX = padX + 220;
-    const legendItemH = 24;
-    const legend = items.map((item, i) => {
-        const ly = y + 10 + i * legendItemH;
-        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        const trendingSvg = item.trending ? FIRE_ICON(legendX + 250, ly - 6) : "";
-        return (h(Fragment, null,
-            h("rect", { x: legendX, y: ly, width: "12", height: "12", rx: "2", fill: color, opacity: "0.85" }),
-            h("text", { x: legendX + 20, y: ly + 10, className: "t t-label" }, escapeXml(item.name)),
-            h("text", { x: legendX + 200, y: ly + 10, className: "t t-value", "text-anchor": "end" },
-                item.percent,
-                "%"),
-            trendingSvg));
-    });
-    const height = Math.max(180, items.length * legendItemH + 20);
-    const svg = (h(Fragment, null,
-        segments.join(""),
-        h("text", { x: cx, y: cy + 5, className: "t", fill: THEME.text, "font-size": "14", "font-weight": "700", "text-anchor": "middle" }, String(items.length)),
-        h("text", { x: cx, y: cy + 20, className: "t", fill: THEME.muted, "font-size": "10", "text-anchor": "middle" }, "languages"),
-        legend.join("")));
-    return { svg, height };
-}
-
-;// CONCATENATED MODULE: ./src/components/domain-cloud.tsx
-
-
-
-function renderDomainCloud(domains, y) {
-    const { padX } = LAYOUT;
-    const maxWidth = 760;
-    const gapX = 10;
-    const gapY = 10;
-    const maxCount = Math.max(...domains.map((d) => d.count), 1);
-    let svg = "";
-    let cx = padX;
-    let cy = y;
-    let maxRowY = cy;
-    for (let i = 0; i < domains.length; i++) {
-        const domain = domains[i];
-        const scale = 0.7 + (domain.count / maxCount) * 0.6;
-        const fontSize = Math.round(11 * scale);
-        const pillH = Math.round(28 * scale);
-        const text = truncate(domain.name, 30);
-        const pillW = Math.ceil(text.length * fontSize * 0.55) + 28;
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        if (cx + pillW > padX + maxWidth && cx > padX) {
-            cx = padX;
-            cy += pillH + gapY;
-        }
-        svg += (h(Fragment, null,
-            h("rect", { x: cx, y: cy, width: pillW, height: pillH, rx: pillH / 2, fill: color, "fill-opacity": "0.15", stroke: color, "stroke-opacity": "0.4", "stroke-width": "1" }),
-            h("text", { x: cx + pillW / 2, y: cy + pillH / 2 + fontSize / 3, fill: color, "font-size": fontSize, className: "t t-pill", "text-anchor": "middle" }, escapeXml(text))));
-        maxRowY = Math.max(maxRowY, cy + pillH);
-        cx += pillW + gapX;
-    }
-    return { svg, height: maxRowY - y + 4 };
-}
-
-;// CONCATENATED MODULE: ./src/components/bar-chart.tsx
-
-
-
-function renderBarChart(items, y, options = {}) {
-    if (items.length === 0)
-        return { svg: "", height: 0 };
-    const { barLabelWidth, barHeight, barRowHeight, barMaxWidth, padX } = LAYOUT;
-    const useItemColors = options.useItemColors === true;
-    const maxValue = Math.max(...items.map((d) => d.value));
-    const svg = (h(Fragment, null, items.map((item, i) => {
-        const ry = y + i * barRowHeight;
-        const barWidth = Math.max((item.value / maxValue) * barMaxWidth, 4);
-        const color = useItemColors
-            ? item.color || BAR_COLORS[i % BAR_COLORS.length]
-            : BAR_COLORS[i % BAR_COLORS.length];
-        const label = escapeXml(truncate(item.name, 20));
-        const valueLabel = item.percent
-            ? `${item.percent}%`
-            : String(item.value);
-        const trendingSvg = item.trending
-            ? FIRE_ICON(padX + barLabelWidth + barWidth + 8 + valueLabel.length * 7 + 6, ry + 2)
-            : "";
-        return (h(Fragment, null,
-            h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
-            h("rect", { x: padX + barLabelWidth, y: ry + 2, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
-            h("text", { x: padX + barLabelWidth + barWidth + 8, y: ry + 14, className: "t t-value" }, valueLabel),
-            trendingSvg));
-    })));
-    return { svg, height: items.length * barRowHeight };
-}
-
-;// CONCATENATED MODULE: ./src/components/section.tsx
-
-
-
-
-function renderSectionHeader(title, subtitle, y) {
-    const svg = (h(Fragment, null,
-        h("text", { x: LAYOUT.padX, y: y + 16, className: "t t-h" }, escapeXml(title.toUpperCase())),
-        subtitle ? (h("text", { x: LAYOUT.padX, y: y + 32, className: "t t-sub" }, escapeXml(subtitle))) : ("")));
-    return { svg, height: subtitle ? 42 : 24 };
-}
-function renderSubHeader(text, y) {
-    const svg = (h("text", { x: LAYOUT.padX, y: y + 11, className: "t t-subhdr" }, escapeXml(text.toUpperCase())));
-    return { svg, height: 14 };
-}
-function renderDivider(y) {
-    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
-    return { svg, height: 1 };
-}
-function renderSection(title, subtitle, itemsOrRenderBody, options = {}) {
-    let y = LAYOUT.padY;
-    let svg = "";
-    const header = renderSectionHeader(title, subtitle, y);
-    svg += header.svg;
-    y += header.height;
-    if (typeof itemsOrRenderBody === "function") {
-        const body = itemsOrRenderBody(y);
-        svg += body.svg;
-        y += body.height + LAYOUT.padY;
-    }
-    else {
-        const bars = renderBarChart(itemsOrRenderBody, y, options);
-        svg += bars.svg;
-        y += bars.height + LAYOUT.padY;
-    }
-    return { svg, height: y };
-}
-void Fragment;
-
-;// CONCATENATED MODULE: ./src/components/tech-highlights.tsx
-
-
-
-
-function renderTechHighlights(highlights, y) {
-    if (highlights.length === 0)
-        return { svg: "", height: 0 };
-    const { padX } = LAYOUT;
-    const maxWidth = 760;
-    const gapX = 10;
-    const gapY = 10;
-    const fontSize = 11;
-    const pillH = 26;
-    let svg = "";
-    let height = 0;
-    for (let hi = 0; hi < highlights.length; hi++) {
-        const group = highlights[hi];
-        const color = BAR_COLORS[hi % BAR_COLORS.length];
-        if (hi > 0) {
-            const div = renderDivider(y + height + 6);
-            svg += div.svg;
-            height += 18;
-        }
-        const sub = renderSubHeader(group.category, y + height);
-        svg += sub.svg;
-        height += sub.height + 8;
-        let cx = padX;
-        let rowStartY = y + height;
-        for (const item of group.items) {
-            const text = truncate(item, 30);
-            const pillW = Math.ceil(text.length * fontSize * 0.55) + 28;
-            if (cx + pillW > padX + maxWidth && cx > padX) {
-                cx = padX;
-                rowStartY += pillH + gapY;
-                height += pillH + gapY;
-            }
-            svg += (h(Fragment, null,
-                h("rect", { x: cx, y: rowStartY, width: pillW, height: pillH, rx: pillH / 2, fill: color, "fill-opacity": "0.15", stroke: color, "stroke-opacity": "0.4", "stroke-width": "1" }),
-                h("text", { x: cx + pillW / 2, y: rowStartY + pillH / 2 + fontSize / 3, fill: color, "font-size": fontSize, className: "t t-pill", "text-anchor": "middle" }, escapeXml(text))));
-            cx += pillW + gapX;
-        }
-        height += pillH + 10;
-    }
-    return { svg, height };
-}
-void Fragment;
-
 ;// CONCATENATED MODULE: ./src/metrics.ts
-
 
 
 
@@ -33728,114 +33663,43 @@ const collectAllTopics = (repos) => {
     }
     return [...seen].sort();
 };
-// ── Scoring ─────────────────────────────────────────────────────────────────
-const computeComplexityScores = (repos) => repos
-    .map((repo) => {
-    const langCount = (repo.languages?.edges || []).filter((e) => !EXCLUDED_LANGUAGES.has(e.node.name)).length;
-    const diskKB = Math.max(repo.diskUsage || 1, 1);
-    const codeBytes = Math.max(repo.languages?.totalSize || 1, 1);
-    const depCount = (repo.languages?.edges || []).length;
-    const score = langCount * 15 +
-        Math.log10(diskKB) * 20 +
-        Math.log10(codeBytes) * 15 +
-        Math.min(depCount, 50);
-    return {
-        name: repo.name,
-        url: repo.url,
-        description: repo.description || "",
-        value: Math.round(score),
-    };
-})
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5);
-// ── Domain Aggregation ──────────────────────────────────────────────────────
-const aggregateDomains = (domainMap) => {
-    const counts = new Map();
-    const reposByDomain = new Map();
-    for (const [repo, tags] of domainMap) {
-        for (const tag of tags) {
-            const normalized = tag.trim();
-            counts.set(normalized, (counts.get(normalized) || 0) + 1);
-            if (!reposByDomain.has(normalized))
-                reposByDomain.set(normalized, []);
-            reposByDomain.get(normalized).push(repo);
-        }
-    }
-    return [...counts.entries()]
-        .map(([name, count]) => ({
-        name,
-        count,
-        repos: reposByDomain.get(name) || [],
-    }))
-        .sort((a, b) => b.count - a.count);
-};
-// ── Recently Active ─────────────────────────────────────────────────────────
-const computeRecentlyActive = (contributionsByRepo, repos) => {
-    const recentRepoNames = new Set();
-    for (const entry of contributionsByRepo) {
-        if (entry.contributions.totalCount > 0) {
-            recentRepoNames.add(entry.repository.nameWithOwner.split("/").pop());
-        }
-    }
-    const activeSet = new Set();
-    for (const repo of repos) {
-        if (!recentRepoNames.has(repo.name))
-            continue;
-        if (repo.primaryLanguage?.name) {
-            activeSet.add(repo.primaryLanguage.name.toLowerCase());
-        }
-        for (const edge of repo.languages?.edges || []) {
-            activeSet.add(edge.node.name.toLowerCase());
-        }
-        for (const node of repo.repositoryTopics?.nodes || []) {
-            activeSet.add(node.topic.name.toLowerCase());
-        }
-    }
-    return activeSet;
-};
-const markRecentlyActive = (itemLists, recentlyActiveSet) => {
-    for (const list of itemLists) {
-        for (const item of list) {
-            item.trending = recentlyActiveSet.has(item.name.toLowerCase());
-        }
-    }
-};
+// ── Top Projects by Stars ───────────────────────────────────────────────────
+const getTopProjectsByStars = (repos) => repos
+    .sort((a, b) => b.stargazerCount - a.stargazerCount)
+    .slice(0, 5)
+    .map((repo) => ({
+    name: repo.name,
+    url: repo.url,
+    description: repo.description || "",
+    stars: repo.stargazerCount,
+}));
 // ── Section definitions ─────────────────────────────────────────────────────
-const buildSections = ({ languages, techHighlights, complexity, domains, domainMap, contributionData, }) => {
+const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
     const sections = [];
-    // 1. Work Domains
-    if (domains && domains.length > 0) {
-        sections.push({
-            filename: "metrics-domains.svg",
-            title: "Work Domains",
-            subtitle: "Extracted from project READMEs via AI analysis",
-            renderBody: (y) => renderDomainCloud(domains, y),
-        });
-    }
-    // 2. Languages
+    // 1. Languages
     sections.push({
         filename: "metrics-languages.svg",
         title: "Languages",
         subtitle: "By bytes of code across all public repos",
         renderBody: (y) => renderDonutChart(languages, y),
     });
-    // 3. Tech Stack
+    // 2. Expertise
     if (techHighlights.length > 0) {
         sections.push({
-            filename: "metrics-tech-stack.svg",
-            title: "Tech Stack",
+            filename: "metrics-expertise.svg",
+            title: "Expertise",
             subtitle: "Curated from dependencies, topics, and languages via AI analysis",
             renderBody: (y) => renderTechHighlights(techHighlights, y),
         });
     }
-    // 4. Signature Projects
+    // 3. Signature Projects
     sections.push({
         filename: "metrics-complexity.svg",
         title: "Signature Projects",
-        subtitle: "Top projects by complexity score (languages, disk usage, code size)",
-        renderBody: (y) => renderProjectCards(complexity, domainMap, y),
+        subtitle: "Top projects by stars",
+        renderBody: (y) => renderProjectCards(projects, y),
     });
-    // 5. At a Glance
+    // 4. At a Glance
     sections.push({
         filename: "metrics-pulse.svg",
         title: "At a Glance",
@@ -33862,7 +33726,7 @@ const buildSections = ({ languages, techHighlights, complexity, domains, domainM
             return renderStatCards(stats, y);
         },
     });
-    // 6. Open Source Contributions
+    // 5. Open Source Contributions
     if (contributionData.externalRepos.nodes.length > 0) {
         sections.push({
             filename: "metrics-contributions.svg",
@@ -33887,67 +33751,6 @@ const buildSections = ({ languages, techHighlights, complexity, domains, domainM
     }
     return sections;
 };
-
-;// CONCATENATED MODULE: ./src/components/style-defs.tsx
-
-
-function StyleDefs() {
-    return (h("defs", null,
-        h("style", null, `
-  .t { font-family: ${FONT}; }
-  .t-h { font-size: 13px; fill: ${THEME.text}; letter-spacing: 1.5px; font-weight: 600; }
-  .t-sub { font-size: 11px; fill: ${THEME.muted}; }
-  .t-label { font-size: 12px; fill: ${THEME.secondary}; }
-  .t-value { font-size: 11px; fill: ${THEME.muted}; }
-  .t-subhdr { font-size: 11px; fill: ${THEME.secondary}; letter-spacing: 1px; font-weight: 600; }
-  .t-stat-label { font-size: 10px; fill: ${THEME.secondary}; font-weight: 600; }
-  .t-stat-value { font-size: 22px; font-weight: 700; }
-  .t-card-title { font-size: 12px; fill: ${THEME.link}; font-weight: 700; }
-  .t-card-detail { font-size: 11px; fill: ${THEME.secondary}; }
-  .t-pill { font-size: 11px; font-weight: 600; }
-  .t-bullet { font-size: 12px; fill: ${THEME.text}; }
-`)));
-}
-void Fragment;
-
-;// CONCATENATED MODULE: ./src/components/full-svg.tsx
-
-
-
-
-
-function wrapSectionSvg(bodySvg, height) {
-    const { width } = LAYOUT;
-    return (h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
-        h(StyleDefs, null),
-        h("rect", { width: width, height: height, rx: "12", fill: THEME.bg }),
-        bodySvg));
-}
-function generateFullSvg(sections) {
-    const { width, padY, sectionGap } = LAYOUT;
-    let y = padY;
-    let bodySvg = "";
-    for (const section of sections) {
-        const header = renderSectionHeader(section.title, section.subtitle, y);
-        bodySvg += header.svg;
-        y += header.height;
-        if (section.renderBody) {
-            const body = section.renderBody(y);
-            bodySvg += body.svg;
-            y += body.height + sectionGap;
-        }
-        else if (section.items) {
-            const bars = renderBarChart(section.items, y, section.options || {});
-            bodySvg += bars.svg;
-            y += bars.height + sectionGap;
-        }
-    }
-    const totalHeight = y + padY;
-    return (h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
-        h(StyleDefs, null),
-        h("rect", { width: width, height: totalHeight, rx: "12", fill: THEME.bg }),
-        bodySvg));
-}
 
 ;// CONCATENATED MODULE: ./src/index.ts
 
@@ -33988,38 +33791,30 @@ async function run() {
         core.info("Fetching READMEs...");
         const readmeMap = await fetchReadmeForRepos(token, username, repos);
         core.info(`Fetched READMEs for ${readmeMap.size} repos`);
-        core.info("Fetching domain analysis from GitHub Models...");
-        const domainMap = await fetchDomainAnalysis(token, repos, readmeMap);
-        core.info(`Domain analysis: ${domainMap.size} repos tagged`);
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
-        const complexity = computeComplexityScores(repos);
-        const recentlyActiveSet = computeRecentlyActive(contributionData.contributions.commitContributionsByRepository, repos);
-        markRecentlyActive([languages, complexity], recentlyActiveSet);
-        const domains = aggregateDomains(domainMap);
+        const projects = getTopProjectsByStars(repos);
         const allDeps = collectAllDependencies(repos, manifests);
         const allTopics = collectAllTopics(repos);
-        core.info("Fetching tech analysis from GitHub Models...");
-        const techHighlights = await fetchTechAnalysis(token, languages, allDeps, allTopics);
-        core.info(`Tech analysis: ${techHighlights.length} categories`);
+        core.info("Fetching expertise analysis from GitHub Models...");
+        const techHighlights = await fetchExpertiseAnalysis(token, languages, allDeps, allTopics, repos, readmeMap);
+        core.info(`Expertise analysis: ${techHighlights.length} categories`);
         const sectionDefs = buildSections({
             languages,
             techHighlights,
-            complexity,
-            domains,
-            domainMap,
+            projects,
             contributionData,
         });
         const activeSections = sectionDefs.filter((s) => s.renderBody || (s.items && s.items.length > 0));
         // ── Render + Write ────────────────────────────────────────────────────
-        (0,external_fs_.mkdirSync)(outputDir, { recursive: true });
+        (0,external_node_fs_namespaceObject.mkdirSync)(outputDir, { recursive: true });
         for (const section of activeSections) {
             const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody || section.items || [], section.options || {});
-            (0,external_fs_.writeFileSync)(`${outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
+            (0,external_node_fs_namespaceObject.writeFileSync)(`${outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
             core.info(`Wrote ${outputDir}/${section.filename}`);
         }
         const combinedSvg = generateFullSvg(activeSections);
-        (0,external_fs_.writeFileSync)(`${outputDir}/index.svg`, combinedSvg);
+        (0,external_node_fs_namespaceObject.writeFileSync)(`${outputDir}/index.svg`, combinedSvg);
         core.info(`Wrote ${outputDir}/index.svg`);
         // ── Commit + Push ─────────────────────────────────────────────────────
         if (commitPush) {
