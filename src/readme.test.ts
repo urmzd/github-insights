@@ -10,7 +10,7 @@ describe("generateReadme", () => {
     expect(result).toContain(
       "# octocat\n\n![GitHub Metrics](metrics/index.svg)",
     );
-    expect(result).toContain("Created using [@urmzd/github-metrics]");
+    expect(result).toMatch(/Last generated on \d{4}-\d{2}-\d{2} using \[@urmzd\/github-metrics\]/);
   });
 
   it("includes pronunciation when set", () => {
@@ -140,7 +140,7 @@ describe("generateReadme", () => {
     // Should only have the attribution <sub>, not a bio <sub>
     const subMatches = result.match(/<sub>/g) || [];
     expect(subMatches).toHaveLength(1);
-    expect(result).toContain("Created using");
+    expect(result).toContain("Last generated on");
   });
 
   it("renders multiple SVGs individually", () => {

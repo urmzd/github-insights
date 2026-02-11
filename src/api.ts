@@ -288,7 +288,6 @@ export const fetchAIPreamble = async (
       .join("\n");
 
     const socialLines = [
-      `GitHub: https://github.com/${username}`,
       profile.websiteUrl ? `Website: ${profile.websiteUrl}` : null,
       profile.twitterUsername
         ? `Twitter/X: https://x.com/${profile.twitterUsername}`
