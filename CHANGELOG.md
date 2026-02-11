@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 (2026-02-11)
+
+### Features
+
+- replace generate-readme flag with readme-path, add project docs ([07edd44](https://github.com/urmzd/github-metrics/commit/07edd440b432c06ee4bc4f1568a8dd8e6a7516ad))
+- add proficiency scores to expertise bars and disable commit-push locally ([7f5413f](https://github.com/urmzd/github-metrics/commit/7f5413f2cba99869215731acceaed0b0e07eb572))
+
+### Miscellaneous
+
+- update biome schema to 2.3.14 and apply formatting fixes ([8bf1856](https://github.com/urmzd/github-metrics/commit/8bf18561e113819fa650dbf3993b038b84149307))
+- update metrics ([26f3f66](https://github.com/urmzd/github-metrics/commit/26f3f6636518ba5429adb259dc9355d6520ed5db))
+
+
 ## 0.2.0 (2026-02-11)
 
 ### Features
