@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Re-release the current tag (use when a previous release partially failed)"
+        type: boolean
+        default: false
 
 jobs:
   ci:
@@ -38,3 +43,4 @@ jobs:
         uses: urmzd/semantic-release@v0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          force: ${{ inputs.force }}
