@@ -11,14 +11,22 @@ src/
   readme.ts         # Profile README generation
   parsers.ts        # Dependency manifest parsers
   types.ts          # Shared type definitions
+  jsx-factory.ts    # Custom JSX factory for SVG rendering
+  jsx.d.ts          # JSX type declarations
+  theme.ts          # Theme constants (colors, fonts, spacing)
+  svg-utils.ts      # SVG utility functions
+  __fixtures__/
+    repos.ts        # Test fixture data
   components/       # SVG rendering components
-    full-svg.ts     # Combines sections into a single SVG
-    section.ts      # Individual section renderer
-    donut-chart.ts  # Language donut chart
-    tech-highlights.ts  # Expertise bars
-    stat-cards.ts   # Contribution stat cards
-    project-cards.ts    # Project cards
-    contribution-cards.ts # External contribution cards
+    full-svg.tsx    # Combines sections into a single SVG
+    section.tsx     # Individual section renderer
+    donut-chart.tsx # Language donut chart
+    bar-chart.tsx   # Horizontal bar chart
+    tech-highlights.tsx  # Expertise bars
+    stat-cards.tsx  # Contribution stat cards
+    project-cards.tsx    # Project cards
+    contribution-cards.tsx # External contribution cards
+    style-defs.tsx  # Shared SVG style definitions
 ```
 
 ## Adding a New Metric Section
@@ -68,9 +76,10 @@ export const MyParser: PackageParser = {
 
 ## Testing
 
-- Tests use [Vitest](https://vitest.dev/) with the `*.test.ts` naming convention
+- Tests use [Vitest](https://vitest.dev/) with `*.test.ts` and `*.test.tsx` naming conventions
+- Use `.test.tsx` for tests that exercise JSX components (e.g., `src/components/section.test.tsx`)
 - Run tests: `just test` or `npm test`
-- Tests live alongside source files (e.g., `src/config.test.ts`)
+- Tests live alongside source files (e.g., `src/config.test.ts`, `src/components/donut-chart.test.tsx`)
 
 ## Code Style
 
