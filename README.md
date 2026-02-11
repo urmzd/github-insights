@@ -55,7 +55,7 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
 | `config-file` | Path to TOML config file | `.github-metrics.toml` |
 | `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `_README.md` (local) |
-| `index-only` | Embed only the combined `index.svg`; when `false`, embeds each section SVG individually | `true` |
+| `index-only` | When `true`, embeds only the combined `index.svg` in the generated README; when `false`, embeds each section SVG as a separate image (e.g., `metrics-languages.svg`, `metrics-expertise.svg`, etc.) | `true` |
 
 ## Configuration
 
@@ -80,7 +80,11 @@ The action uses GitHub Models to analyze your languages, dependencies, topics, a
 
 ### Preamble Generation
 
-If no `PREAMBLE.md` file is found (or configured via `preamble` in config), the action generates a profile introduction using AI. To use your own text, create a `PREAMBLE.md` in the repo root.
+When no custom preamble is provided, the action uses AI to generate a profile introduction. The generated preamble consists of 2-4 short paragraphs drawn from your profile bio, title, expertise areas, top languages, and notable projects. It uses a professional but friendly tone and does not include a heading.
+
+The preamble ends with a row of shields.io social badges for any detected links — website, Twitter/X, LinkedIn, and other social accounts from your GitHub profile. A GitHub badge is not included since the README is already on GitHub.
+
+To use your own text instead, create a `PREAMBLE.md` file in the repo root, or point to a custom file via the `preamble` field in `.github-metrics.toml`.
 
 ### Token Permissions
 
@@ -91,6 +95,17 @@ permissions:
   contents: write  # to commit generated files
   models: read     # for AI expertise analysis and preamble generation
 ```
+
+## Generated README Structure
+
+The action produces a profile README with the following layout:
+
+1. **Heading** — `# Name` with an optional pronunciation subscript
+2. **Title blockquote** — `> Title` (if `title` is set in config)
+3. **Preamble** — AI-generated introduction or custom `PREAMBLE.md` content
+4. **SVG metrics** — a single `index.svg` when `index-only: true` (default), or each section SVG as a separate image when `false`
+5. **Bio footer** — separator + bio in subscript (if `bio` is set in config)
+6. **Attribution** — `Last generated on YYYY-MM-DD using @urmzd/github-metrics`
 
 ## Local Development
 
