@@ -7,7 +7,9 @@ describe("generateReadme", () => {
       name: "octocat",
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
     });
-    expect(result).toContain("# octocat\n\n![GitHub Metrics](metrics/index.svg)");
+    expect(result).toContain(
+      "# octocat\n\n![GitHub Metrics](metrics/index.svg)",
+    );
     expect(result).toContain("Created using [@urmzd/github-metrics]");
   });
 
@@ -110,7 +112,9 @@ describe("generateReadme", () => {
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
       bio: "Building tools for developers",
     });
-    expect(result).toContain("# Urmzd Maharramoff <sub><i>(/ˈʊrm.zəd/)</i></sub>");
+    expect(result).toContain(
+      "# Urmzd Maharramoff <sub><i>(/ˈʊrm.zəd/)</i></sub>",
+    );
     expect(result).toContain("> Senior Backend Engineer");
     expect(result).toContain("Welcome to my profile!");
     expect(result).toContain("![GitHub Metrics](metrics/index.svg)");
