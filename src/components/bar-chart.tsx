@@ -1,7 +1,7 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { LAYOUT, BAR_COLORS } from "../theme.js";
-import { escapeXml, truncate, FIRE_ICON } from "../svg-utils.js";
-import type { RenderResult, BarItem } from "../types.js";
+import { Fragment, h } from "../jsx-factory.js";
+import { escapeXml, truncate } from "../svg-utils.js";
+import { BAR_COLORS, LAYOUT } from "../theme.js";
+import type { BarItem, RenderResult } from "../types.js";
 
 export function renderBarChart(
   items: BarItem[],
@@ -27,13 +27,6 @@ export function renderBarChart(
           ? `${item.percent}%`
           : String(item.value);
 
-        const trendingSvg = item.trending
-          ? FIRE_ICON(
-              padX + barLabelWidth + barWidth + 8 + valueLabel.length * 7 + 6,
-              ry + 2,
-            )
-          : "";
-
         return (
           <>
             <text x={padX} y={ry + 14} className="t t-label">
@@ -55,7 +48,6 @@ export function renderBarChart(
             >
               {valueLabel}
             </text>
-            {trendingSvg}
           </>
         );
       })}

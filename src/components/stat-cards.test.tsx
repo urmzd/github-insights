@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "../jsx-factory.js";
-import { renderStatCards } from "./stat-cards.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "../jsx-factory.js";
 import type { StatItem } from "../types.js";
+import { renderStatCards } from "./stat-cards.js";
 
 void Fragment;
 

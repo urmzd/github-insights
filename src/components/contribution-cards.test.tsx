@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "../jsx-factory.js";
-import { renderContributionCards } from "./contribution-cards.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "../jsx-factory.js";
 import type { ContributionHighlight } from "../types.js";
+import { renderContributionCards } from "./contribution-cards.js";
 
 void Fragment;
 

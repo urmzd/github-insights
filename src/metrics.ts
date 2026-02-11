@@ -1,21 +1,17 @@
-import { parseManifest } from "./parsers.js";
 import { renderContributionCards } from "./components/contribution-cards.js";
-import { renderStatCards } from "./components/stat-cards.js";
-import { renderProjectCards } from "./components/project-cards.js";
 import { renderDonutChart } from "./components/donut-chart.js";
-import { renderDomainCloud } from "./components/domain-cloud.js";
+import { renderProjectCards } from "./components/project-cards.js";
+import { renderStatCards } from "./components/stat-cards.js";
 import { renderTechHighlights } from "./components/tech-highlights.js";
+import { parseManifest } from "./parsers.js";
 import type {
-  RepoNode,
-  ManifestMap,
-  DomainMap,
-  LanguageItem,
-  TechHighlight,
-  ComplexityItem,
-  DomainItem,
   ContributionData,
-  ContributionsByRepo,
+  LanguageItem,
+  ManifestMap,
+  ProjectItem,
+  RepoNode,
   SectionDef,
+  TechHighlight,
 } from "./types.js";
 
 // ── Category Sets ───────────────────────────────────────────────────────────
@@ -77,129 +73,35 @@ export const collectAllTopics = (repos: RepoNode[]): string[] => {
   return [...seen].sort();
 };
 
-// ── Scoring ─────────────────────────────────────────────────────────────────
+// ── Top Projects by Stars ───────────────────────────────────────────────────
 
-export const computeComplexityScores = (repos: RepoNode[]): ComplexityItem[] =>
+export const getTopProjectsByStars = (repos: RepoNode[]): ProjectItem[] =>
   repos
-    .map((repo) => {
-      const langCount = (repo.languages?.edges || []).filter(
-        (e) => !EXCLUDED_LANGUAGES.has(e.node.name),
-      ).length;
-      const diskKB = Math.max(repo.diskUsage || 1, 1);
-      const codeBytes = Math.max(repo.languages?.totalSize || 1, 1);
-      const depCount = (repo.languages?.edges || []).length;
-
-      const score =
-        langCount * 15 +
-        Math.log10(diskKB) * 20 +
-        Math.log10(codeBytes) * 15 +
-        Math.min(depCount, 50);
-
-      return {
-        name: repo.name,
-        url: repo.url,
-        description: repo.description || "",
-        value: Math.round(score),
-      };
-    })
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5);
-
-// ── Domain Aggregation ──────────────────────────────────────────────────────
-
-export const aggregateDomains = (domainMap: DomainMap): DomainItem[] => {
-  const counts = new Map<string, number>();
-  const reposByDomain = new Map<string, string[]>();
-
-  for (const [repo, tags] of domainMap) {
-    for (const tag of tags) {
-      const normalized = tag.trim();
-      counts.set(normalized, (counts.get(normalized) || 0) + 1);
-      if (!reposByDomain.has(normalized)) reposByDomain.set(normalized, []);
-      reposByDomain.get(normalized)!.push(repo);
-    }
-  }
-
-  return [...counts.entries()]
-    .map(([name, count]) => ({
-      name,
-      count,
-      repos: reposByDomain.get(name) || [],
-    }))
-    .sort((a, b) => b.count - a.count);
-};
-
-// ── Recently Active ─────────────────────────────────────────────────────────
-
-export const computeRecentlyActive = (
-  contributionsByRepo: ContributionsByRepo[],
-  repos: RepoNode[],
-): Set<string> => {
-  const recentRepoNames = new Set<string>();
-  for (const entry of contributionsByRepo) {
-    if (entry.contributions.totalCount > 0) {
-      recentRepoNames.add(entry.repository.nameWithOwner.split("/").pop()!);
-    }
-  }
-
-  const activeSet = new Set<string>();
-  for (const repo of repos) {
-    if (!recentRepoNames.has(repo.name)) continue;
-    if (repo.primaryLanguage?.name) {
-      activeSet.add(repo.primaryLanguage.name.toLowerCase());
-    }
-    for (const edge of repo.languages?.edges || []) {
-      activeSet.add(edge.node.name.toLowerCase());
-    }
-    for (const node of repo.repositoryTopics?.nodes || []) {
-      activeSet.add(node.topic.name.toLowerCase());
-    }
-  }
-
-  return activeSet;
-};
-
-export const markRecentlyActive = (
-  itemLists: { trending?: boolean; name: string }[][],
-  recentlyActiveSet: Set<string>,
-): void => {
-  for (const list of itemLists) {
-    for (const item of list) {
-      item.trending = recentlyActiveSet.has(item.name.toLowerCase());
-    }
-  }
-};
+    .sort((a, b) => b.stargazerCount - a.stargazerCount)
+    .slice(0, 5)
+    .map((repo) => ({
+      name: repo.name,
+      url: repo.url,
+      description: repo.description || "",
+      stars: repo.stargazerCount,
+    }));
 
 // ── Section definitions ─────────────────────────────────────────────────────
 
 export const buildSections = ({
   languages,
   techHighlights,
-  complexity,
-  domains,
-  domainMap,
+  projects,
   contributionData,
 }: {
   languages: LanguageItem[];
   techHighlights: TechHighlight[];
-  complexity: ComplexityItem[];
-  domains: DomainItem[];
-  domainMap: DomainMap;
+  projects: ProjectItem[];
   contributionData: ContributionData;
 }): SectionDef[] => {
   const sections: SectionDef[] = [];
 
-  // 1. Work Domains
-  if (domains && domains.length > 0) {
-    sections.push({
-      filename: "metrics-domains.svg",
-      title: "Work Domains",
-      subtitle: "Extracted from project READMEs via AI analysis",
-      renderBody: (y: number) => renderDomainCloud(domains, y),
-    });
-  }
-
-  // 2. Languages
+  // 1. Languages
   sections.push({
     filename: "metrics-languages.svg",
     title: "Languages",
@@ -207,27 +109,26 @@ export const buildSections = ({
     renderBody: (y: number) => renderDonutChart(languages, y),
   });
 
-  // 3. Tech Stack
+  // 2. Expertise
   if (techHighlights.length > 0) {
     sections.push({
-      filename: "metrics-tech-stack.svg",
-      title: "Tech Stack",
+      filename: "metrics-expertise.svg",
+      title: "Expertise",
       subtitle:
         "Curated from dependencies, topics, and languages via AI analysis",
       renderBody: (y: number) => renderTechHighlights(techHighlights, y),
     });
   }
 
-  // 4. Signature Projects
+  // 3. Signature Projects
   sections.push({
     filename: "metrics-complexity.svg",
     title: "Signature Projects",
-    subtitle:
-      "Top projects by complexity score (languages, disk usage, code size)",
-    renderBody: (y: number) => renderProjectCards(complexity, domainMap, y),
+    subtitle: "Top projects by stars",
+    renderBody: (y: number) => renderProjectCards(projects, y),
   });
 
-  // 5. At a Glance
+  // 4. At a Glance
   sections.push({
     filename: "metrics-pulse.svg",
     title: "At a Glance",
@@ -259,7 +160,7 @@ export const buildSections = ({
     },
   });
 
-  // 6. Open Source Contributions
+  // 5. Open Source Contributions
   if (contributionData.externalRepos.nodes.length > 0) {
     sections.push({
       filename: "metrics-contributions.svg",

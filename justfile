@@ -24,7 +24,7 @@ test:
 
 # Generate metrics locally (requires gh auth)
 generate:
-    GITHUB_TOKEN=$(gh auth token) npx tsx src/index.ts
+    GITHUB_TOKEN=$(gh auth token) GITHUB_REPOSITORY_OWNER=$(gh api user --jq .login) npx tsx src/index.ts
 
 # Full CI check
 ci: fmt lint typecheck test build

@@ -1,8 +1,4 @@
-import type {
-  RepoNode,
-  ContributionsByRepo,
-  ContributionData,
-} from "../types.js";
+import type { ContributionData, RepoNode } from "../types.js";
 
 export const makeRepo = (overrides: Partial<RepoNode> = {}): RepoNode => ({
   name: "test-repo",
@@ -24,19 +20,6 @@ export const makeRepo = (overrides: Partial<RepoNode> = {}): RepoNode => ({
   ...overrides,
 });
 
-export const makeContributionsByRepo = (
-  overrides: Partial<ContributionsByRepo> = {},
-): ContributionsByRepo => ({
-  repository: {
-    nameWithOwner: "user/test-repo",
-    stargazerCount: 10,
-    primaryLanguage: { name: "TypeScript" },
-    isPrivate: false,
-  },
-  contributions: { totalCount: 5 },
-  ...overrides,
-});
-
 export const makeContributionData = (
   overrides: Partial<ContributionData> = {},
 ): ContributionData => ({
@@ -44,20 +27,8 @@ export const makeContributionData = (
     totalCommitContributions: 100,
     totalPullRequestContributions: 20,
     totalPullRequestReviewContributions: 10,
-    totalIssueContributions: 5,
     totalRepositoriesWithContributedCommits: 8,
-    restrictedContributionsCount: 0,
-    contributionCalendar: {
-      totalContributions: 135,
-      weeks: [],
-    },
-    commitContributionsByRepository: [],
-  },
-  calendar: {
-    totalContributions: 135,
-    weeks: [],
   },
   externalRepos: { totalCount: 0, nodes: [] },
-  mergedPRs: { totalCount: 0, nodes: [] },
   ...overrides,
 });

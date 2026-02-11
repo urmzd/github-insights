@@ -1,7 +1,7 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { LAYOUT, BAR_COLORS, THEME } from "../theme.js";
-import { escapeXml, FIRE_ICON } from "../svg-utils.js";
-import type { RenderResult, LanguageItem } from "../types.js";
+import { Fragment, h } from "../jsx-factory.js";
+import { escapeXml } from "../svg-utils.js";
+import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
+import type { LanguageItem, RenderResult } from "../types.js";
 
 export function renderDonutChart(
   items: LanguageItem[],
@@ -42,8 +42,6 @@ export function renderDonutChart(
   const legend = items.map((item, i) => {
     const ly = y + 10 + i * legendItemH;
     const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-    const trendingSvg = item.trending ? FIRE_ICON(legendX + 250, ly - 6) : "";
-
     return (
       <>
         <rect
@@ -66,7 +64,6 @@ export function renderDonutChart(
         >
           {item.percent}%
         </text>
-        {trendingSvg}
       </>
     );
   });

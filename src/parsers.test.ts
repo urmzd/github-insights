@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  NodePackageParser,
   CargoParser,
   GoModParser,
-  PyprojectParser,
-  RequirementsTxtParser,
+  NodePackageParser,
   PARSERS,
+  PyprojectParser,
   parseManifest,
+  RequirementsTxtParser,
 } from "./parsers.js";
 
 describe("NodePackageParser", () => {

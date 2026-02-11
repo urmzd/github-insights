@@ -1,6 +1,6 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { LAYOUT, BAR_COLORS, THEME } from "../theme.js";
+import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
+import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
 import type { RenderResult, StatItem } from "../types.js";
 
 export function renderStatCards(stats: StatItem[], y: number): RenderResult {

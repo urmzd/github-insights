@@ -1,8 +1,8 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { THEME, LAYOUT } from "../theme.js";
+import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
+import { LAYOUT, THEME } from "../theme.js";
+import type { BarItem, RenderResult } from "../types.js";
 import { renderBarChart } from "./bar-chart.js";
-import type { RenderResult, BarItem } from "../types.js";
 
 export function renderSectionHeader(
   title: string,
