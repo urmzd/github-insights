@@ -325,7 +325,7 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
 - Mentions notable projects if applicable
 - Ends with a social/contact links section using shields.io badge-style markdown images. Use this format for each badge:
   [![Badge](https://img.shields.io/badge/LABEL-COLOR?style=flat&logo=LOGO&logoColor=white)](URL)
-  Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g., logo=github for GitHub, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
+  Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
 - Keep tone professional but friendly, no self-aggrandizing
 - Do NOT include a heading — the README already has one`;
 
