@@ -4,3 +4,4 @@ dist/
 dist.tar.gz
 *.tsbuildinfo
 .env
+_README.md
