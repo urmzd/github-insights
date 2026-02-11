@@ -89,7 +89,8 @@ export function renderTechHighlights(
       );
     }
 
-    height += barHeight + skillY + (skillLines.length - 1) * skillLineHeight + rowGap;
+    height +=
+      barHeight + skillY + (skillLines.length - 1) * skillLineHeight + rowGap;
   }
 
   return { svg, height };

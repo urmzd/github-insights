@@ -257,7 +257,6 @@ export const fetchAIPreamble = async (
 ): Promise<string | undefined> => {
   try {
     const {
-      username,
       profile,
       userConfig,
       languages,

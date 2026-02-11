@@ -10,7 +10,9 @@ describe("generateReadme", () => {
     expect(result).toContain(
       "# octocat\n\n![GitHub Metrics](metrics/index.svg)",
     );
-    expect(result).toMatch(/Last generated on \d{4}-\d{2}-\d{2} using \[@urmzd\/github-metrics\]/);
+    expect(result).toMatch(
+      /Last generated on \d{4}-\d{2}-\d{2} using \[@urmzd\/github-metrics\]/,
+    );
   });
 
   it("includes pronunciation when set", () => {
@@ -79,7 +81,8 @@ describe("generateReadme", () => {
   });
 
   it("multi-paragraph preamble preserves structure", () => {
-    const preamble = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
+    const preamble =
+      "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
     const result = generateReadme({
       name: "Urmzd",
       preambleContent: preamble,
