@@ -26008,7 +26008,7 @@ const MockPool = __nccwpck_require__(4004)
 const { matchValue, buildMockOptions } = __nccwpck_require__(3397)
 const { InvalidArgumentError, UndiciError } = __nccwpck_require__(8707)
 const Dispatcher = __nccwpck_require__(992)
-const Pluralizer = __nccwpck_require__(1529)
+const Pluralizer = __nccwpck_require__(3910)
 const PendingInterceptorsFormatter = __nccwpck_require__(6142)
 
 class FakeWeakRef {
@@ -26967,7 +26967,7 @@ module.exports = class PendingInterceptorsFormatter {
 
 /***/ }),
 
-/***/ 1529:
+/***/ 3910:
 /***/ ((module) => {
 
 
@@ -31849,7 +31849,151 @@ const fetchReadmeForRepos = async (token, username, repos) => {
     }
     return readmeMap;
 };
-const fetchExpertiseAnalysis = async (token, languages, allDeps, allTopics, repos, readmeMap) => {
+const fetchUserProfile = async (token, username) => {
+    const graphql = makeGraphql(token);
+    try {
+        const data = await graphql(`{
+      user(login: "${username}") {
+        name
+        bio
+        company
+        location
+        websiteUrl
+        twitterUsername
+        socialAccounts(first: 10) { nodes { provider url } }
+      }
+    }`);
+        const user = data.user;
+        return {
+            name: user.name || null,
+            bio: user.bio || null,
+            company: user.company || null,
+            location: user.location || null,
+            websiteUrl: user.websiteUrl || null,
+            twitterUsername: user.twitterUsername || null,
+            socialAccounts: user.socialAccounts
+                ?.nodes || [],
+        };
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`User profile fetch failed (non-fatal): ${msg}`);
+        return {
+            name: null,
+            bio: null,
+            company: null,
+            location: null,
+            websiteUrl: null,
+            twitterUsername: null,
+            socialAccounts: [],
+        };
+    }
+};
+const fetchAIPreamble = async (token, context) => {
+    try {
+        const { username, profile, userConfig, languages, techHighlights, contributionData, projects, } = context;
+        const langLines = languages
+            .map((l) => `- ${l.name}: ${l.percent}%`)
+            .join("\n");
+        const techLines = techHighlights
+            .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
+            .join("\n");
+        const projectLines = projects
+            .slice(0, 10)
+            .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
+            .join("\n");
+        const profileLines = [
+            profile.name ? `Name: ${profile.name}` : null,
+            profile.bio ? `Bio: ${profile.bio}` : null,
+            profile.company ? `Company: ${profile.company}` : null,
+            profile.location ? `Location: ${profile.location}` : null,
+            userConfig.title ? `Title: ${userConfig.title}` : null,
+        ]
+            .filter(Boolean)
+            .join("\n");
+        const socialLines = [
+            `GitHub: https://github.com/${username}`,
+            profile.websiteUrl ? `Website: ${profile.websiteUrl}` : null,
+            profile.twitterUsername
+                ? `Twitter/X: https://x.com/${profile.twitterUsername}`
+                : null,
+            ...profile.socialAccounts.map((s) => `${s.provider}: ${s.url}`),
+        ]
+            .filter(Boolean)
+            .join("\n");
+        const prompt = `You are generating a concise markdown preamble for a developer's GitHub profile README.
+
+Profile:
+${profileLines}
+
+Languages (by code volume):
+${langLines}
+
+Expertise areas:
+${techLines}
+
+Notable projects:
+${projectLines}
+
+Contribution stats (last year):
+- Commits: ${contributionData.contributions.totalCommitContributions}
+- Pull requests: ${contributionData.contributions.totalPullRequestContributions}
+- Code reviews: ${contributionData.contributions.totalPullRequestReviewContributions}
+- Contributed to ${contributionData.externalRepos.totalCount} external repos
+
+Social/contact links available:
+${socialLines}
+
+Generate a markdown preamble (2-4 short paragraphs max) that:
+- Opens with a brief personal intro drawn from the profile bio/title
+- Highlights the developer's primary domains and strengths (from expertise areas + languages)
+- Mentions notable projects if applicable
+- Ends with a social/contact links section using shields.io badge-style markdown images. Use this format for each badge:
+  [![Badge](https://img.shields.io/badge/LABEL-COLOR?style=flat&logo=LOGO&logoColor=white)](URL)
+  Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g., logo=github for GitHub, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
+- Keep tone professional but friendly, no self-aggrandizing
+- Do NOT include a heading — the README already has one`;
+        const res = await fetch("https://models.github.ai/inference/chat/completions", {
+            method: "POST",
+            headers: {
+                Authorization: `bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.3,
+                response_format: {
+                    type: "json_schema",
+                    json_schema: {
+                        name: "preamble",
+                        strict: true,
+                        schema: {
+                            type: "object",
+                            properties: { preamble: { type: "string" } },
+                            required: ["preamble"],
+                            additionalProperties: false,
+                        },
+                    },
+                },
+            }),
+        });
+        if (!res.ok) {
+            console.warn(`GitHub Models API error (preamble): ${res.status}`);
+            return undefined;
+        }
+        const json = (await res.json());
+        const content = json.choices?.[0]?.message?.content || "{}";
+        const parsed = JSON.parse(content);
+        return parsed.preamble || undefined;
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
+        return undefined;
+    }
+};
+const fetchExpertiseAnalysis = async (token, languages, allDeps, allTopics, repos, readmeMap, userConfig = {}) => {
     try {
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
@@ -31863,8 +32007,17 @@ const fetchExpertiseAnalysis = async (token, languages, allDeps, allTopics, repo
             return `- ${r.name}: ${desc} | ${snippet}`;
         })
             .join("\n");
+        const desiredTitle = userConfig.desired_title || userConfig.title;
+        let titleContext = "";
+        if (userConfig.title) {
+            titleContext = `\nDeveloper context:\n- Current title: ${userConfig.title}`;
+            if (desiredTitle && desiredTitle !== userConfig.title) {
+                titleContext += `\n- Desired title: ${desiredTitle}`;
+            }
+            titleContext += `\n- Tailor the expertise categories to highlight skills most relevant to ${desiredTitle}. Prioritize domains and technologies that align with this role.\n`;
+        }
         const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
-
+${titleContext}
 Languages (by code volume):
 ${langLines}
 
@@ -31883,7 +32036,10 @@ From this data, produce a curated expertise profile:
 - Include 3-6 of the most relevant technologies/tools per category
 - Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
 - Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
-- Only include categories where there's meaningful evidence of usage`;
+- Only include categories where there's meaningful evidence of usage
+- Assign each category a proficiency score from 0 to 100 based on evidence strength:
+  language code volume, dependency count, topic mentions, and README depth.
+  Use the full range (e.g. 80-95 for primary stack, 50-70 for secondary, 30-50 for minor).`;
         const res = await fetch("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
@@ -31909,8 +32065,9 @@ From this data, produce a curated expertise profile:
                                         properties: {
                                             category: { type: "string" },
                                             items: { type: "array", items: { type: "string" } },
+                                            score: { type: "number" },
                                         },
-                                        required: ["category", "items"],
+                                        required: ["category", "items", "score"],
                                         additionalProperties: false,
                                     },
                                 },
@@ -31929,7 +32086,10 @@ From this data, produce a curated expertise profile:
         const json = (await res.json());
         const content = json.choices?.[0]?.message?.content || "{}";
         const parsed = JSON.parse(content);
-        return (parsed.highlights || []).filter((h) => h.category && Array.isArray(h.items) && h.items.length > 0);
+        return (parsed.highlights || [])
+            .filter((h) => h.category && Array.isArray(h.items) && h.items.length > 0)
+            .map((h) => ({ ...h, score: Math.max(0, Math.min(100, h.score || 0)) }))
+            .sort((a, b) => b.score - a.score);
     }
     catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -31954,7 +32114,7 @@ const escapeAttr = (s) => s
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-function h(tag, props, ...children) {
+function jsx_factory_h(tag, props, ...children) {
     if (typeof tag === "function")
         return tag({ ...props, children: children.flat() });
     const attrs = Object.entries(props || {})
@@ -31977,7 +32137,7 @@ function Fragment({ children }) {
 }
 
 ;// CONCATENATED MODULE: ./src/theme.ts
-const THEME = {
+const theme_THEME = {
     bg: "#0d1117",
     cardBg: "#161b22",
     border: "#30363d",
@@ -31987,7 +32147,7 @@ const THEME = {
     muted: "#6e7681",
 };
 const FONT = "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif";
-const LAYOUT = {
+const theme_LAYOUT = {
     width: 808,
     padX: 24,
     padY: 24,
@@ -32009,7 +32169,7 @@ const BAR_COLORS = [
 ];
 
 ;// CONCATENATED MODULE: ./src/svg-utils.ts
-const escapeXml = (str) => {
+const svg_utils_escapeXml = (str) => {
     if (!str)
         return "";
     return str
@@ -32049,23 +32209,23 @@ const wrapText = (text, maxChars) => {
 function renderBarChart(items, y, options = {}) {
     if (items.length === 0)
         return { svg: "", height: 0 };
-    const { barLabelWidth, barHeight, barRowHeight, barMaxWidth, padX } = LAYOUT;
+    const { barLabelWidth, barHeight, barRowHeight, barMaxWidth, padX } = theme_LAYOUT;
     const useItemColors = options.useItemColors === true;
     const maxValue = Math.max(...items.map((d) => d.value));
-    const svg = (h(Fragment, null, items.map((item, i) => {
+    const svg = (jsx_factory_h(Fragment, null, items.map((item, i) => {
         const ry = y + i * barRowHeight;
         const barWidth = Math.max((item.value / maxValue) * barMaxWidth, 4);
         const color = useItemColors
             ? item.color || BAR_COLORS[i % BAR_COLORS.length]
             : BAR_COLORS[i % BAR_COLORS.length];
-        const label = escapeXml(truncate(item.name, 20));
+        const label = svg_utils_escapeXml(truncate(item.name, 20));
         const valueLabel = item.percent
             ? `${item.percent}%`
             : String(item.value);
-        return (h(Fragment, null,
-            h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
-            h("rect", { x: padX + barLabelWidth, y: ry + 2, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
-            h("text", { x: padX + barLabelWidth + barWidth + 8, y: ry + 14, className: "t t-value" }, valueLabel)));
+        return (jsx_factory_h(Fragment, null,
+            jsx_factory_h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
+            jsx_factory_h("rect", { x: padX + barLabelWidth, y: ry + 2, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
+            jsx_factory_h("text", { x: padX + barLabelWidth + barWidth + 8, y: ry + 14, className: "t t-value" }, valueLabel)));
     })));
     return { svg, height: items.length * barRowHeight };
 }
@@ -32076,9 +32236,9 @@ function renderBarChart(items, y, options = {}) {
 
 
 function renderSectionHeader(title, subtitle, y) {
-    const svg = (h(Fragment, null,
-        h("text", { x: LAYOUT.padX, y: y + 16, className: "t t-h" }, escapeXml(title.toUpperCase())),
-        subtitle ? (h("text", { x: LAYOUT.padX, y: y + 32, className: "t t-sub" }, escapeXml(subtitle))) : ("")));
+    const svg = (jsx_factory_h(Fragment, null,
+        jsx_factory_h("text", { x: theme_LAYOUT.padX, y: y + 16, className: "t t-h" }, svg_utils_escapeXml(title.toUpperCase())),
+        subtitle ? (jsx_factory_h("text", { x: theme_LAYOUT.padX, y: y + 32, className: "t t-sub" }, svg_utils_escapeXml(subtitle))) : ("")));
     return { svg, height: subtitle ? 42 : 24 };
 }
 function renderSubHeader(text, y) {
@@ -32090,7 +32250,7 @@ function renderDivider(y) {
     return { svg, height: 1 };
 }
 function renderSection(title, subtitle, itemsOrRenderBody, options = {}) {
-    let y = LAYOUT.padY;
+    let y = theme_LAYOUT.padY;
     let svg = "";
     const header = renderSectionHeader(title, subtitle, y);
     svg += header.svg;
@@ -32098,12 +32258,12 @@ function renderSection(title, subtitle, itemsOrRenderBody, options = {}) {
     if (typeof itemsOrRenderBody === "function") {
         const body = itemsOrRenderBody(y);
         svg += body.svg;
-        y += body.height + LAYOUT.padY;
+        y += body.height + theme_LAYOUT.padY;
     }
     else {
         const bars = renderBarChart(itemsOrRenderBody, y, options);
         svg += bars.svg;
-        y += bars.height + LAYOUT.padY;
+        y += bars.height + theme_LAYOUT.padY;
     }
     return { svg, height: y };
 }
@@ -32113,20 +32273,20 @@ void Fragment;
 
 
 function StyleDefs() {
-    return (h("defs", null,
-        h("style", null, `
+    return (jsx_factory_h("defs", null,
+        jsx_factory_h("style", null, `
   .t { font-family: ${FONT}; }
-  .t-h { font-size: 13px; fill: ${THEME.text}; letter-spacing: 1.5px; font-weight: 600; }
-  .t-sub { font-size: 11px; fill: ${THEME.muted}; }
-  .t-label { font-size: 12px; fill: ${THEME.secondary}; }
-  .t-value { font-size: 11px; fill: ${THEME.muted}; }
-  .t-subhdr { font-size: 11px; fill: ${THEME.secondary}; letter-spacing: 1px; font-weight: 600; }
-  .t-stat-label { font-size: 10px; fill: ${THEME.secondary}; font-weight: 600; }
+  .t-h { font-size: 13px; fill: ${theme_THEME.text}; letter-spacing: 1.5px; font-weight: 600; }
+  .t-sub { font-size: 11px; fill: ${theme_THEME.muted}; }
+  .t-label { font-size: 12px; fill: ${theme_THEME.secondary}; }
+  .t-value { font-size: 11px; fill: ${theme_THEME.muted}; }
+  .t-subhdr { font-size: 11px; fill: ${theme_THEME.secondary}; letter-spacing: 1px; font-weight: 600; }
+  .t-stat-label { font-size: 10px; fill: ${theme_THEME.secondary}; font-weight: 600; }
   .t-stat-value { font-size: 22px; font-weight: 700; }
-  .t-card-title { font-size: 12px; fill: ${THEME.link}; font-weight: 700; }
-  .t-card-detail { font-size: 11px; fill: ${THEME.secondary}; }
+  .t-card-title { font-size: 12px; fill: ${theme_THEME.link}; font-weight: 700; }
+  .t-card-detail { font-size: 11px; fill: ${theme_THEME.secondary}; }
   .t-pill { font-size: 11px; font-weight: 600; }
-  .t-bullet { font-size: 12px; fill: ${THEME.text}; }
+  .t-bullet { font-size: 12px; fill: ${theme_THEME.text}; }
 `)));
 }
 void Fragment;
@@ -32138,14 +32298,14 @@ void Fragment;
 
 
 function wrapSectionSvg(bodySvg, height) {
-    const { width } = LAYOUT;
-    return (h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
-        h(StyleDefs, null),
-        h("rect", { width: width, height: height, rx: "12", fill: THEME.bg }),
+    const { width } = theme_LAYOUT;
+    return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
+        jsx_factory_h(StyleDefs, null),
+        jsx_factory_h("rect", { width: width, height: height, rx: "12", fill: theme_THEME.bg }),
         bodySvg));
 }
 function generateFullSvg(sections) {
-    const { width, padY, sectionGap } = LAYOUT;
+    const { width, padY, sectionGap } = theme_LAYOUT;
     let y = padY;
     let bodySvg = "";
     for (const section of sections) {
@@ -32164,185 +32324,11 @@ function generateFullSvg(sections) {
         }
     }
     const totalHeight = y + padY;
-    return (h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
-        h(StyleDefs, null),
-        h("rect", { width: width, height: totalHeight, rx: "12", fill: THEME.bg }),
+    return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
+        jsx_factory_h(StyleDefs, null),
+        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", fill: theme_THEME.bg }),
         bodySvg));
 }
-
-;// CONCATENATED MODULE: ./src/components/contribution-cards.tsx
-
-
-
-function renderContributionCards(highlights, y) {
-    const { padX } = LAYOUT;
-    const cardW = 760;
-    const cardH = 44;
-    const gap = 8;
-    const svg = (h(Fragment, null, highlights.map((hl, i) => {
-        const cy = y + i * (cardH + gap);
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        return (h(Fragment, null,
-            h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
-            h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
-            h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, escapeXml(truncate(hl.project, 40))),
-            h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, escapeXml(truncate(hl.detail, 80)))));
-    })));
-    return {
-        svg,
-        height: highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
-    };
-}
-
-;// CONCATENATED MODULE: ./src/components/donut-chart.tsx
-
-
-
-function renderDonutChart(items, y) {
-    const { padX } = LAYOUT;
-    const cx = padX + 90;
-    const cy = y + 90;
-    const r = 70;
-    const strokeW = 28;
-    const circumference = 2 * Math.PI * r;
-    let offset = 0;
-    const segments = items.map((item, i) => {
-        const pct = parseFloat(item.percent) / 100;
-        const dash = pct * circumference;
-        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        const seg = (h("circle", { cx: cx, cy: cy, r: r, fill: "none", stroke: color, "stroke-width": strokeW, "stroke-dasharray": `${dash} ${circumference - dash}`, "stroke-dashoffset": -offset, transform: `rotate(-90 ${cx} ${cy})`, opacity: "0.85" }));
-        offset += dash;
-        return seg;
-    });
-    const legendX = padX + 220;
-    const legendItemH = 24;
-    const legend = items.map((item, i) => {
-        const ly = y + 10 + i * legendItemH;
-        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        return (h(Fragment, null,
-            h("rect", { x: legendX, y: ly, width: "12", height: "12", rx: "2", fill: color, opacity: "0.85" }),
-            h("text", { x: legendX + 20, y: ly + 10, className: "t t-label" }, escapeXml(item.name)),
-            h("text", { x: legendX + 200, y: ly + 10, className: "t t-value", "text-anchor": "end" },
-                item.percent,
-                "%")));
-    });
-    const height = Math.max(180, items.length * legendItemH + 20);
-    const svg = (h(Fragment, null,
-        segments.join(""),
-        h("text", { x: cx, y: cy + 5, className: "t", fill: THEME.text, "font-size": "14", "font-weight": "700", "text-anchor": "middle" }, String(items.length)),
-        h("text", { x: cx, y: cy + 20, className: "t", fill: THEME.muted, "font-size": "10", "text-anchor": "middle" }, "languages"),
-        legend.join("")));
-    return { svg, height };
-}
-
-;// CONCATENATED MODULE: ./src/components/project-cards.tsx
-
-
-
-function renderProjectCards(projects, y) {
-    const { padX } = LAYOUT;
-    const cardW = 760;
-    const gap = 10;
-    let svg = "";
-    let totalHeight = 0;
-    for (let i = 0; i < projects.length; i++) {
-        const cy = y + totalHeight;
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        const p = projects[i];
-        const desc = truncate(p.description, 90);
-        let innerH = 20;
-        if (desc)
-            innerH += 16;
-        const cardH = Math.max(innerH + 16, 44);
-        // Card background + accent bar
-        svg += (h(Fragment, null,
-            h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
-            h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
-            h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, escapeXml(truncate(p.name, 40))),
-            h("text", { x: padX + cardW - 16, y: cy + 18, className: "t t-value", "text-anchor": "end" }, `\u2605 ${p.stars.toLocaleString()}`)));
-        if (desc) {
-            svg += (h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, escapeXml(desc)));
-        }
-        totalHeight += cardH + gap;
-    }
-    return { svg, height: totalHeight > 0 ? totalHeight - gap : 0 };
-}
-
-;// CONCATENATED MODULE: ./src/components/stat-cards.tsx
-
-
-
-function renderStatCards(stats, y) {
-    const { padX } = LAYOUT;
-    const cardW = 140;
-    const cardH = 72;
-    const gap = 15;
-    const colors = [
-        BAR_COLORS[0],
-        BAR_COLORS[1],
-        BAR_COLORS[2],
-        BAR_COLORS[4],
-        BAR_COLORS[5],
-    ];
-    const svg = (h(Fragment, null, stats.map((stat, i) => {
-        const cx = padX + i * (cardW + gap);
-        const color = colors[i % colors.length];
-        return (h(Fragment, null,
-            h("rect", { x: cx, y: y, width: cardW, height: cardH, rx: "8", fill: THEME.cardBg, stroke: THEME.border, "stroke-width": "1" }),
-            h("circle", { cx: cx + 14, cy: y + 16, r: "4", fill: color }),
-            h("text", { x: cx + 24, y: y + 20, className: "t t-stat-label" }, escapeXml(stat.label)),
-            h("text", { x: cx + cardW / 2, y: y + 52, fill: color, className: "t t-stat-value", "text-anchor": "middle" }, escapeXml(String(stat.value)))));
-    })));
-    return { svg, height: cardH };
-}
-
-;// CONCATENATED MODULE: ./src/components/tech-highlights.tsx
-
-
-
-
-function renderTechHighlights(highlights, y) {
-    if (highlights.length === 0)
-        return { svg: "", height: 0 };
-    const { padX } = LAYOUT;
-    const maxWidth = 760;
-    const gapX = 10;
-    const gapY = 10;
-    const fontSize = 11;
-    const pillH = 26;
-    let svg = "";
-    let height = 0;
-    for (let hi = 0; hi < highlights.length; hi++) {
-        const group = highlights[hi];
-        const color = BAR_COLORS[hi % BAR_COLORS.length];
-        if (hi > 0) {
-            const div = renderDivider(y + height + 6);
-            svg += div.svg;
-            height += 18;
-        }
-        const sub = renderSubHeader(group.category, y + height);
-        svg += sub.svg;
-        height += sub.height + 8;
-        let cx = padX;
-        let rowStartY = y + height;
-        for (const item of group.items) {
-            const text = truncate(item, 30);
-            const pillW = Math.ceil(text.length * fontSize * 0.55) + 28;
-            if (cx + pillW > padX + maxWidth && cx > padX) {
-                cx = padX;
-                rowStartY += pillH + gapY;
-                height += pillH + gapY;
-            }
-            svg += (h(Fragment, null,
-                h("rect", { x: cx, y: rowStartY, width: pillW, height: pillH, rx: pillH / 2, fill: color, "fill-opacity": "0.15", stroke: color, "stroke-opacity": "0.4", "stroke-width": "1" }),
-                h("text", { x: cx + pillW / 2, y: rowStartY + pillH / 2 + fontSize / 3, fill: color, "font-size": fontSize, className: "t t-pill", "text-anchor": "middle" }, escapeXml(text))));
-            cx += pillW + gapX;
-        }
-        height += pillH + 10;
-    }
-    return { svg, height };
-}
-void Fragment;
 
 ;// CONCATENATED MODULE: ./node_modules/smol-toml/dist/error.js
 /*!
@@ -33469,6 +33455,217 @@ function stringify(obj, { maxDepth = 1000, numbersAsFloat = false } = {}) {
 /* harmony default export */ const dist = ({ parse: parse, stringify: stringify, TomlDate: TomlDate, TomlError: TomlError });
 
 
+;// CONCATENATED MODULE: ./src/config.ts
+
+
+function parseUserConfig(raw) {
+    const parsed = parse(raw);
+    const config = {};
+    if (typeof parsed.title === "string" && parsed.title.trim()) {
+        config.title = parsed.title.trim();
+    }
+    if (typeof parsed.desired_title === "string" && parsed.desired_title.trim()) {
+        config.desired_title = parsed.desired_title.trim();
+    }
+    if (typeof parsed.name === "string" && parsed.name.trim()) {
+        config.name = parsed.name.trim();
+    }
+    if (typeof parsed.pronunciation === "string" && parsed.pronunciation.trim()) {
+        config.pronunciation = parsed.pronunciation.trim();
+    }
+    if (typeof parsed.bio === "string" && parsed.bio.trim()) {
+        config.bio = parsed.bio.trim();
+    }
+    if (typeof parsed.preamble === "string" && parsed.preamble.trim()) {
+        config.preamble = parsed.preamble.trim();
+    }
+    return config;
+}
+function loadUserConfig(configPath) {
+    const path = configPath || ".github-metrics.toml";
+    try {
+        const raw = (0,external_node_fs_namespaceObject.readFileSync)(path, "utf-8");
+        return parseUserConfig(raw);
+    }
+    catch (err) {
+        if (err instanceof Error &&
+            "code" in err &&
+            err.code === "ENOENT") {
+            return {};
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`Warning: failed to parse config file "${path}": ${msg}`);
+        return {};
+    }
+}
+
+;// CONCATENATED MODULE: ./src/components/contribution-cards.tsx
+
+
+
+function renderContributionCards(highlights, y) {
+    const { padX } = theme_LAYOUT;
+    const cardW = 760;
+    const cardH = 44;
+    const gap = 8;
+    const svg = (jsx_factory_h(Fragment, null, highlights.map((hl, i) => {
+        const cy = y + i * (cardH + gap);
+        const color = BAR_COLORS[i % BAR_COLORS.length];
+        return (jsx_factory_h(Fragment, null,
+            jsx_factory_h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: theme_THEME.cardBg, stroke: theme_THEME.border, "stroke-width": "1" }),
+            jsx_factory_h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
+            jsx_factory_h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, svg_utils_escapeXml(truncate(hl.project, 40))),
+            jsx_factory_h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, svg_utils_escapeXml(truncate(hl.detail, 80)))));
+    })));
+    return {
+        svg,
+        height: highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
+    };
+}
+
+;// CONCATENATED MODULE: ./src/components/donut-chart.tsx
+
+
+
+function renderDonutChart(items, y) {
+    const { padX } = theme_LAYOUT;
+    const cx = padX + 90;
+    const cy = y + 90;
+    const r = 70;
+    const strokeW = 28;
+    const circumference = 2 * Math.PI * r;
+    let offset = 0;
+    const segments = items.map((item, i) => {
+        const pct = parseFloat(item.percent) / 100;
+        const dash = pct * circumference;
+        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
+        const seg = (jsx_factory_h("circle", { cx: cx, cy: cy, r: r, fill: "none", stroke: color, "stroke-width": strokeW, "stroke-dasharray": `${dash} ${circumference - dash}`, "stroke-dashoffset": -offset, transform: `rotate(-90 ${cx} ${cy})`, opacity: "0.85" }));
+        offset += dash;
+        return seg;
+    });
+    const legendX = padX + 220;
+    const legendItemH = 24;
+    const legend = items.map((item, i) => {
+        const ly = y + 10 + i * legendItemH;
+        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
+        return (jsx_factory_h(Fragment, null,
+            jsx_factory_h("rect", { x: legendX, y: ly, width: "12", height: "12", rx: "2", fill: color, opacity: "0.85" }),
+            jsx_factory_h("text", { x: legendX + 20, y: ly + 10, className: "t t-label" }, svg_utils_escapeXml(item.name)),
+            jsx_factory_h("text", { x: legendX + 200, y: ly + 10, className: "t t-value", "text-anchor": "end" },
+                item.percent,
+                "%")));
+    });
+    const height = Math.max(180, items.length * legendItemH + 20);
+    const svg = (jsx_factory_h(Fragment, null,
+        segments.join(""),
+        jsx_factory_h("text", { x: cx, y: cy + 5, className: "t", fill: theme_THEME.text, "font-size": "14", "font-weight": "700", "text-anchor": "middle" }, String(items.length)),
+        jsx_factory_h("text", { x: cx, y: cy + 20, className: "t", fill: theme_THEME.muted, "font-size": "10", "text-anchor": "middle" }, "languages"),
+        legend.join("")));
+    return { svg, height };
+}
+
+;// CONCATENATED MODULE: ./src/components/project-cards.tsx
+
+
+
+function renderProjectCards(projects, y) {
+    const { padX } = theme_LAYOUT;
+    const cardW = 760;
+    const gap = 10;
+    let svg = "";
+    let totalHeight = 0;
+    for (let i = 0; i < projects.length; i++) {
+        const cy = y + totalHeight;
+        const color = BAR_COLORS[i % BAR_COLORS.length];
+        const p = projects[i];
+        const desc = truncate(p.description, 90);
+        let innerH = 20;
+        if (desc)
+            innerH += 16;
+        const cardH = Math.max(innerH + 16, 44);
+        // Card background + accent bar
+        svg += (jsx_factory_h(Fragment, null,
+            jsx_factory_h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: theme_THEME.cardBg, stroke: theme_THEME.border, "stroke-width": "1" }),
+            jsx_factory_h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
+            jsx_factory_h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, svg_utils_escapeXml(truncate(p.name, 40))),
+            jsx_factory_h("text", { x: padX + cardW - 16, y: cy + 18, className: "t t-value", "text-anchor": "end" }, `\u2605 ${p.stars.toLocaleString()}`)));
+        if (desc) {
+            svg += (jsx_factory_h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, svg_utils_escapeXml(desc)));
+        }
+        totalHeight += cardH + gap;
+    }
+    return { svg, height: totalHeight > 0 ? totalHeight - gap : 0 };
+}
+
+;// CONCATENATED MODULE: ./src/components/stat-cards.tsx
+
+
+
+function renderStatCards(stats, y) {
+    const { padX } = theme_LAYOUT;
+    const cardW = 140;
+    const cardH = 72;
+    const gap = 15;
+    const colors = [
+        BAR_COLORS[0],
+        BAR_COLORS[1],
+        BAR_COLORS[2],
+        BAR_COLORS[4],
+        BAR_COLORS[5],
+    ];
+    const svg = (jsx_factory_h(Fragment, null, stats.map((stat, i) => {
+        const cx = padX + i * (cardW + gap);
+        const color = colors[i % colors.length];
+        return (jsx_factory_h(Fragment, null,
+            jsx_factory_h("rect", { x: cx, y: y, width: cardW, height: cardH, rx: "8", fill: theme_THEME.cardBg, stroke: theme_THEME.border, "stroke-width": "1" }),
+            jsx_factory_h("circle", { cx: cx + 14, cy: y + 16, r: "4", fill: color }),
+            jsx_factory_h("text", { x: cx + 24, y: y + 20, className: "t t-stat-label" }, svg_utils_escapeXml(stat.label)),
+            jsx_factory_h("text", { x: cx + cardW / 2, y: y + 52, fill: color, className: "t t-stat-value", "text-anchor": "middle" }, svg_utils_escapeXml(String(stat.value)))));
+    })));
+    return { svg, height: cardH };
+}
+
+;// CONCATENATED MODULE: ./src/components/tech-highlights.tsx
+
+
+
+function renderTechHighlights(highlights, y) {
+    if (highlights.length === 0)
+        return { svg: "", height: 0 };
+    const { padX, barHeight, barMaxWidth } = theme_LAYOUT;
+    const barX = padX + 180;
+    const scoreX = barX + barMaxWidth + 10;
+    const skillY = 16;
+    const rowGap = 14;
+    let svg = "";
+    let height = 0;
+    for (let hi = 0; hi < highlights.length; hi++) {
+        const group = highlights[hi];
+        const color = BAR_COLORS[hi % BAR_COLORS.length];
+        const score = Math.max(0, Math.min(100, group.score));
+        const fillWidth = (score / 100) * barMaxWidth;
+        const baseY = y + height;
+        // Category label (uppercase, left-aligned)
+        svg += (jsx_factory_h("text", { x: padX, y: baseY + barHeight / 2 + 4, className: "t t-subhdr" }, svg_utils_escapeXml(group.category.toUpperCase())));
+        // Bar track (full width, low opacity)
+        svg += (jsx_factory_h("rect", { x: barX, y: baseY, width: barMaxWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.15" }));
+        // Bar fill (proportional to score)
+        if (fillWidth > 0) {
+            svg += (jsx_factory_h("rect", { x: barX, y: baseY, width: fillWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.85" }));
+        }
+        // Score label (right of bar)
+        svg += (jsx_factory_h("text", { x: scoreX, y: baseY + barHeight / 2 + 4, className: "t t-value" }, `${score}%`));
+        // Skill items text (below bar, muted)
+        const skillText = group.items
+            .map((item) => truncate(item, 30))
+            .join(" \u00B7 ");
+        svg += (jsx_factory_h("text", { x: barX, y: baseY + barHeight + skillY, className: "t t-card-detail" }, svg_utils_escapeXml(skillText)));
+        height += barHeight + skillY + rowGap;
+    }
+    return { svg, height };
+}
+void Fragment;
+
 ;// CONCATENATED MODULE: ./src/parsers.ts
 
 const NodePackageParser = {
@@ -33676,30 +33873,7 @@ const getTopProjectsByStars = (repos) => repos
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
     const sections = [];
-    // 1. Languages
-    sections.push({
-        filename: "metrics-languages.svg",
-        title: "Languages",
-        subtitle: "By bytes of code across all public repos",
-        renderBody: (y) => renderDonutChart(languages, y),
-    });
-    // 2. Expertise
-    if (techHighlights.length > 0) {
-        sections.push({
-            filename: "metrics-expertise.svg",
-            title: "Expertise",
-            subtitle: "Curated from dependencies, topics, and languages via AI analysis",
-            renderBody: (y) => renderTechHighlights(techHighlights, y),
-        });
-    }
-    // 3. Signature Projects
-    sections.push({
-        filename: "metrics-complexity.svg",
-        title: "Signature Projects",
-        subtitle: "Top projects by stars",
-        renderBody: (y) => renderProjectCards(projects, y),
-    });
-    // 4. At a Glance
+    // 1. At a Glance
     sections.push({
         filename: "metrics-pulse.svg",
         title: "At a Glance",
@@ -33725,6 +33899,29 @@ const buildSections = ({ languages, techHighlights, projects, contributionData, 
             ];
             return renderStatCards(stats, y);
         },
+    });
+    // 2. Languages
+    sections.push({
+        filename: "metrics-languages.svg",
+        title: "Languages",
+        subtitle: "By bytes of code across all public repos",
+        renderBody: (y) => renderDonutChart(languages, y),
+    });
+    // 3. Expertise
+    if (techHighlights.length > 0) {
+        sections.push({
+            filename: "metrics-expertise.svg",
+            title: "Expertise",
+            subtitle: "Curated from dependencies, topics, and languages via AI analysis",
+            renderBody: (y) => renderTechHighlights(techHighlights, y),
+        });
+    }
+    // 4. Signature Projects
+    sections.push({
+        filename: "metrics-complexity.svg",
+        title: "Signature Projects",
+        subtitle: "Top projects by stars",
+        renderBody: (y) => renderProjectCards(projects, y),
     });
     // 5. Open Source Contributions
     if (contributionData.externalRepos.nodes.length > 0) {
@@ -33752,7 +33949,55 @@ const buildSections = ({ languages, techHighlights, projects, contributionData, 
     return sections;
 };
 
+;// CONCATENATED MODULE: ./src/readme.ts
+
+function generateReadme(options) {
+    const parts = [];
+    // Heading
+    if (options.pronunciation) {
+        parts.push(`# ${options.name} <sub><i>(${options.pronunciation})</i></sub>`);
+    }
+    else {
+        parts.push(`# ${options.name}`);
+    }
+    // Title blockquote
+    if (options.title) {
+        parts.push(`> ${options.title}`);
+    }
+    // Preamble
+    if (options.preambleContent) {
+        parts.push(options.preambleContent);
+    }
+    // SVG embeds
+    for (const svg of options.svgs) {
+        parts.push(`![${svg.label}](${svg.path})`);
+    }
+    // Bio footer
+    if (options.bio) {
+        parts.push(`---\n\n<sub>${options.bio}</sub>`);
+    }
+    // Attribution
+    parts.push(`<sub>Created using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>`);
+    return `${parts.join("\n\n")}\n`;
+}
+function loadPreamble(path) {
+    const filePath = path || "PREAMBLE.md";
+    try {
+        return (0,external_node_fs_namespaceObject.readFileSync)(filePath, "utf-8");
+    }
+    catch (err) {
+        if (err instanceof Error &&
+            "code" in err &&
+            err.code === "ENOENT") {
+            return undefined;
+        }
+        throw err;
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/index.ts
+
+
 
 
 
@@ -33765,11 +34010,17 @@ async function run() {
         const token = core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
         const username = core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
         const outputDir = core.getInput("output-dir") || "metrics";
-        const commitPush = (core.getInput("commit-push") || "true") === "true";
+        const commitPush = (core.getInput("commit-push") || (process.env.CI ? "true" : "false")) ===
+            "true";
         const commitMessage = core.getInput("commit-message") || "chore: update metrics";
         const commitName = core.getInput("commit-name") || "github-actions[bot]";
         const commitEmail = core.getInput("commit-email") ||
             "41898282+github-actions[bot]@users.noreply.github.com";
+        const configPath = core.getInput("config-file") || undefined;
+        const readmePath = core.getInput("readme-path") ||
+            (process.env.CI ? "README.md" : "_README.md");
+        const indexOnly = (core.getInput("index-only") || "true") === "true";
+        const userConfig = loadUserConfig(configPath);
         if (!token) {
             core.setFailed("github-token is required");
             return;
@@ -33783,21 +34034,26 @@ async function run() {
         const repos = await fetchAllRepoData(token, username);
         core.info(`Found ${repos.length} public repos`);
         core.info("Fetching dependency manifests...");
-        const manifests = await fetchManifestsForRepos(token, username, repos);
-        core.info(`Fetched manifests for ${manifests.size} repos`);
         core.info("Fetching contribution data...");
-        const contributionData = await fetchContributionData(token, username);
-        core.info(`Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
         core.info("Fetching READMEs...");
-        const readmeMap = await fetchReadmeForRepos(token, username, repos);
+        core.info("Fetching user profile...");
+        const [manifests, contributionData, readmeMap, userProfile] = await Promise.all([
+            fetchManifestsForRepos(token, username, repos),
+            fetchContributionData(token, username),
+            fetchReadmeForRepos(token, username, repos),
+            fetchUserProfile(token, username),
+        ]);
+        core.info(`Fetched manifests for ${manifests.size} repos`);
+        core.info(`Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
         core.info(`Fetched READMEs for ${readmeMap.size} repos`);
+        core.info(`User profile: ${userProfile.name || username}`);
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
         const projects = getTopProjectsByStars(repos);
         const allDeps = collectAllDependencies(repos, manifests);
         const allTopics = collectAllTopics(repos);
         core.info("Fetching expertise analysis from GitHub Models...");
-        const techHighlights = await fetchExpertiseAnalysis(token, languages, allDeps, allTopics, repos, readmeMap);
+        const techHighlights = await fetchExpertiseAnalysis(token, languages, allDeps, allTopics, repos, readmeMap, userConfig);
         core.info(`Expertise analysis: ${techHighlights.length} categories`);
         const sectionDefs = buildSections({
             languages,
@@ -33816,11 +34072,47 @@ async function run() {
         const combinedSvg = generateFullSvg(activeSections);
         (0,external_node_fs_namespaceObject.writeFileSync)(`${outputDir}/index.svg`, combinedSvg);
         core.info(`Wrote ${outputDir}/index.svg`);
+        // ── README ─────────────────────────────────────────────────────────────
+        if (readmePath && readmePath !== "none") {
+            let preambleContent = loadPreamble(userConfig.preamble);
+            if (!preambleContent) {
+                core.info("No PREAMBLE.md found, generating with AI...");
+                preambleContent = await fetchAIPreamble(token, {
+                    username,
+                    profile: userProfile,
+                    userConfig,
+                    languages,
+                    techHighlights,
+                    contributionData,
+                    projects,
+                });
+            }
+            const svgs = indexOnly
+                ? [{ label: "GitHub Metrics", path: `${outputDir}/index.svg` }]
+                : activeSections.map((s) => ({
+                    label: s.title,
+                    path: `${outputDir}/${s.filename}`,
+                }));
+            const readme = generateReadme({
+                name: userConfig.name || username,
+                pronunciation: userConfig.pronunciation,
+                title: userConfig.title,
+                preambleContent,
+                svgs,
+                bio: userConfig.bio,
+            });
+            (0,external_node_fs_namespaceObject.writeFileSync)(readmePath, readme);
+            core.info(`Wrote ${readmePath}`);
+        }
         // ── Commit + Push ─────────────────────────────────────────────────────
         if (commitPush) {
             await exec.exec("git", ["config", "user.name", commitName]);
             await exec.exec("git", ["config", "user.email", commitEmail]);
-            await exec.exec("git", ["add", `${outputDir}/`]);
+            const filesToAdd = [`${outputDir}/`];
+            if (readmePath && readmePath !== "none") {
+                filesToAdd.push(readmePath);
+            }
+            await exec.exec("git", ["add", ...filesToAdd]);
             const diffResult = await exec.exec("git", ["diff", "--staged", "--quiet"], { ignoreReturnCode: true });
             if (diffResult !== 0) {
                 await exec.exec("git", ["commit", "-m", commitMessage]);
