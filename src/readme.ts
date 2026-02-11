@@ -19,7 +19,9 @@ export function generateReadme(options: ReadmeOptions): string {
 
   // Heading
   if (options.pronunciation) {
-    parts.push(`# ${options.name} <sub><i>(${options.pronunciation})</i></sub>`);
+    parts.push(
+      `# ${options.name} <sub><i>(${options.pronunciation})</i></sub>`,
+    );
   } else {
     parts.push(`# ${options.name}`);
   }

@@ -34,7 +34,11 @@ export function loadUserConfig(configPath?: string): UserConfig {
     const raw = readFileSync(path, "utf-8");
     return parseUserConfig(raw);
   } catch (err: unknown) {
-    if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      (err as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
       return {};
     }
     const msg = err instanceof Error ? err.message : String(err);

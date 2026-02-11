@@ -222,10 +222,9 @@ export const fetchUserProfile = async (
       location: (user.location as string) || null,
       websiteUrl: (user.websiteUrl as string) || null,
       twitterUsername: (user.twitterUsername as string) || null,
-      socialAccounts: (
+      socialAccounts:
         (user.socialAccounts as { nodes: { provider: string; url: string }[] })
-          ?.nodes || []
-      ),
+          ?.nodes || [],
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -257,9 +256,19 @@ export const fetchAIPreamble = async (
   context: PreambleContext,
 ): Promise<string | undefined> => {
   try {
-    const { username, profile, userConfig, languages, techHighlights, contributionData, projects } = context;
+    const {
+      username,
+      profile,
+      userConfig,
+      languages,
+      techHighlights,
+      contributionData,
+      projects,
+    } = context;
 
-    const langLines = languages.map((l) => `- ${l.name}: ${l.percent}%`).join("\n");
+    const langLines = languages
+      .map((l) => `- ${l.name}: ${l.percent}%`)
+      .join("\n");
     const techLines = techHighlights
       .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
       .join("\n");
@@ -281,7 +290,9 @@ export const fetchAIPreamble = async (
     const socialLines = [
       `GitHub: https://github.com/${username}`,
       profile.websiteUrl ? `Website: ${profile.websiteUrl}` : null,
-      profile.twitterUsername ? `Twitter/X: https://x.com/${profile.twitterUsername}` : null,
+      profile.twitterUsername
+        ? `Twitter/X: https://x.com/${profile.twitterUsername}`
+        : null,
       ...profile.socialAccounts.map((s) => `${s.provider}: ${s.url}`),
     ]
       .filter(Boolean)

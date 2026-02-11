@@ -50,7 +50,9 @@ describe("parseUserConfig", () => {
 
   it("parses bio", () => {
     const raw = `bio = "Building tools for developers"`;
-    expect(parseUserConfig(raw)).toEqual({ bio: "Building tools for developers" });
+    expect(parseUserConfig(raw)).toEqual({
+      bio: "Building tools for developers",
+    });
   });
 
   it("parses preamble", () => {
