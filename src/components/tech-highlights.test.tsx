@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { renderTechHighlights } from "./tech-highlights.js";
+import { describe, expect, it } from "vitest";
 import type { TechHighlight } from "../types.js";
+import { renderTechHighlights } from "./tech-highlights.js";
 
 describe("renderTechHighlights", () => {
   it("renders sub-headers for each category", () => {

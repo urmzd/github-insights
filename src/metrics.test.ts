@@ -1,20 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { makeContributionData, makeRepo } from "./__fixtures__/repos.js";
 import {
   aggregateLanguages,
+  buildSections,
   collectAllDependencies,
   collectAllTopics,
-  computeComplexityScores,
-  aggregateDomains,
-  computeRecentlyActive,
-  markRecentlyActive,
-  buildSections,
+  getTopProjectsByStars,
 } from "./metrics.js";
-import {
-  makeRepo,
-  makeContributionsByRepo,
-  makeContributionData,
-} from "./__fixtures__/repos.js";
-import type { ManifestMap, DomainMap, TechHighlight } from "./types.js";
+import type { ManifestMap, TechHighlight } from "./types.js";
 
 // ── aggregateLanguages ──────────────────────────────────────────────────────
 
@@ -225,160 +218,48 @@ describe("collectAllTopics", () => {
   });
 });
 
-// ── computeComplexityScores ─────────────────────────────────────────────────
+// ── getTopProjectsByStars ───────────────────────────────────────────────────
 
-describe("computeComplexityScores", () => {
-  it("returns top 5", () => {
+describe("getTopProjectsByStars", () => {
+  it("returns top 5 sorted by stars", () => {
     const repos = Array.from({ length: 8 }, (_, i) =>
       makeRepo({
         name: `repo-${i}`,
-        diskUsage: 1000 * (i + 1),
-        languages: {
-          totalSize: 5000 * (i + 1),
-          edges: Array.from({ length: i + 1 }, (_, j) => ({
-            size: 1000,
-            node: { name: `Lang${j}`, color: "#000" },
-          })),
-        },
+        stargazerCount: (i + 1) * 10,
       }),
     );
-    expect(computeComplexityScores(repos)).toHaveLength(5);
+    const result = getTopProjectsByStars(repos);
+    expect(result).toHaveLength(5);
+    expect(result[0].name).toBe("repo-7");
+    expect(result[0].stars).toBe(80);
   });
 
-  it("applies correct formula", () => {
-    const repo = makeRepo({
-      name: "calc-test",
-      diskUsage: 1000,
-      languages: {
-        totalSize: 10000,
-        edges: [
-          { size: 5000, node: { name: "Go", color: "#00ADD8" } },
-          { size: 5000, node: { name: "Rust", color: "#dea584" } },
-        ],
-      },
-    });
-    const result = computeComplexityScores([repo]);
-    const langCount = 2;
-    const diskKB = 1000;
-    const codeBytes = 10000;
-    const depCount = 2;
-    const expected =
-      langCount * 15 +
-      Math.log10(diskKB) * 20 +
-      Math.log10(codeBytes) * 15 +
-      Math.min(depCount, 50);
-    expect(result[0].value).toBe(Math.round(expected));
-  });
-
-  it("handles 0 diskUsage (clamps to 1)", () => {
-    const repo = makeRepo({
-      name: "empty",
-      diskUsage: 0,
-      languages: { totalSize: 0, edges: [] },
-    });
-    const result = computeComplexityScores([repo]);
-    expect(result[0].value).toBeGreaterThanOrEqual(0);
-  });
-});
-
-// ── aggregateDomains ────────────────────────────────────────────────────────
-
-describe("aggregateDomains", () => {
-  it("counts occurrences and tracks repos per domain", () => {
-    const domainMap: DomainMap = new Map([
-      ["repo-a", ["web", "ml"]],
-      ["repo-b", ["web", "devops"]],
-    ]);
-    const result = aggregateDomains(domainMap);
-    const web = result.find((d) => d.name === "web")!;
-    expect(web.count).toBe(2);
-    expect(web.repos).toEqual(["repo-a", "repo-b"]);
-  });
-
-  it("sorts by count descending", () => {
-    const domainMap: DomainMap = new Map([
-      ["a", ["rare"]],
-      ["b", ["common"]],
-      ["c", ["common"]],
-      ["d", ["common"]],
-    ]);
-    const result = aggregateDomains(domainMap);
-    expect(result[0].name).toBe("common");
-    expect(result[0].count).toBe(3);
-  });
-
-  it("returns [] for empty map", () => {
-    expect(aggregateDomains(new Map())).toEqual([]);
-  });
-});
-
-// ── computeRecentlyActive ───────────────────────────────────────────────────
-
-describe("computeRecentlyActive", () => {
-  it("collects languages and topics from repos with contributions > 0", () => {
-    const contributions = [
-      makeContributionsByRepo({
-        repository: {
-          nameWithOwner: "user/active-repo",
-          stargazerCount: 5,
-          primaryLanguage: { name: "TypeScript" },
-          isPrivate: false,
-        },
-        contributions: { totalCount: 10 },
-      }),
-    ];
+  it("maps fields correctly", () => {
     const repos = [
       makeRepo({
-        name: "active-repo",
-        primaryLanguage: { name: "TypeScript", color: "#3178c6" },
-        repositoryTopics: { nodes: [{ topic: { name: "react" } }] },
-        languages: {
-          totalSize: 1000,
-          edges: [
-            { size: 1000, node: { name: "TypeScript", color: "#3178c6" } },
-          ],
-        },
+        name: "my-project",
+        url: "https://github.com/user/my-project",
+        description: "A cool project",
+        stargazerCount: 42,
       }),
     ];
-    const result = computeRecentlyActive(contributions, repos);
-    expect(result.has("typescript")).toBe(true);
-    expect(result.has("react")).toBe(true);
+    const result = getTopProjectsByStars(repos);
+    expect(result[0]).toEqual({
+      name: "my-project",
+      url: "https://github.com/user/my-project",
+      description: "A cool project",
+      stars: 42,
+    });
   });
 
-  it("ignores repos with 0 contributions", () => {
-    const contributions = [
-      makeContributionsByRepo({ contributions: { totalCount: 0 } }),
-    ];
-    const repos = [makeRepo()];
-    const result = computeRecentlyActive(contributions, repos);
-    expect(result.size).toBe(0);
-  });
-});
-
-// ── markRecentlyActive ──────────────────────────────────────────────────────
-
-describe("markRecentlyActive", () => {
-  it("sets trending=true for matching names (case-insensitive)", () => {
-    const items = [
-      { name: "TypeScript", value: 100, trending: false },
-      { name: "Go", value: 50, trending: false },
-    ];
-    const active = new Set(["typescript"]);
-    markRecentlyActive([items], active);
-    expect(items[0].trending).toBe(true);
-    expect(items[1].trending).toBe(false);
+  it("handles null description", () => {
+    const repos = [makeRepo({ description: null, stargazerCount: 5 })];
+    const result = getTopProjectsByStars(repos);
+    expect(result[0].description).toBe("");
   });
 
-  it("handles multiple lists", () => {
-    const list1: { name: string; value: number; trending?: boolean }[] = [
-      { name: "react", value: 3 },
-    ];
-    const list2: { name: string; value: number; trending?: boolean }[] = [
-      { name: "docker", value: 2 },
-    ];
-    markRecentlyActive([list1, list2], new Set(["react", "docker"]));
-    expect(list1[0].trending).toBe(true);
-    expect(list2[0].trending).toBe(true);
+  it("returns [] for empty repos", () => {
+    expect(getTopProjectsByStars([])).toEqual([]);
   });
 });
 
@@ -394,44 +275,32 @@ describe("buildSections", () => {
       { category: "Frontend", items: ["React", "TypeScript", "Next.js"] },
       { category: "Backend", items: ["Express", "PostgreSQL"] },
     ] as TechHighlight[],
-    complexity: [
+    projects: [
       {
         name: "big-project",
         url: "https://github.com/user/big-project",
         description: "A complex project",
-        value: 85,
+        stars: 85,
       },
     ],
-    domains: [{ name: "web", count: 3, repos: ["a", "b", "c"] }],
-    domainMap: new Map([["big-project", ["web"]]]) as DomainMap,
     contributionData: makeContributionData(),
   });
 
   it("returns correct filenames", () => {
     const sections = buildSections(baseSectionsInput());
     const filenames = sections.map((s) => s.filename);
-    expect(filenames).toContain("metrics-domains.svg");
     expect(filenames).toContain("metrics-languages.svg");
-    expect(filenames).toContain("metrics-tech-stack.svg");
+    expect(filenames).toContain("metrics-expertise.svg");
     expect(filenames).toContain("metrics-complexity.svg");
     expect(filenames).toContain("metrics-pulse.svg");
   });
 
-  it("domains section is conditional on non-empty", () => {
-    const input = baseSectionsInput();
-    input.domains = [];
-    const sections = buildSections(input);
-    expect(sections.map((s) => s.filename)).not.toContain(
-      "metrics-domains.svg",
-    );
-  });
-
-  it("tech stack section is conditional on non-empty techHighlights", () => {
+  it("expertise section is conditional on non-empty techHighlights", () => {
     const input = baseSectionsInput();
     input.techHighlights = [];
     const sections = buildSections(input);
     expect(sections.map((s) => s.filename)).not.toContain(
-      "metrics-tech-stack.svg",
+      "metrics-expertise.svg",
     );
   });
 
@@ -483,7 +352,7 @@ describe("buildSections", () => {
     const sections = buildSections(input);
     for (const section of sections) {
       if (section.renderBody) {
-        expect(() => section.renderBody!(0)).not.toThrow();
+        expect(() => section.renderBody?.(0)).not.toThrow();
       }
     }
   });

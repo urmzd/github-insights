@@ -1,8 +1,8 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { LAYOUT, BAR_COLORS } from "../theme.js";
+import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
-import { renderSubHeader, renderDivider } from "./section.js";
+import { BAR_COLORS, LAYOUT } from "../theme.js";
 import type { RenderResult, TechHighlight } from "../types.js";
+import { renderDivider, renderSubHeader } from "./section.js";
 
 export function renderTechHighlights(
   highlights: TechHighlight[],

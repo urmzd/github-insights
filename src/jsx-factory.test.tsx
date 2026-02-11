@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "./jsx-factory.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "./jsx-factory.js";
 
 describe("h – HTML tags", () => {
   it("renders self-closing tag (rect)", () => {

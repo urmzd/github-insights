@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { h, Fragment } from "../jsx-factory.js";
-import { renderBarChart } from "./bar-chart.js";
+import { describe, expect, it } from "vitest";
+import { Fragment, h } from "../jsx-factory.js";
 import type { BarItem } from "../types.js";
+import { renderBarChart } from "./bar-chart.js";
 
 void Fragment;
 

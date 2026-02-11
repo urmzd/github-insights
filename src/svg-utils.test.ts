@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { escapeXml, truncate, wrapText, FIRE_ICON } from "./svg-utils.js";
+import { describe, expect, it } from "vitest";
+import { escapeXml, truncate, wrapText } from "./svg-utils.js";
 
 describe("escapeXml", () => {
   it("escapes & < > \" '", () => {
@@ -62,16 +62,5 @@ describe("wrapText", () => {
 
   it("returns [] for empty string", () => {
     expect(wrapText("", 20)).toEqual([]);
-  });
-});
-
-describe("FIRE_ICON", () => {
-  it("contains correct translate coordinates", () => {
-    const icon = FIRE_ICON(100, 50);
-    expect(icon).toContain("translate(100, 50)");
-  });
-
-  it("contains an svg path", () => {
-    expect(FIRE_ICON(0, 0)).toContain("<path");
   });
 });

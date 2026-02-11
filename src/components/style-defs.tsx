@@ -1,5 +1,5 @@
-import { h, Fragment } from "../jsx-factory.js";
-import { THEME, FONT } from "../theme.js";
+import { Fragment, h } from "../jsx-factory.js";
+import { FONT, THEME } from "../theme.js";
 
 export function StyleDefs(): string {
   return (
