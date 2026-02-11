@@ -101,34 +101,7 @@ export const buildSections = ({
 }): SectionDef[] => {
   const sections: SectionDef[] = [];
 
-  // 1. Languages
-  sections.push({
-    filename: "metrics-languages.svg",
-    title: "Languages",
-    subtitle: "By bytes of code across all public repos",
-    renderBody: (y: number) => renderDonutChart(languages, y),
-  });
-
-  // 2. Expertise
-  if (techHighlights.length > 0) {
-    sections.push({
-      filename: "metrics-expertise.svg",
-      title: "Expertise",
-      subtitle:
-        "Curated from dependencies, topics, and languages via AI analysis",
-      renderBody: (y: number) => renderTechHighlights(techHighlights, y),
-    });
-  }
-
-  // 3. Signature Projects
-  sections.push({
-    filename: "metrics-complexity.svg",
-    title: "Signature Projects",
-    subtitle: "Top projects by stars",
-    renderBody: (y: number) => renderProjectCards(projects, y),
-  });
-
-  // 4. At a Glance
+  // 1. At a Glance
   sections.push({
     filename: "metrics-pulse.svg",
     title: "At a Glance",
@@ -158,6 +131,33 @@ export const buildSections = ({
       ];
       return renderStatCards(stats, y);
     },
+  });
+
+  // 2. Languages
+  sections.push({
+    filename: "metrics-languages.svg",
+    title: "Languages",
+    subtitle: "By bytes of code across all public repos",
+    renderBody: (y: number) => renderDonutChart(languages, y),
+  });
+
+  // 3. Expertise
+  if (techHighlights.length > 0) {
+    sections.push({
+      filename: "metrics-expertise.svg",
+      title: "Expertise",
+      subtitle:
+        "Curated from dependencies, topics, and languages via AI analysis",
+      renderBody: (y: number) => renderTechHighlights(techHighlights, y),
+    });
+  }
+
+  // 4. Signature Projects
+  sections.push({
+    filename: "metrics-complexity.svg",
+    title: "Signature Projects",
+    subtitle: "Top projects by stars",
+    renderBody: (y: number) => renderProjectCards(projects, y),
   });
 
   // 5. Open Source Contributions

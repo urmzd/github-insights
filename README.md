@@ -1,16 +1,26 @@
 # GitHub Metrics
 
-Generate SVG visualizations of your GitHub profile and embed them in your README.
+Generate beautiful SVG metrics visualizations for your GitHub profile README.
 
-![languages](metrics/metrics-languages.svg)
+![Example output](metrics/index.svg)
+
+## Features
+
+- **Language breakdown** — donut chart of languages by bytes across all public repos
+- **AI expertise analysis** — categorized skill bars with proficiency scores, powered by GitHub Models
+- **AI preamble generation** — auto-generated profile introduction (or supply your own `PREAMBLE.md`)
+- **Social badges** — auto-detected from your GitHub profile (website, Twitter, LinkedIn, etc.)
+- **Contribution pulse** — commits, PRs, reviews, and active repos at a glance
+- **Signature projects** — top repos by stars with descriptions
+- **Open source contributions** — external repos you've contributed to
+- **Configuration** — customize name, title, bio, and more via `.github-metrics.toml`
 
 ## Quick Start
 
-Add this workflow to `.github/workflows/metrics.yml`:
+Create `.github/workflows/metrics.yml` in your profile repository (`<username>/<username>`):
 
 ```yaml
 name: Metrics
-
 on:
   schedule:
     - cron: "0 0 * * *" # daily
@@ -25,67 +35,98 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: urmzd/github-metrics@v0
+      - uses: urmzd/github-metrics@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Push the workflow and trigger it manually, or wait for the next scheduled run. The action commits the generated SVGs to your repository.
+The action commits updated SVGs and a generated `README.md` to your repo automatically.
 
 ## Inputs
 
 | Input | Description | Default |
-|---|---|---|
-| `github-token` | GitHub token (needs repo read + `models:read` for AI domain analysis) | `${{ github.token }}` |
+|-------|-------------|---------|
+| `github-token` | GitHub token (needs `repo` read + `models:read` for AI) | `${{ github.token }}` |
 | `username` | GitHub username to generate metrics for | `${{ github.repository_owner }}` |
 | `output-dir` | Directory to write SVG files to | `metrics` |
-| `commit-push` | Whether to commit and push generated files | `true` |
+| `commit-push` | Whether to commit and push generated files | `true` (CI) / `false` (local) |
 | `commit-message` | Commit message for generated files | `chore: update metrics` |
 | `commit-name` | Git user name for commits | `github-actions[bot]` |
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
+| `config-file` | Path to TOML config file | `.github-metrics.toml` |
+| `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `_README.md` (local) |
+| `index-only` | Embed only the combined `index.svg`; when `false`, embeds each section SVG individually | `true` |
 
-## Token Permissions
+## Configuration
 
-The action requires these permissions on the workflow:
+Create `.github-metrics.toml` in your repo root:
 
-- **`contents: write`** — to commit and push generated SVGs
-- **`models: read`** — used by the AI-powered domain analysis (extracts work domains from project READMEs)
+```toml
+name = "Your Name"
+pronunciation = "your-name"
+title = "Software Engineer"
+desired_title = "Senior Software Engineer"
+bio = "Building things on the internet."
+preamble = "PREAMBLE.md"  # path to custom preamble (optional)
+```
 
-Both are set via the `permissions` key in your workflow file (see Quick Start above).
+All fields are optional. The `UserConfig` type in `src/types.ts` defines the full schema.
 
-## Generated Files
+## AI Features
 
-The action produces the following SVGs in your output directory:
+### Expertise Analysis
+
+The action uses GitHub Models to analyze your languages, dependencies, topics, and repo READMEs, then produces categorized skill bars with proficiency scores. Requires the `models:read` permission on your token.
+
+### Preamble Generation
+
+If no `PREAMBLE.md` file is found (or configured via `preamble` in config), the action generates a profile introduction using AI. To use your own text, create a `PREAMBLE.md` in the repo root.
+
+### Token Permissions
+
+For AI features, your workflow needs:
+
+```yaml
+permissions:
+  contents: write  # to commit generated files
+  models: read     # for AI expertise analysis and preamble generation
+```
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 22+
+- [just](https://github.com/casey/just) command runner
+- `gh` CLI (authenticated) for local generation
+
+### Commands
+
+```sh
+just ci          # full CI check (fmt, lint, typecheck, test, build)
+just generate    # generate metrics locally (uses gh auth token)
+just build       # build ncc bundle
+just test        # run tests
+just typecheck   # type-check
+just lint        # lint
+just fmt         # format check
+just fmt-fix     # format fix
+```
+
+> **Note:** When running locally (outside CI), `commit-push` defaults to `false` and `readme-path` defaults to `_README.md`, so `just generate` will not overwrite your project README or push commits.
+
+## Output Files
 
 | File | Description |
-|---|---|
-| `index.svg` | Combined dashboard with all sections |
-| `metrics-domains.svg` | Work domains extracted from READMEs via AI |
-| `metrics-languages.svg` | Top languages by bytes of code |
-| `metrics-tech-stack.svg` | Frameworks, databases, and infrastructure |
-| `metrics-complexity.svg` | Signature projects ranked by complexity score |
-| `metrics-pulse.svg` | Contribution stats at a glance |
-| `metrics-contributions.svg` | Open source contributions to external repos |
+|------|-------------|
+| `metrics/index.svg` | Combined visualization with all sections |
+| `metrics/metrics-pulse.svg` | Contribution activity stats |
+| `metrics/metrics-languages.svg` | Language breakdown donut chart |
+| `metrics/metrics-expertise.svg` | AI-generated expertise bars |
+| `metrics/metrics-complexity.svg` | Top projects by stars |
+| `metrics/metrics-contributions.svg` | External open source contributions |
+| `README.md` | Generated profile README (CI); `_README.md` locally |
 
-## Embedding in Your Profile README
+---
 
-Reference the generated SVGs with markdown image syntax:
-
-```markdown
-![GitHub Metrics](https://github.com/<username>/<username>/raw/main/metrics/index.svg)
-```
-
-Or embed individual sections:
-
-```markdown
-![Languages](https://github.com/<username>/<username>/raw/main/metrics/metrics-languages.svg)
-![Tech Stack](https://github.com/<username>/<username>/raw/main/metrics/metrics-tech-stack.svg)
-```
-
-## Full Example
-
-![metrics](metrics/index.svg)
-
-## License
-
-[Apache 2.0](LICENSE)
+<sub>Created using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>

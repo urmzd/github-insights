@@ -75,6 +75,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           commit-push: "false"
+          readme-path: "_README.md"
 
       - name: Verify SVGs generated
         run: |
