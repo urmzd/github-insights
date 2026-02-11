@@ -10,10 +10,9 @@ import {
   fetchReadmeForRepos,
   fetchUserProfile,
 } from "./api.js";
-import { loadUserConfig } from "./config.js";
-import { generateReadme, loadPreamble } from "./readme.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
+import { loadUserConfig } from "./config.js";
 import {
   aggregateLanguages,
   buildSections,
@@ -21,6 +20,7 @@ import {
   collectAllTopics,
   getTopProjectsByStars,
 } from "./metrics.js";
+import { generateReadme, loadPreamble } from "./readme.js";
 
 async function run(): Promise<void> {
   try {
@@ -30,8 +30,8 @@ async function run(): Promise<void> {
       core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
     const outputDir = core.getInput("output-dir") || "metrics";
     const commitPush =
-      (core.getInput("commit-push") ||
-        (process.env.CI ? "true" : "false")) === "true";
+      (core.getInput("commit-push") || (process.env.CI ? "true" : "false")) ===
+      "true";
     const commitMessage =
       core.getInput("commit-message") || "chore: update metrics";
     const commitName = core.getInput("commit-name") || "github-actions[bot]";
@@ -42,8 +42,7 @@ async function run(): Promise<void> {
     const readmePath =
       core.getInput("readme-path") ||
       (process.env.CI ? "README.md" : "_README.md");
-    const indexOnly =
-      (core.getInput("index-only") || "true") === "true";
+    const indexOnly = (core.getInput("index-only") || "true") === "true";
     const userConfig = loadUserConfig(configPath);
 
     if (!token) {
