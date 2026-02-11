@@ -120,4 +120,5 @@ export interface PackageParser {
 export interface TechHighlight {
   category: string;
   items: string[];
+  score: number; // 0-100 proficiency level
 }

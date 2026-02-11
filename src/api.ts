@@ -236,7 +236,10 @@ From this data, produce a curated expertise profile:
 - Include 3-6 of the most relevant technologies/tools per category
 - Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
 - Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
-- Only include categories where there's meaningful evidence of usage`;
+- Only include categories where there's meaningful evidence of usage
+- Assign each category a proficiency score from 0 to 100 based on evidence strength:
+  language code volume, dependency count, topic mentions, and README depth.
+  Use the full range (e.g. 80-95 for primary stack, 50-70 for secondary, 30-50 for minor).`;
 
     const res = await fetch(
       "https://models.github.ai/inference/chat/completions",
@@ -265,8 +268,9 @@ From this data, produce a curated expertise profile:
                       properties: {
                         category: { type: "string" },
                         items: { type: "array", items: { type: "string" } },
+                        score: { type: "number" },
                       },
-                      required: ["category", "items"],
+                      required: ["category", "items", "score"],
                       additionalProperties: false,
                     },
                   },
@@ -290,9 +294,10 @@ From this data, produce a curated expertise profile:
     };
     const content = json.choices?.[0]?.message?.content || "{}";
     const parsed = JSON.parse(content) as { highlights?: TechHighlight[] };
-    return (parsed.highlights || []).filter(
-      (h) => h.category && Array.isArray(h.items) && h.items.length > 0,
-    );
+    return (parsed.highlights || [])
+      .filter((h) => h.category && Array.isArray(h.items) && h.items.length > 0)
+      .map((h) => ({ ...h, score: Math.max(0, Math.min(100, h.score || 0)) }))
+      .sort((a, b) => b.score - a.score);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
