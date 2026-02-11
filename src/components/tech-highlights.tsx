@@ -1,5 +1,5 @@
 import { Fragment, h } from "../jsx-factory.js";
-import { escapeXml, truncate } from "../svg-utils.js";
+import { escapeXml, truncate, wrapText } from "../svg-utils.js";
 import { BAR_COLORS, LAYOUT } from "../theme.js";
 import type { RenderResult, TechHighlight } from "../types.js";
 
@@ -10,6 +10,9 @@ export function renderTechHighlights(
   if (highlights.length === 0) return { svg: "", height: 0 };
 
   const { padX, barHeight, barMaxWidth } = LAYOUT;
+  const labelMaxChars = 24;
+  const skillMaxChars = 90;
+  const skillLineHeight = 16;
   const barX = padX + 180;
   const scoreX = barX + barMaxWidth + 10;
   const skillY = 16;
@@ -26,10 +29,10 @@ export function renderTechHighlights(
 
     const baseY = y + height;
 
-    // Category label (uppercase, left-aligned)
+    // Category label (uppercase, left-aligned, truncated to fit before bar)
     svg += (
       <text x={padX} y={baseY + barHeight / 2 + 4} className="t t-subhdr">
-        {escapeXml(group.category.toUpperCase())}
+        {escapeXml(truncate(group.category.toUpperCase(), labelMaxChars))}
       </text>
     );
 
@@ -68,18 +71,25 @@ export function renderTechHighlights(
       </text>
     );
 
-    // Skill items text (below bar, muted)
+    // Skill items text (below bar, muted, wrapped to avoid overflow)
     const skillText = group.items
       .map((item) => truncate(item, 30))
       .join(" \u00B7 ");
 
-    svg += (
-      <text x={barX} y={baseY + barHeight + skillY} className="t t-card-detail">
-        {escapeXml(skillText)}
-      </text>
-    );
+    const skillLines = wrapText(skillText, skillMaxChars);
+    for (let li = 0; li < skillLines.length; li++) {
+      svg += (
+        <text
+          x={barX}
+          y={baseY + barHeight + skillY + li * skillLineHeight}
+          className="t t-card-detail"
+        >
+          {escapeXml(skillLines[li])}
+        </text>
+      );
+    }
 
-    height += barHeight + skillY + rowGap;
+    height += barHeight + skillY + (skillLines.length - 1) * skillLineHeight + rowGap;
   }
 
   return { svg, height };
