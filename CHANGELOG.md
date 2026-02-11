@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 (2026-02-11)
+
+### Features
+
+- remove GitHub badge from preamble and add generation date to attribution ([2cfd311](https://github.com/urmzd/github-metrics/commit/2cfd3111e1c876f28c0c51e69e0fa4f8e1ef2b33))
+
+### Bug Fixes
+
+- resolve biome format and lint errors in CI pipeline ([4eee052](https://github.com/urmzd/github-metrics/commit/4eee052eac7f761f3858284c5eb5c08cb7fd1e68))
+- prevent text-bar overlap in expertise SVG ([22d3c45](https://github.com/urmzd/github-metrics/commit/22d3c45980934927a914509800d4b016c5b6b119))
+
+### Miscellaneous
+
+- add preamble regression tests for generateReadme ([894a653](https://github.com/urmzd/github-metrics/commit/894a653e0580e56d508de5d0380f1e30a371a2e7))
+- update semantic-release action to v1 ([b2331d7](https://github.com/urmzd/github-metrics/commit/b2331d77511012e9aa44cedeb57c9903560582e2))
+- gitignore _README.md temp artifact ([aa9fa57](https://github.com/urmzd/github-metrics/commit/aa9fa577b840a811e94a3bc5c2cac981e00fbbaf))
+
+
 ## 0.3.1 (2026-02-11)
 
 ### Bug Fixes
