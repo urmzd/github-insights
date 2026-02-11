@@ -25,7 +25,9 @@ async function run(): Promise<void> {
     const username =
       core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
     const outputDir = core.getInput("output-dir") || "metrics";
-    const commitPush = (core.getInput("commit-push") || "true") === "true";
+    const commitPush =
+      (core.getInput("commit-push") ||
+        (process.env.CI ? "true" : "false")) === "true";
     const commitMessage =
       core.getInput("commit-message") || "chore: update metrics";
     const commitName = core.getInput("commit-name") || "github-actions[bot]";
