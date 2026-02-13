@@ -327,7 +327,8 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
   [![Badge](https://img.shields.io/badge/LABEL-COLOR?style=flat&logo=LOGO&logoColor=white)](URL)
   Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
 - Keep tone professional but friendly, no self-aggrandizing
-- Do NOT include a heading — the README already has one`;
+- Do NOT include a heading — the README already has one
+- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only`;
 
     const res = await fetch(
       "https://models.github.ai/inference/chat/completions",
@@ -368,7 +369,10 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
     };
     const content = json.choices?.[0]?.message?.content || "{}";
     const parsed = JSON.parse(content) as { preamble?: string };
-    return parsed.preamble || undefined;
+    const raw = parsed.preamble || undefined;
+    if (!raw) return undefined;
+    // Strip wrapping code fences (```markdown ... ``` or ``` ... ```)
+    return raw.replace(/^```(?:markdown|md)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
