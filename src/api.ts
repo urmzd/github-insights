@@ -372,7 +372,10 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
     const raw = parsed.preamble || undefined;
     if (!raw) return undefined;
     // Strip wrapping code fences (```markdown ... ``` or ``` ... ```)
-    return raw.replace(/^```(?:markdown|md)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+    return raw
+      .replace(/^```(?:markdown|md)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "")
+      .trim();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
