@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1 (2026-02-14)
+
+### Bug Fixes
+
+- format chained method calls to satisfy biome formatter ([55cbf8f](https://github.com/urmzd/github-metrics/commit/55cbf8f6c13ab30b3c5bb0b0e636a0c232d8adad))
+- strip markdown code fences from AI-generated preamble ([35d879e](https://github.com/urmzd/github-metrics/commit/35d879edbd11bf7e6a999efbca927d4c529f4881))
+
+### Documentation
+
+- sync README and CONTRIBUTING with recent code changes ([c696f13](https://github.com/urmzd/github-metrics/commit/c696f130159795f1be5510173763f7b4be56de7b))
+- update badge examples in preamble generation prompt ([5548154](https://github.com/urmzd/github-metrics/commit/5548154b8b825ba2e7f10912d1393aa22fa936bf))
+
+### Miscellaneous
+
+- remove dist/ from version control ([f8ed3b3](https://github.com/urmzd/github-metrics/commit/f8ed3b3bf120603b768d00b345e4888482546df9))
+
+
 ## 0.4.0 (2026-02-11)
 
 ### Features
