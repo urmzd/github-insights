@@ -328,7 +328,8 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
   Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
 - Keep tone professional but friendly, no self-aggrandizing
 - Do NOT include a heading — the README already has one
-- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only`;
+- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
+- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the bio paragraph`;
 
     const res = await fetch(
       "https://models.github.ai/inference/chat/completions",
@@ -340,7 +341,17 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
         },
         body: JSON.stringify({
           model: "gpt-4o",
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a markdown content generator. Output ONLY the requested markdown content. " +
+                "Never include conversational text, confirmations, or commentary like " +
+                '"Certainly", "Here\'s", "Sure", "Of course", etc. ' +
+                "Start directly with the substantive content.",
+            },
+            { role: "user", content: prompt },
+          ],
           temperature: 0.3,
           response_format: {
             type: "json_schema",
@@ -371,11 +382,27 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
     const parsed = JSON.parse(content) as { preamble?: string };
     const raw = parsed.preamble || undefined;
     if (!raw) return undefined;
-    // Strip wrapping code fences (```markdown ... ``` or ``` ... ```)
-    return raw
+
+    const cleaned = raw
+      // Strip conversational preface (safety net)
+      .replace(
+        /^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[^]*?(?::\s*\n|\.\s*\n)/i,
+        "",
+      )
+      // Strip wrapping code fences
       .replace(/^```(?:markdown|md)?\s*\n?/, "")
       .replace(/\n?```\s*$/, "")
       .trim();
+
+    // Reject degenerate output (conversational filler with no real content)
+    if (cleaned.length < 50) {
+      console.warn(
+        `AI preamble too short after cleaning (${cleaned.length} chars), discarding`,
+      );
+      return undefined;
+    }
+
+    return cleaned;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
