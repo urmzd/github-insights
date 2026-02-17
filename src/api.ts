@@ -340,7 +340,7 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4.1",
           messages: [
             {
               role: "system",
@@ -386,7 +386,7 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
     const cleaned = raw
       // Strip conversational preface (safety net)
       .replace(
-        /^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[^]*?(?::\s*\n|\.\s*\n)/i,
+        /^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i,
         "",
       )
       // Strip wrapping code fences
@@ -478,7 +478,7 @@ From this data, produce a curated expertise profile:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4.1",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.1,
           response_format: {
