@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 (2026-02-17)
+
+### Bug Fixes
+
+- use gpt-4.1 model and fix lint warning in regex ([f369763](https://github.com/urmzd/github-metrics/commit/f369763f103ab0c55175cdcce8dfefe2e6ec5ce8))
+- prevent conversational filler in AI-generated preamble ([d3c6e55](https://github.com/urmzd/github-metrics/commit/d3c6e5572cb088ae56c5b33f750dc972f52f4504))
+
+
 ## 0.4.1 (2026-02-14)
 
 ### Bug Fixes
