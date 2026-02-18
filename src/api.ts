@@ -331,7 +331,7 @@ Expertise areas:
 ${techLines}
 
 Generate 1-2 sentences that:
-- Describe who the developer is and what they primarily work on
+- Write in first person (use I/my). Describe what you work on
 - Reference their top 2-3 languages or technologies naturally
 - Keep tone professional but friendly
 - Do NOT include social links, badges, or contact info
@@ -362,13 +362,11 @@ Social/contact links available:
 ${socialLines}
 
 Generate a markdown preamble (2-4 short paragraphs max) that:
-- Opens with a brief personal intro drawn from the profile bio/title
+- Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
 - Highlights the developer's primary domains and strengths (from expertise areas + languages)
 - Mentions notable projects if applicable
-- Ends with a social/contact links section using shields.io badge-style markdown images. Use this format for each badge:
-  [![Badge](https://img.shields.io/badge/LABEL-COLOR?style=flat&logo=LOGO&logoColor=white)](URL)
-  Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
 - Keep tone professional but friendly, no self-aggrandizing
+- Do NOT include social links, badges, or contact info — those are handled separately
 - Do NOT include a heading — the README already has one
 - Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
 - Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the bio paragraph`;
