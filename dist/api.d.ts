@@ -16,7 +16,7 @@ export interface PreambleContext {
     contributionData: ContributionData;
     projects: ProjectItem[];
 }
-export declare const fetchAIPreamble: (token: string, context: PreambleContext) => Promise<string | undefined>;
+export declare const fetchAIPreamble: (token: string, context: PreambleContext, variant?: "full" | "short") => Promise<string | undefined>;
 export declare const fetchExpertiseAnalysis: (token: string, languages: {
     name: string;
     percent: string;

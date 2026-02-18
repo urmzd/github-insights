@@ -34,6 +34,12 @@ inputs:
   index-only:
     description: "Embed only the combined index.svg; when false, embeds each section SVG individually"
     default: "true"
+  template:
+    description: "README template to use: classic, modern, or minimal"
+    default: "classic"
+  sections:
+    description: "Comma-separated list of sections to generate (e.g. pulse,languages,expertise,projects,contributions,calendar). Empty = all."
+    default: ""
 runs:
   using: "node24"
   main: "dist/index.js"

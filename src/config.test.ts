@@ -65,6 +65,40 @@ describe("parseUserConfig", () => {
     expect(parseUserConfig(raw)).toEqual({});
   });
 
+  it("parses template field", () => {
+    const raw = `template = "modern"`;
+    expect(parseUserConfig(raw)).toEqual({ template: "modern" });
+  });
+
+  it("normalizes template to lowercase", () => {
+    const raw = `template = "Modern"`;
+    expect(parseUserConfig(raw)).toEqual({ template: "modern" });
+  });
+
+  it("ignores unknown template values", () => {
+    const raw = `template = "fancy"`;
+    expect(parseUserConfig(raw)).toEqual({});
+  });
+
+  it("parses sections array", () => {
+    const raw = `sections = ["pulse", "languages"]`;
+    expect(parseUserConfig(raw)).toEqual({
+      sections: ["pulse", "languages"],
+    });
+  });
+
+  it("filters out non-string sections entries", () => {
+    const raw = `sections = ["pulse", 42, "languages"]`;
+    expect(parseUserConfig(raw)).toEqual({
+      sections: ["pulse", "languages"],
+    });
+  });
+
+  it("ignores empty sections array", () => {
+    const raw = `sections = []`;
+    expect(parseUserConfig(raw)).toEqual({});
+  });
+
   it("parses all fields together", () => {
     const raw = [
       `name = "Urmzd Maharramoff"`,

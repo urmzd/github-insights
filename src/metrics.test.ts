@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { makeContributionData, makeRepo } from "./__fixtures__/repos.js";
+import {
+  makeContributionCalendar,
+  makeContributionData,
+  makeRepo,
+} from "./__fixtures__/repos.js";
 import {
   aggregateLanguages,
   buildSections,
   collectAllDependencies,
   collectAllTopics,
   getTopProjectsByStars,
+  SECTION_KEYS,
+  splitProjectsByRecency,
 } from "./metrics.js";
 import type { ManifestMap, TechHighlight } from "./types.js";
 
@@ -263,6 +269,90 @@ describe("getTopProjectsByStars", () => {
   });
 });
 
+// ── splitProjectsByRecency ──────────────────────────────────────────────────
+
+describe("splitProjectsByRecency", () => {
+  it("splits repos into active and legacy", () => {
+    const now = new Date();
+    const recent = new Date(now);
+    recent.setDate(recent.getDate() - 5);
+    const old = new Date(now);
+    old.setDate(old.getDate() - 60);
+
+    const repos = [
+      makeRepo({
+        name: "active-repo",
+        stargazerCount: 20,
+        pushedAt: recent.toISOString(),
+      }),
+      makeRepo({
+        name: "legacy-repo",
+        stargazerCount: 15,
+        pushedAt: old.toISOString(),
+      }),
+    ];
+    const { active, legacy } = splitProjectsByRecency(repos);
+    expect(active.map((p) => p.name)).toContain("active-repo");
+    expect(legacy.map((p) => p.name)).toContain("legacy-repo");
+  });
+
+  it("sorts each group by stars descending", () => {
+    const now = new Date();
+    const recent = new Date(now);
+    recent.setDate(recent.getDate() - 5);
+
+    const repos = [
+      makeRepo({
+        name: "low-stars",
+        stargazerCount: 5,
+        pushedAt: recent.toISOString(),
+      }),
+      makeRepo({
+        name: "high-stars",
+        stargazerCount: 50,
+        pushedAt: recent.toISOString(),
+      }),
+    ];
+    const { active } = splitProjectsByRecency(repos);
+    expect(active[0].name).toBe("high-stars");
+  });
+
+  it("limits each group to 5 items", () => {
+    const now = new Date();
+    const recent = new Date(now);
+    recent.setDate(recent.getDate() - 5);
+
+    const repos = Array.from({ length: 8 }, (_, i) =>
+      makeRepo({
+        name: `repo-${i}`,
+        stargazerCount: i,
+        pushedAt: recent.toISOString(),
+      }),
+    );
+    const { active } = splitProjectsByRecency(repos);
+    expect(active.length).toBeLessThanOrEqual(5);
+  });
+
+  it("returns empty arrays for no repos", () => {
+    const { active, legacy } = splitProjectsByRecency([]);
+    expect(active).toEqual([]);
+    expect(legacy).toEqual([]);
+  });
+});
+
+// ── SECTION_KEYS ───────────────────────────────────────────────────────────
+
+describe("SECTION_KEYS", () => {
+  it("maps all known section names to filenames", () => {
+    expect(SECTION_KEYS.pulse).toBe("metrics-pulse.svg");
+    expect(SECTION_KEYS.languages).toBe("metrics-languages.svg");
+    expect(SECTION_KEYS.expertise).toBe("metrics-expertise.svg");
+    expect(SECTION_KEYS.projects).toBe("metrics-complexity.svg");
+    expect(SECTION_KEYS.contributions).toBe("metrics-contributions.svg");
+    expect(SECTION_KEYS.calendar).toBe("metrics-calendar.svg");
+  });
+});
+
 // ── buildSections ───────────────────────────────────────────────────────────
 
 describe("buildSections", () => {
@@ -334,6 +424,22 @@ describe("buildSections", () => {
     const sections = buildSections(baseSectionsInput());
     expect(sections.map((s) => s.filename)).not.toContain(
       "metrics-contributions.svg",
+    );
+  });
+
+  it("calendar section included when contributionCalendar exists", () => {
+    const input = baseSectionsInput();
+    input.contributionData = makeContributionData({
+      contributionCalendar: makeContributionCalendar(),
+    });
+    const sections = buildSections(input);
+    expect(sections.map((s) => s.filename)).toContain("metrics-calendar.svg");
+  });
+
+  it("calendar section omitted when no contributionCalendar", () => {
+    const sections = buildSections(baseSectionsInput());
+    expect(sections.map((s) => s.filename)).not.toContain(
+      "metrics-calendar.svg",
     );
   });
 

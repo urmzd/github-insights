@@ -1,3 +1,4 @@
+import { renderContributionCalendar } from "./components/contribution-calendar.js";
 import { renderContributionCards } from "./components/contribution-cards.js";
 import { renderDonutChart } from "./components/donut-chart.js";
 import { renderProjectCards } from "./components/project-cards.js";
@@ -17,6 +18,17 @@ import type {
 // ── Category Sets ───────────────────────────────────────────────────────────
 
 const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
+
+// ── Section keys ────────────────────────────────────────────────────────────
+
+export const SECTION_KEYS: Record<string, string> = {
+  pulse: "metrics-pulse.svg",
+  languages: "metrics-languages.svg",
+  expertise: "metrics-expertise.svg",
+  projects: "metrics-complexity.svg",
+  contributions: "metrics-contributions.svg",
+  calendar: "metrics-calendar.svg",
+};
 
 // ── Aggregation ─────────────────────────────────────────────────────────────
 
@@ -85,6 +97,38 @@ export const getTopProjectsByStars = (repos: RepoNode[]): ProjectItem[] =>
       description: repo.description || "",
       stars: repo.stargazerCount,
     }));
+
+// ── Project recency split ───────────────────────────────────────────────────
+
+export const splitProjectsByRecency = (
+  repos: RepoNode[],
+  thresholdDays = 30,
+): { active: ProjectItem[]; legacy: ProjectItem[] } => {
+  const cutoff = Date.now() - thresholdDays * 24 * 60 * 60 * 1000;
+  const active: RepoNode[] = [];
+  const legacy: RepoNode[] = [];
+
+  for (const repo of repos) {
+    if (new Date(repo.pushedAt).getTime() >= cutoff) {
+      active.push(repo);
+    } else {
+      legacy.push(repo);
+    }
+  }
+
+  const toItems = (list: RepoNode[]): ProjectItem[] =>
+    list
+      .sort((a, b) => b.stargazerCount - a.stargazerCount)
+      .slice(0, 5)
+      .map((r) => ({
+        name: r.name,
+        url: r.url,
+        description: r.description || "",
+        stars: r.stargazerCount,
+      }));
+
+  return { active: toItems(active), legacy: toItems(legacy) };
+};
 
 // ── Section definitions ─────────────────────────────────────────────────────
 
@@ -160,7 +204,18 @@ export const buildSections = ({
     renderBody: (y: number) => renderProjectCards(projects, y),
   });
 
-  // 5. Open Source Contributions
+  // 5. Contribution Calendar
+  if (contributionData.contributionCalendar) {
+    const calendarData = contributionData.contributionCalendar;
+    sections.push({
+      filename: "metrics-calendar.svg",
+      title: "Contribution Calendar",
+      subtitle: `${calendarData.totalContributions.toLocaleString()} contributions in the last year`,
+      renderBody: (y: number) => renderContributionCalendar(calendarData, y),
+    });
+  }
+
+  // 6. Open Source Contributions
   if (contributionData.externalRepos.nodes.length > 0) {
     sections.push({
       filename: "metrics-contributions.svg",

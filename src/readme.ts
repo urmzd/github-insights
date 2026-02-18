@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
+import type { SvgEmbed } from "./types.js";
 
-export interface SvgEmbed {
-  label: string;
-  path: string;
-}
+export type { SvgEmbed };
 
 export interface ReadmeOptions {
   name: string;

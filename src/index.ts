@@ -20,8 +20,16 @@ import {
   collectAllDependencies,
   collectAllTopics,
   getTopProjectsByStars,
+  SECTION_KEYS,
+  splitProjectsByRecency,
 } from "./metrics.js";
-import { generateReadme, loadPreamble } from "./readme.js";
+import { loadPreamble } from "./readme.js";
+import {
+  buildSocialBadges,
+  extractFirstName,
+  getTemplate,
+} from "./templates.js";
+import type { TemplateName } from "./types.js";
 
 async function run(): Promise<void> {
   try {
@@ -45,6 +53,20 @@ async function run(): Promise<void> {
       (process.env.CI ? "README.md" : "_README.md");
     const indexOnly = (core.getInput("index-only") || "true") === "true";
     const userConfig = loadUserConfig(configPath);
+
+    // Template and sections from action inputs or config
+    const templateName: TemplateName =
+      (core.getInput("template") as TemplateName) ||
+      userConfig.template ||
+      "classic";
+    const sectionsInput = core.getInput("sections") || "";
+    const requestedSections =
+      sectionsInput.length > 0
+        ? sectionsInput
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean)
+        : userConfig.sections || [];
 
     if (!token) {
       core.setFailed("github-token is required");
@@ -81,6 +103,8 @@ async function run(): Promise<void> {
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
     const projects = getTopProjectsByStars(repos);
+    const { active: activeProjects, legacy: legacyProjects } =
+      splitProjectsByRecency(repos);
 
     const allDeps = collectAllDependencies(repos, manifests);
     const allTopics = collectAllTopics(repos);
@@ -104,9 +128,18 @@ async function run(): Promise<void> {
       contributionData,
     });
 
-    const activeSections = sectionDefs.filter(
+    // Filter sections by requested keys if specified
+    let activeSections = sectionDefs.filter(
       (s) => s.renderBody || (s.items && s.items.length > 0),
     );
+    if (requestedSections.length > 0) {
+      const allowedFilenames = new Set(
+        requestedSections.map((key) => SECTION_KEYS[key]).filter(Boolean),
+      );
+      activeSections = activeSections.filter((s) =>
+        allowedFilenames.has(s.filename),
+      );
+    }
 
     // ── Render + Write ────────────────────────────────────────────────────
     mkdirSync(outputDir, { recursive: true });
@@ -131,36 +164,154 @@ async function run(): Promise<void> {
 
     // ── README ─────────────────────────────────────────────────────────────
     if (readmePath && readmePath !== "none") {
-      let preambleContent = loadPreamble(userConfig.preamble);
-      if (!preambleContent) {
-        core.info("No PREAMBLE.md found, generating with AI...");
-        preambleContent = await fetchAIPreamble(token, {
-          username,
-          profile: userProfile,
-          userConfig,
-          languages,
-          techHighlights,
-          contributionData,
-          projects,
-        });
-      }
       const svgDir = relative(dirname(readmePath), outputDir) || ".";
+
+      let preambleContent = loadPreamble(userConfig.preamble);
+      let shortPreambleContent: string | undefined;
+
+      const preambleContext = {
+        username,
+        profile: userProfile,
+        userConfig,
+        languages,
+        techHighlights,
+        contributionData,
+        projects,
+      };
+
+      if (preambleContent) {
+        // User-provided preamble is used as-is for both variants
+        shortPreambleContent = preambleContent;
+      } else if (process.env.CI) {
+        // CI: only fetch what the configured template needs
+        if (templateName === "classic") {
+          core.info("No PREAMBLE.md found, generating with AI...");
+          preambleContent = await fetchAIPreamble(
+            token,
+            preambleContext,
+            "full",
+          );
+        } else {
+          core.info("Generating short preamble with AI...");
+          shortPreambleContent = await fetchAIPreamble(
+            token,
+            preambleContext,
+            "short",
+          );
+        }
+      } else {
+        // Local: fetch both variants for all template previews
+        core.info(
+          "Generating both preamble variants for local template preview...",
+        );
+        const [fullPreamble, shortPreamble] = await Promise.all([
+          fetchAIPreamble(token, preambleContext, "full"),
+          fetchAIPreamble(token, preambleContext, "short"),
+        ]);
+        preambleContent = fullPreamble;
+        shortPreambleContent = shortPreamble;
+      }
+
       const svgs = indexOnly
         ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
         : activeSections.map((s) => ({
             label: s.title,
             path: `${svgDir}/${s.filename}`,
           }));
-      const readme = generateReadme({
-        name: userConfig.name || username,
-        pronunciation: userConfig.pronunciation,
-        title: userConfig.title,
-        preambleContent,
-        svgs,
-        bio: userConfig.bio,
-      });
-      writeFileSync(readmePath, readme);
-      core.info(`Wrote ${readmePath}`);
+
+      // Build section SVG path map for templates
+      const sectionSvgs: Record<string, string> = {};
+      for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+        if (activeSections.some((s) => s.filename === filename)) {
+          sectionSvgs[key] = `${svgDir}/${filename}`;
+        }
+      }
+
+      const displayName = userConfig.name || userProfile.name || username;
+      const socialBadges = buildSocialBadges(userProfile);
+
+      {
+        const template = getTemplate(templateName);
+        const readme = template({
+          username,
+          name: displayName,
+          firstName: extractFirstName(displayName),
+          pronunciation: userConfig.pronunciation,
+          title: userConfig.title,
+          bio: userConfig.bio,
+          preambleContent,
+          shortPreambleContent,
+          svgs,
+          sectionSvgs,
+          profile: userProfile,
+          activeProjects,
+          legacyProjects,
+          allProjects: projects,
+          languages,
+          techHighlights,
+          contributionData,
+          socialBadges,
+          svgDir,
+        });
+        writeFileSync(readmePath, readme);
+      }
+
+      core.info(`Wrote ${readmePath} (template: ${templateName})`);
+
+      // ── Local template previews ──────────────────────────────────────────
+      if (!process.env.CI) {
+        const previewDir = "examples";
+        mkdirSync(previewDir, { recursive: true });
+        const previewSvgDir = relative(previewDir, outputDir) || ".";
+
+        const previewSvgs = indexOnly
+          ? [{ label: "GitHub Metrics", path: `${previewSvgDir}/index.svg` }]
+          : activeSections.map((s) => ({
+              label: s.title,
+              path: `${previewSvgDir}/${s.filename}`,
+            }));
+
+        const previewSectionSvgs: Record<string, string> = {};
+        for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+          if (activeSections.some((s) => s.filename === filename)) {
+            previewSectionSvgs[key] = `${previewSvgDir}/${filename}`;
+          }
+        }
+
+        const allTemplateNames: TemplateName[] = [
+          "classic",
+          "modern",
+          "minimal",
+        ];
+        for (const tplName of allTemplateNames) {
+          const template = getTemplate(tplName);
+          const output = template({
+            username,
+            name: displayName,
+            firstName: extractFirstName(displayName),
+            pronunciation: userConfig.pronunciation,
+            title: userConfig.title,
+            bio: userConfig.bio,
+            preambleContent,
+            shortPreambleContent,
+            svgs: previewSvgs,
+            sectionSvgs: previewSectionSvgs,
+            profile: userProfile,
+            activeProjects,
+            legacyProjects,
+            allProjects: projects,
+            languages,
+            techHighlights,
+            contributionData,
+            socialBadges,
+            svgDir: previewSvgDir,
+          });
+
+          const previewPath = `${previewDir}/${tplName}.md`;
+          writeFileSync(previewPath, output);
+          core.info(`Wrote ${previewPath} (template preview: ${tplName})`);
+        }
+      }
     }
 
     // ── Commit + Push ─────────────────────────────────────────────────────

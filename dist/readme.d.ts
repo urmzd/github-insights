@@ -1,7 +1,5 @@
-export interface SvgEmbed {
-    label: string;
-    path: string;
-}
+import type { SvgEmbed } from "./types.js";
+export type { SvgEmbed };
 export interface ReadmeOptions {
     name: string;
     pronunciation?: string;
