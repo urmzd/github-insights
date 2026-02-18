@@ -1,4 +1,4 @@
-import './sourcemap-register.cjs';import { createRequire as __WEBPACK_EXTERNAL_createRequire } from "module";
+import { createRequire as __WEBPACK_EXTERNAL_createRequire } from "module";
 /******/ var __webpack_modules__ = ({
 
 /***/ 4914:
@@ -31724,6 +31724,7 @@ const fetchAllRepoData = async (token, username) => {
           primaryLanguage { name color }
           isArchived
           isFork
+          pushedAt
           repositoryTopics(first: 20) {
             nodes { topic { name } }
           }
@@ -31794,6 +31795,16 @@ const fetchContributionData = async (token, username) => {
             totalPullRequestContributions
             totalPullRequestReviewContributions
             totalRepositoriesWithContributedCommits
+            contributionCalendar {
+              totalContributions
+              weeks {
+                contributionDays {
+                  contributionCount
+                  date
+                  color
+                }
+              }
+            }
           }
           repositoriesContributedTo(first: 50, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST]) {
             totalCount
@@ -31802,9 +31813,16 @@ const fetchContributionData = async (token, username) => {
         }
       }`, { from: from.toISOString(), to: now.toISOString() });
         const user = data.user;
+        const collection = user.contributionsCollection;
         return {
-            contributions: user.contributionsCollection,
+            contributions: {
+                totalCommitContributions: collection.totalCommitContributions,
+                totalPullRequestContributions: collection.totalPullRequestContributions,
+                totalPullRequestReviewContributions: collection.totalPullRequestReviewContributions,
+                totalRepositoriesWithContributedCommits: collection.totalRepositoriesWithContributedCommits,
+            },
             externalRepos: user.repositoriesContributedTo,
+            contributionCalendar: collection.contributionCalendar,
         };
     }
     catch (err) {
@@ -31891,7 +31909,7 @@ const fetchUserProfile = async (token, username) => {
         };
     }
 };
-const fetchAIPreamble = async (token, context) => {
+const fetchAIPreamble = async (token, context, variant = "full") => {
     try {
         const { profile, userConfig, languages, techHighlights, contributionData, projects, } = context;
         const langLines = languages
@@ -31922,7 +31940,27 @@ const fetchAIPreamble = async (token, context) => {
         ]
             .filter(Boolean)
             .join("\n");
-        const prompt = `You are generating a concise markdown preamble for a developer's GitHub profile README.
+        const prompt = variant === "short"
+            ? `You are generating a very short tagline for a developer's GitHub profile README.
+
+Profile:
+${profileLines}
+
+Languages (by code volume):
+${langLines}
+
+Expertise areas:
+${techLines}
+
+Generate 1-2 sentences that:
+- Describe who the developer is and what they primarily work on
+- Reference their top 2-3 languages or technologies naturally
+- Keep tone professional but friendly
+- Do NOT include social links, badges, or contact info
+- Do NOT include a heading — the README already has one
+- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
+- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`
+            : `You are generating a concise markdown preamble for a developer's GitHub profile README.
 
 Profile:
 ${profileLines}
@@ -32008,7 +32046,8 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
             .replace(/\n?```\s*$/, "")
             .trim();
         // Reject degenerate output (conversational filler with no real content)
-        if (cleaned.length < 50) {
+        const minLength = variant === "short" ? 20 : 50;
+        if (cleaned.length < minLength) {
             console.warn(`AI preamble too short after cleaning (${cleaned.length} chars), discarding`);
             return undefined;
         }
@@ -33485,6 +33524,7 @@ function stringify(obj, { maxDepth = 1000, numbersAsFloat = false } = {}) {
 ;// CONCATENATED MODULE: ./src/config.ts
 
 
+const VALID_TEMPLATES = new Set(["classic", "modern", "minimal"]);
 function parseUserConfig(raw) {
     const parsed = parse(raw);
     const config = {};
@@ -33506,6 +33546,23 @@ function parseUserConfig(raw) {
     if (typeof parsed.preamble === "string" && parsed.preamble.trim()) {
         config.preamble = parsed.preamble.trim();
     }
+    if (typeof parsed.template === "string" && parsed.template.trim()) {
+        const t = parsed.template.trim().toLowerCase();
+        if (VALID_TEMPLATES.has(t)) {
+            config.template = t;
+        }
+        else {
+            console.warn(`Unknown template "${t}", falling back to "classic". Valid: ${[...VALID_TEMPLATES].join(", ")}`);
+        }
+    }
+    if (Array.isArray(parsed.sections)) {
+        const sections = parsed.sections
+            .filter((s) => typeof s === "string" && s.trim().length > 0)
+            .map((s) => s.trim().toLowerCase());
+        if (sections.length > 0) {
+            config.sections = sections;
+        }
+    }
     return config;
 }
 function loadUserConfig(configPath) {
@@ -33525,6 +33582,60 @@ function loadUserConfig(configPath) {
         return {};
     }
 }
+
+;// CONCATENATED MODULE: ./src/components/contribution-calendar.tsx
+
+
+
+const CELL_SIZE = 11;
+const CELL_GAP = 2;
+const STEP = CELL_SIZE + CELL_GAP;
+const DAY_LABEL_WIDTH = 30;
+const MONTH_LABEL_HEIGHT = 16;
+const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
+const MONTH_NAMES = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+];
+function renderContributionCalendar(calendar, y) {
+    const { padX } = theme_LAYOUT;
+    const weeks = calendar.weeks;
+    const gridX = padX + DAY_LABEL_WIDTH;
+    const gridY = y + MONTH_LABEL_HEIGHT;
+    // Build month labels from the first day of each week
+    const monthLabels = [];
+    let lastMonth = -1;
+    for (let w = 0; w < weeks.length; w++) {
+        const days = weeks[w].contributionDays;
+        if (days.length === 0)
+            continue;
+        const month = new Date(days[0].date).getMonth();
+        if (month !== lastMonth) {
+            monthLabels.push({
+                label: MONTH_NAMES[month],
+                x: gridX + w * STEP,
+            });
+            lastMonth = month;
+        }
+    }
+    const svg = (jsx_factory_h(Fragment, null,
+        monthLabels.map((m) => (jsx_factory_h("text", { x: m.x, y: y + 11, className: "t t-value" }, svg_utils_escapeXml(m.label)))),
+        DAY_LABELS.map((label, d) => label ? (jsx_factory_h("text", { x: padX, y: gridY + d * STEP + CELL_SIZE - 1, className: "t t-value" }, svg_utils_escapeXml(label))) : ("")),
+        weeks.map((week, w) => week.contributionDays.map((day, d) => (jsx_factory_h("rect", { x: gridX + w * STEP, y: gridY + d * STEP, width: CELL_SIZE, height: CELL_SIZE, rx: "2", fill: day.color || theme_THEME.cardBg }))))));
+    const height = MONTH_LABEL_HEIGHT + 7 * STEP;
+    return { svg, height };
+}
+void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/contribution-cards.tsx
 
@@ -33845,8 +33956,18 @@ const parseManifest = (filename, text) => PARSER_MAP.get(filename)?.parseDepende
 
 
 
+
 // ── Category Sets ───────────────────────────────────────────────────────────
 const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
+// ── Section keys ────────────────────────────────────────────────────────────
+const SECTION_KEYS = {
+    pulse: "metrics-pulse.svg",
+    languages: "metrics-languages.svg",
+    expertise: "metrics-expertise.svg",
+    projects: "metrics-complexity.svg",
+    contributions: "metrics-contributions.svg",
+    calendar: "metrics-calendar.svg",
+};
 // ── Aggregation ─────────────────────────────────────────────────────────────
 const aggregateLanguages = (repos) => {
     const langBytes = new Map();
@@ -33904,6 +34025,30 @@ const getTopProjectsByStars = (repos) => repos
     description: repo.description || "",
     stars: repo.stargazerCount,
 }));
+// ── Project recency split ───────────────────────────────────────────────────
+const splitProjectsByRecency = (repos, thresholdDays = 30) => {
+    const cutoff = Date.now() - thresholdDays * 24 * 60 * 60 * 1000;
+    const active = [];
+    const legacy = [];
+    for (const repo of repos) {
+        if (new Date(repo.pushedAt).getTime() >= cutoff) {
+            active.push(repo);
+        }
+        else {
+            legacy.push(repo);
+        }
+    }
+    const toItems = (list) => list
+        .sort((a, b) => b.stargazerCount - a.stargazerCount)
+        .slice(0, 5)
+        .map((r) => ({
+        name: r.name,
+        url: r.url,
+        description: r.description || "",
+        stars: r.stargazerCount,
+    }));
+    return { active: toItems(active), legacy: toItems(legacy) };
+};
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
     const sections = [];
@@ -33957,7 +34102,17 @@ const buildSections = ({ languages, techHighlights, projects, contributionData, 
         subtitle: "Top projects by stars",
         renderBody: (y) => renderProjectCards(projects, y),
     });
-    // 5. Open Source Contributions
+    // 5. Contribution Calendar
+    if (contributionData.contributionCalendar) {
+        const calendarData = contributionData.contributionCalendar;
+        sections.push({
+            filename: "metrics-calendar.svg",
+            title: "Contribution Calendar",
+            subtitle: `${calendarData.totalContributions.toLocaleString()} contributions in the last year`,
+            renderBody: (y) => renderContributionCalendar(calendarData, y),
+        });
+    }
+    // 6. Open Source Contributions
     if (contributionData.externalRepos.nodes.length > 0) {
         sections.push({
             filename: "metrics-contributions.svg",
@@ -34030,7 +34185,129 @@ function loadPreamble(path) {
     }
 }
 
+;// CONCATENATED MODULE: ./src/templates.ts
+// ── Helpers ────────────────────────────────────────────────────────────────
+function attribution() {
+    const now = new Date().toISOString().split("T")[0];
+    return `<sub>Last generated on ${now} using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>`;
+}
+function extractFirstName(fullName) {
+    return fullName.trim().split(/\s+/)[0] || fullName;
+}
+function buildSocialBadges(profile) {
+    const badges = [];
+    if (profile.websiteUrl) {
+        badges.push(`[![Website](https://img.shields.io/badge/Website-4285F4?style=flat&logo=google-chrome&logoColor=white)](${profile.websiteUrl})`);
+    }
+    if (profile.twitterUsername) {
+        badges.push(`[![Twitter](https://img.shields.io/badge/Twitter-000000?style=flat&logo=x&logoColor=white)](https://x.com/${profile.twitterUsername})`);
+    }
+    for (const account of profile.socialAccounts) {
+        const provider = account.provider.toLowerCase();
+        if (provider === "linkedin") {
+            badges.push(`[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](${account.url})`);
+        }
+        else if (provider === "mastodon") {
+            badges.push(`[![Mastodon](https://img.shields.io/badge/Mastodon-6364FF?style=flat&logo=mastodon&logoColor=white)](${account.url})`);
+        }
+        else if (provider === "youtube") {
+            badges.push(`[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white)](${account.url})`);
+        }
+    }
+    return badges.join(" ");
+}
+// ── Classic template ───────────────────────────────────────────────────────
+function classicTemplate(ctx) {
+    const parts = [];
+    if (ctx.pronunciation) {
+        parts.push(`# ${ctx.name} <sub><i>(${ctx.pronunciation})</i></sub>`);
+    }
+    else {
+        parts.push(`# ${ctx.name}`);
+    }
+    if (ctx.title) {
+        parts.push(`> ${ctx.title}`);
+    }
+    if (ctx.preambleContent) {
+        parts.push(ctx.preambleContent);
+    }
+    for (const svg of ctx.svgs) {
+        parts.push(`![${svg.label}](${svg.path})`);
+    }
+    if (ctx.bio) {
+        parts.push(`---\n\n<sub>${ctx.bio}</sub>`);
+    }
+    parts.push(attribution());
+    return `${parts.join("\n\n")}\n`;
+}
+// ── Modern template ────────────────────────────────────────────────────────
+function modernTemplate(ctx) {
+    const parts = [];
+    parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
+    if (ctx.shortPreambleContent) {
+        parts.push(ctx.shortPreambleContent);
+    }
+    if (ctx.socialBadges) {
+        parts.push(ctx.socialBadges);
+    }
+    if (ctx.activeProjects.length > 0) {
+        const items = ctx.activeProjects
+            .map((p) => `- **${p.name}** - ${p.description || "No description"}${p.stars > 0 ? ` (${p.stars} ★)` : ""}`)
+            .join("\n");
+        parts.push(`## Active Projects\n\n${items}`);
+    }
+    if (ctx.legacyProjects.length > 0) {
+        const items = ctx.legacyProjects
+            .map((p) => `- **${p.name}** - ${p.description || "No description"}${p.stars > 0 ? ` (${p.stars} ★)` : ""}`)
+            .join("\n");
+        parts.push(`## Legacy Work\n\n${items}`);
+    }
+    // GitHub Stats section: pulse + calendar
+    const statsImages = [];
+    if (ctx.sectionSvgs.pulse) {
+        statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+    }
+    if (ctx.sectionSvgs.calendar) {
+        statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+    }
+    if (statsImages.length > 0) {
+        parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
+    }
+    // Other areas of interest: expertise
+    if (ctx.sectionSvgs.expertise) {
+        parts.push(`## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`);
+    }
+    parts.push(attribution());
+    return `${parts.join("\n\n")}\n`;
+}
+// ── Minimal template ───────────────────────────────────────────────────────
+function minimalTemplate(ctx) {
+    const parts = [];
+    parts.push(`# ${ctx.firstName}`);
+    if (ctx.shortPreambleContent) {
+        parts.push(ctx.shortPreambleContent);
+    }
+    if (ctx.socialBadges) {
+        parts.push(ctx.socialBadges);
+    }
+    for (const svg of ctx.svgs) {
+        parts.push(`![${svg.label}](${svg.path})`);
+    }
+    parts.push(attribution());
+    return `${parts.join("\n\n")}\n`;
+}
+// ── Registry ───────────────────────────────────────────────────────────────
+const TEMPLATES = {
+    classic: classicTemplate,
+    modern: modernTemplate,
+    minimal: minimalTemplate,
+};
+function getTemplate(name) {
+    return TEMPLATES[name] || TEMPLATES.classic;
+}
+
 ;// CONCATENATED MODULE: ./src/index.ts
+
 
 
 
@@ -34057,6 +34334,17 @@ async function run() {
             (process.env.CI ? "README.md" : "_README.md");
         const indexOnly = (core.getInput("index-only") || "true") === "true";
         const userConfig = loadUserConfig(configPath);
+        // Template and sections from action inputs or config
+        const templateName = core.getInput("template") ||
+            userConfig.template ||
+            "classic";
+        const sectionsInput = core.getInput("sections") || "";
+        const requestedSections = sectionsInput.length > 0
+            ? sectionsInput
+                .split(",")
+                .map((s) => s.trim().toLowerCase())
+                .filter(Boolean)
+            : userConfig.sections || [];
         if (!token) {
             core.setFailed("github-token is required");
             return;
@@ -34086,6 +34374,7 @@ async function run() {
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
         const projects = getTopProjectsByStars(repos);
+        const { active: activeProjects, legacy: legacyProjects } = splitProjectsByRecency(repos);
         const allDeps = collectAllDependencies(repos, manifests);
         const allTopics = collectAllTopics(repos);
         core.info("Fetching expertise analysis from GitHub Models...");
@@ -34097,7 +34386,12 @@ async function run() {
             projects,
             contributionData,
         });
-        const activeSections = sectionDefs.filter((s) => s.renderBody || (s.items && s.items.length > 0));
+        // Filter sections by requested keys if specified
+        let activeSections = sectionDefs.filter((s) => s.renderBody || (s.items && s.items.length > 0));
+        if (requestedSections.length > 0) {
+            const allowedFilenames = new Set(requestedSections.map((key) => SECTION_KEYS[key]).filter(Boolean));
+            activeSections = activeSections.filter((s) => allowedFilenames.has(s.filename));
+        }
         // ── Render + Write ────────────────────────────────────────────────────
         (0,external_node_fs_namespaceObject.mkdirSync)(outputDir, { recursive: true });
         for (const section of activeSections) {
@@ -34110,36 +34404,134 @@ async function run() {
         core.info(`Wrote ${outputDir}/index.svg`);
         // ── README ─────────────────────────────────────────────────────────────
         if (readmePath && readmePath !== "none") {
-            let preambleContent = loadPreamble(userConfig.preamble);
-            if (!preambleContent) {
-                core.info("No PREAMBLE.md found, generating with AI...");
-                preambleContent = await fetchAIPreamble(token, {
-                    username,
-                    profile: userProfile,
-                    userConfig,
-                    languages,
-                    techHighlights,
-                    contributionData,
-                    projects,
-                });
-            }
             const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(readmePath), outputDir) || ".";
+            let preambleContent = loadPreamble(userConfig.preamble);
+            let shortPreambleContent;
+            const preambleContext = {
+                username,
+                profile: userProfile,
+                userConfig,
+                languages,
+                techHighlights,
+                contributionData,
+                projects,
+            };
+            if (preambleContent) {
+                // User-provided preamble is used as-is for both variants
+                shortPreambleContent = preambleContent;
+            }
+            else if (process.env.CI) {
+                // CI: only fetch what the configured template needs
+                if (templateName === "classic") {
+                    core.info("No PREAMBLE.md found, generating with AI...");
+                    preambleContent = await fetchAIPreamble(token, preambleContext, "full");
+                }
+                else {
+                    core.info("Generating short preamble with AI...");
+                    shortPreambleContent = await fetchAIPreamble(token, preambleContext, "short");
+                }
+            }
+            else {
+                // Local: fetch both variants for all template previews
+                core.info("Generating both preamble variants for local template preview...");
+                const [fullPreamble, shortPreamble] = await Promise.all([
+                    fetchAIPreamble(token, preambleContext, "full"),
+                    fetchAIPreamble(token, preambleContext, "short"),
+                ]);
+                preambleContent = fullPreamble;
+                shortPreambleContent = shortPreamble;
+            }
             const svgs = indexOnly
                 ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
                 : activeSections.map((s) => ({
                     label: s.title,
                     path: `${svgDir}/${s.filename}`,
                 }));
-            const readme = generateReadme({
-                name: userConfig.name || username,
-                pronunciation: userConfig.pronunciation,
-                title: userConfig.title,
-                preambleContent,
-                svgs,
-                bio: userConfig.bio,
-            });
-            (0,external_node_fs_namespaceObject.writeFileSync)(readmePath, readme);
-            core.info(`Wrote ${readmePath}`);
+            // Build section SVG path map for templates
+            const sectionSvgs = {};
+            for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+                if (activeSections.some((s) => s.filename === filename)) {
+                    sectionSvgs[key] = `${svgDir}/${filename}`;
+                }
+            }
+            const displayName = userConfig.name || userProfile.name || username;
+            const socialBadges = buildSocialBadges(userProfile);
+            {
+                const template = getTemplate(templateName);
+                const readme = template({
+                    username,
+                    name: displayName,
+                    firstName: extractFirstName(displayName),
+                    pronunciation: userConfig.pronunciation,
+                    title: userConfig.title,
+                    bio: userConfig.bio,
+                    preambleContent,
+                    shortPreambleContent,
+                    svgs,
+                    sectionSvgs,
+                    profile: userProfile,
+                    activeProjects,
+                    legacyProjects,
+                    allProjects: projects,
+                    languages,
+                    techHighlights,
+                    contributionData,
+                    socialBadges,
+                    svgDir,
+                });
+                (0,external_node_fs_namespaceObject.writeFileSync)(readmePath, readme);
+            }
+            core.info(`Wrote ${readmePath} (template: ${templateName})`);
+            // ── Local template previews ──────────────────────────────────────────
+            if (!process.env.CI) {
+                const previewDir = "examples";
+                (0,external_node_fs_namespaceObject.mkdirSync)(previewDir, { recursive: true });
+                const previewSvgDir = (0,external_node_path_namespaceObject.relative)(previewDir, outputDir) || ".";
+                const previewSvgs = indexOnly
+                    ? [{ label: "GitHub Metrics", path: `${previewSvgDir}/index.svg` }]
+                    : activeSections.map((s) => ({
+                        label: s.title,
+                        path: `${previewSvgDir}/${s.filename}`,
+                    }));
+                const previewSectionSvgs = {};
+                for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+                    if (activeSections.some((s) => s.filename === filename)) {
+                        previewSectionSvgs[key] = `${previewSvgDir}/${filename}`;
+                    }
+                }
+                const allTemplateNames = [
+                    "classic",
+                    "modern",
+                    "minimal",
+                ];
+                for (const tplName of allTemplateNames) {
+                    const template = getTemplate(tplName);
+                    const output = template({
+                        username,
+                        name: displayName,
+                        firstName: extractFirstName(displayName),
+                        pronunciation: userConfig.pronunciation,
+                        title: userConfig.title,
+                        bio: userConfig.bio,
+                        preambleContent,
+                        shortPreambleContent,
+                        svgs: previewSvgs,
+                        sectionSvgs: previewSectionSvgs,
+                        profile: userProfile,
+                        activeProjects,
+                        legacyProjects,
+                        allProjects: projects,
+                        languages,
+                        techHighlights,
+                        contributionData,
+                        socialBadges,
+                        svgDir: previewSvgDir,
+                    });
+                    const previewPath = `${previewDir}/${tplName}.md`;
+                    (0,external_node_fs_namespaceObject.writeFileSync)(previewPath, output);
+                    core.info(`Wrote ${previewPath} (template preview: ${tplName})`);
+                }
+            }
         }
         // ── Commit + Push ─────────────────────────────────────────────────────
         if (commitPush) {
@@ -34168,5 +34560,3 @@ async function run() {
 }
 run();
 
-
-//# sourceMappingURL=index.js.map

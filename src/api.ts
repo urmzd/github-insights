@@ -42,6 +42,7 @@ export const fetchAllRepoData = async (
           primaryLanguage { name color }
           isArchived
           isFork
+          pushedAt
           repositoryTopics(first: 20) {
             nodes { topic { name } }
           }
@@ -128,6 +129,16 @@ export const fetchContributionData = async (
             totalPullRequestContributions
             totalPullRequestReviewContributions
             totalRepositoriesWithContributedCommits
+            contributionCalendar {
+              totalContributions
+              weeks {
+                contributionDays {
+                  contributionCount
+                  date
+                  color
+                }
+              }
+            }
           }
           repositoriesContributedTo(first: 50, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST]) {
             totalCount
@@ -139,9 +150,18 @@ export const fetchContributionData = async (
     );
 
     const user = (data as Record<string, Record<string, unknown>>).user;
+    const collection = user.contributionsCollection as Record<string, unknown>;
     return {
-      contributions: user.contributionsCollection,
+      contributions: {
+        totalCommitContributions: collection.totalCommitContributions,
+        totalPullRequestContributions: collection.totalPullRequestContributions,
+        totalPullRequestReviewContributions:
+          collection.totalPullRequestReviewContributions,
+        totalRepositoriesWithContributedCommits:
+          collection.totalRepositoriesWithContributedCommits,
+      },
       externalRepos: user.repositoriesContributedTo,
+      contributionCalendar: collection.contributionCalendar,
     } as ContributionData;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -254,6 +274,7 @@ export interface PreambleContext {
 export const fetchAIPreamble = async (
   token: string,
   context: PreambleContext,
+  variant: "full" | "short" = "full",
 ): Promise<string | undefined> => {
   try {
     const {
@@ -296,7 +317,28 @@ export const fetchAIPreamble = async (
       .filter(Boolean)
       .join("\n");
 
-    const prompt = `You are generating a concise markdown preamble for a developer's GitHub profile README.
+    const prompt =
+      variant === "short"
+        ? `You are generating a very short tagline for a developer's GitHub profile README.
+
+Profile:
+${profileLines}
+
+Languages (by code volume):
+${langLines}
+
+Expertise areas:
+${techLines}
+
+Generate 1-2 sentences that:
+- Describe who the developer is and what they primarily work on
+- Reference their top 2-3 languages or technologies naturally
+- Keep tone professional but friendly
+- Do NOT include social links, badges, or contact info
+- Do NOT include a heading — the README already has one
+- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
+- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`
+        : `You are generating a concise markdown preamble for a developer's GitHub profile README.
 
 Profile:
 ${profileLines}
@@ -395,7 +437,8 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
       .trim();
 
     // Reject degenerate output (conversational filler with no real content)
-    if (cleaned.length < 50) {
+    const minLength = variant === "short" ? 20 : 50;
+    if (cleaned.length < minLength) {
       console.warn(
         `AI preamble too short after cleaning (${cleaned.length} chars), discarding`,
       );

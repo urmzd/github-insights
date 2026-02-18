@@ -59,6 +59,7 @@ export interface RepoNode {
     } | null;
     isArchived: boolean;
     isFork: boolean;
+    pushedAt: string;
     repositoryTopics: {
         nodes: {
             topic: {
@@ -86,12 +87,25 @@ export interface ExternalRepo {
         name: string;
     } | null;
 }
+export interface ContributionDay {
+    contributionCount: number;
+    date: string;
+    color: string;
+}
+export interface ContributionWeek {
+    contributionDays: ContributionDay[];
+}
+export interface ContributionCalendar {
+    totalContributions: number;
+    weeks: ContributionWeek[];
+}
 export interface ContributionData {
     contributions: ContributionsCollection;
     externalRepos: {
         totalCount: number;
         nodes: ExternalRepo[];
     };
+    contributionCalendar?: ContributionCalendar;
 }
 export type ManifestMap = Map<string, Record<string, string>>;
 export type ReadmeMap = Map<string, string>;
@@ -113,6 +127,8 @@ export interface UserConfig {
     pronunciation?: string;
     bio?: string;
     preamble?: string;
+    template?: TemplateName;
+    sections?: string[];
 }
 export interface UserProfile {
     name: string | null;
@@ -126,3 +142,30 @@ export interface UserProfile {
         url: string;
     }[];
 }
+export interface SvgEmbed {
+    label: string;
+    path: string;
+}
+export type TemplateName = "classic" | "modern" | "minimal";
+export interface TemplateContext {
+    username: string;
+    name: string;
+    firstName: string;
+    pronunciation?: string;
+    title?: string;
+    bio?: string;
+    preambleContent?: string;
+    shortPreambleContent?: string;
+    svgs: SvgEmbed[];
+    sectionSvgs: Record<string, string>;
+    profile: UserProfile;
+    activeProjects: ProjectItem[];
+    legacyProjects: ProjectItem[];
+    allProjects: ProjectItem[];
+    languages: LanguageItem[];
+    techHighlights: TechHighlight[];
+    contributionData: ContributionData;
+    socialBadges: string;
+    svgDir: string;
+}
+export type TemplateFunction = (context: TemplateContext) => string;
