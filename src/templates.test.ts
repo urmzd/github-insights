@@ -4,6 +4,7 @@ import {
   buildSocialBadges,
   extractFirstName,
   getTemplate,
+  shieldsBadgeLabel,
 } from "./templates.js";
 import type { TemplateContext } from "./types.js";
 
@@ -49,7 +50,7 @@ const makeContext = (
   techHighlights: [],
   contributionData: makeContributionData(),
   socialBadges:
-    "[![Website](https://img.shields.io/badge/Website-4285F4?style=flat&logo=google-chrome&logoColor=white)](https://urmzd.dev)",
+    "[![urmzd.dev](https://img.shields.io/badge/urmzd.dev-4285F4?style=flat&logo=google-chrome&logoColor=white)](https://urmzd.dev)",
   svgDir: "metrics",
   ...overrides,
 });
@@ -73,31 +74,58 @@ describe("extractFirstName", () => {
 // ── buildSocialBadges ──────────────────────────────────────────────────────
 
 describe("buildSocialBadges", () => {
-  it("builds website badge", () => {
+  it("builds website badge with hostname", () => {
     const profile = makeUserProfile({
       twitterUsername: null,
       socialAccounts: [],
     });
     const badges = buildSocialBadges(profile);
-    expect(badges).toContain("Website");
+    expect(badges).toContain("urmzd.dev");
     expect(badges).toContain("https://urmzd.dev");
+    expect(badges).not.toContain("Website");
   });
 
-  it("builds twitter badge", () => {
+  it("builds twitter badge with @username", () => {
     const profile = makeUserProfile({ websiteUrl: null, socialAccounts: [] });
     const badges = buildSocialBadges(profile);
-    expect(badges).toContain("Twitter");
+    expect(badges).toContain("@urmzd");
     expect(badges).toContain("https://x.com/urmzd");
   });
 
-  it("builds LinkedIn badge from social accounts", () => {
+  it("builds LinkedIn badge with handle from URL", () => {
     const profile = makeUserProfile({
       websiteUrl: null,
       twitterUsername: null,
     });
     const badges = buildSocialBadges(profile);
-    expect(badges).toContain("LinkedIn");
+    expect(badges).toContain("[![urmzd]");
     expect(badges).toContain("https://linkedin.com/in/urmzd");
+  });
+
+  it("builds Mastodon badge with @user from URL", () => {
+    const profile = makeUserProfile({
+      websiteUrl: null,
+      twitterUsername: null,
+      socialAccounts: [
+        { provider: "MASTODON", url: "https://mastodon.social/@urmzd" },
+      ],
+    });
+    const badges = buildSocialBadges(profile);
+    expect(badges).toContain("@urmzd");
+    expect(badges).toContain("mastodon.social/@urmzd");
+  });
+
+  it("builds YouTube badge with channel name from URL", () => {
+    const profile = makeUserProfile({
+      websiteUrl: null,
+      twitterUsername: null,
+      socialAccounts: [
+        { provider: "YOUTUBE", url: "https://youtube.com/@mychannel" },
+      ],
+    });
+    const badges = buildSocialBadges(profile);
+    expect(badges).toContain("mychannel");
+    expect(badges).toContain("youtube.com/@mychannel");
   });
 
   it("returns empty string when no social info", () => {
@@ -107,6 +135,22 @@ describe("buildSocialBadges", () => {
       socialAccounts: [],
     });
     expect(buildSocialBadges(profile)).toBe("");
+  });
+});
+
+// ── shieldsBadgeLabel ────────────────────────────────────────────────────────
+
+describe("shieldsBadgeLabel", () => {
+  it("escapes hyphens", () => {
+    expect(shieldsBadgeLabel("my-site")).toBe("my--site");
+  });
+
+  it("escapes underscores", () => {
+    expect(shieldsBadgeLabel("my_name")).toBe("my__name");
+  });
+
+  it("leaves plain text unchanged", () => {
+    expect(shieldsBadgeLabel("urmzd.dev")).toBe("urmzd.dev");
   });
 });
 
@@ -147,6 +191,11 @@ describe("classicTemplate", () => {
   it("includes SVG embeds", () => {
     const output = getTemplate("classic")(makeContext());
     expect(output).toContain("![GitHub Metrics](metrics/index.svg)");
+  });
+
+  it("includes social badges", () => {
+    const output = getTemplate("classic")(makeContext());
+    expect(output).toContain("img.shields.io");
   });
 
   it("includes bio footer", () => {

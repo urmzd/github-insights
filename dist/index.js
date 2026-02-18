@@ -31953,7 +31953,7 @@ Expertise areas:
 ${techLines}
 
 Generate 1-2 sentences that:
-- Describe who the developer is and what they primarily work on
+- Write in first person (use I/my). Describe what you work on
 - Reference their top 2-3 languages or technologies naturally
 - Keep tone professional but friendly
 - Do NOT include social links, badges, or contact info
@@ -31984,13 +31984,11 @@ Social/contact links available:
 ${socialLines}
 
 Generate a markdown preamble (2-4 short paragraphs max) that:
-- Opens with a brief personal intro drawn from the profile bio/title
+- Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
 - Highlights the developer's primary domains and strengths (from expertise areas + languages)
 - Mentions notable projects if applicable
-- Ends with a social/contact links section using shields.io badge-style markdown images. Use this format for each badge:
-  [![Badge](https://img.shields.io/badge/LABEL-COLOR?style=flat&logo=LOGO&logoColor=white)](URL)
-  Only include badges for links that actually exist. Use appropriate colors and logos for each platform (e.g, logo=x for Twitter/X, logo=linkedin for LinkedIn, etc.).
 - Keep tone professional but friendly, no self-aggrandizing
+- Do NOT include social links, badges, or contact info — those are handled separately
 - Do NOT include a heading — the README already has one
 - Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
 - Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the bio paragraph`;
@@ -34194,24 +34192,42 @@ function attribution() {
 function extractFirstName(fullName) {
     return fullName.trim().split(/\s+/)[0] || fullName;
 }
+/** Escape special characters for shields.io badge labels (`-` → `--`, `_` → `__`). */
+function shieldsBadgeLabel(text) {
+    return text.replace(/-/g, "--").replace(/_/g, "__");
+}
 function buildSocialBadges(profile) {
     const badges = [];
     if (profile.websiteUrl) {
-        badges.push(`[![Website](https://img.shields.io/badge/Website-4285F4?style=flat&logo=google-chrome&logoColor=white)](${profile.websiteUrl})`);
+        let label;
+        try {
+            label = new URL(profile.websiteUrl).hostname;
+        }
+        catch {
+            label = "Website";
+        }
+        badges.push(`[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-4285F4?style=flat&logo=google-chrome&logoColor=white)](${profile.websiteUrl})`);
     }
     if (profile.twitterUsername) {
-        badges.push(`[![Twitter](https://img.shields.io/badge/Twitter-000000?style=flat&logo=x&logoColor=white)](https://x.com/${profile.twitterUsername})`);
+        const label = `@${profile.twitterUsername}`;
+        badges.push(`[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-000000?style=flat&logo=x&logoColor=white)](https://x.com/${profile.twitterUsername})`);
     }
     for (const account of profile.socialAccounts) {
         const provider = account.provider.toLowerCase();
         if (provider === "linkedin") {
-            badges.push(`[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](${account.url})`);
+            const match = account.url.match(/\/in\/([^/?#]+)/);
+            const label = match?.[1] || "LinkedIn";
+            badges.push(`[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-0A66C2?style=flat&logo=linkedin&logoColor=white)](${account.url})`);
         }
         else if (provider === "mastodon") {
-            badges.push(`[![Mastodon](https://img.shields.io/badge/Mastodon-6364FF?style=flat&logo=mastodon&logoColor=white)](${account.url})`);
+            const match = account.url.match(/\/@([^/?#]+)/);
+            const label = match ? `@${match[1]}` : "Mastodon";
+            badges.push(`[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-6364FF?style=flat&logo=mastodon&logoColor=white)](${account.url})`);
         }
         else if (provider === "youtube") {
-            badges.push(`[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white)](${account.url})`);
+            const match = account.url.match(/\/(?:@|c(?:hannel)?\/|user\/)([^/?#]+)/);
+            const label = match?.[1] || "YouTube";
+            badges.push(`[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-FF0000?style=flat&logo=youtube&logoColor=white)](${account.url})`);
         }
     }
     return badges.join(" ");
@@ -34230,6 +34246,9 @@ function classicTemplate(ctx) {
     }
     if (ctx.preambleContent) {
         parts.push(ctx.preambleContent);
+    }
+    if (ctx.socialBadges) {
+        parts.push(ctx.socialBadges);
     }
     for (const svg of ctx.svgs) {
         parts.push(`![${svg.label}](${svg.path})`);

@@ -16,32 +16,50 @@ export function extractFirstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || fullName;
 }
 
+/** Escape special characters for shields.io badge labels (`-` → `--`, `_` → `__`). */
+export function shieldsBadgeLabel(text: string): string {
+  return text.replace(/-/g, "--").replace(/_/g, "__");
+}
+
 export function buildSocialBadges(profile: UserProfile): string {
   const badges: string[] = [];
 
   if (profile.websiteUrl) {
+    let label: string;
+    try {
+      label = new URL(profile.websiteUrl).hostname;
+    } catch {
+      label = "Website";
+    }
     badges.push(
-      `[![Website](https://img.shields.io/badge/Website-4285F4?style=flat&logo=google-chrome&logoColor=white)](${profile.websiteUrl})`,
+      `[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-4285F4?style=flat&logo=google-chrome&logoColor=white)](${profile.websiteUrl})`,
     );
   }
   if (profile.twitterUsername) {
+    const label = `@${profile.twitterUsername}`;
     badges.push(
-      `[![Twitter](https://img.shields.io/badge/Twitter-000000?style=flat&logo=x&logoColor=white)](https://x.com/${profile.twitterUsername})`,
+      `[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-000000?style=flat&logo=x&logoColor=white)](https://x.com/${profile.twitterUsername})`,
     );
   }
   for (const account of profile.socialAccounts) {
     const provider = account.provider.toLowerCase();
     if (provider === "linkedin") {
+      const match = account.url.match(/\/in\/([^/?#]+)/);
+      const label = match?.[1] || "LinkedIn";
       badges.push(
-        `[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](${account.url})`,
+        `[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-0A66C2?style=flat&logo=linkedin&logoColor=white)](${account.url})`,
       );
     } else if (provider === "mastodon") {
+      const match = account.url.match(/\/@([^/?#]+)/);
+      const label = match ? `@${match[1]}` : "Mastodon";
       badges.push(
-        `[![Mastodon](https://img.shields.io/badge/Mastodon-6364FF?style=flat&logo=mastodon&logoColor=white)](${account.url})`,
+        `[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-6364FF?style=flat&logo=mastodon&logoColor=white)](${account.url})`,
       );
     } else if (provider === "youtube") {
+      const match = account.url.match(/\/(?:@|c(?:hannel)?\/|user\/)([^/?#]+)/);
+      const label = match?.[1] || "YouTube";
       badges.push(
-        `[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white)](${account.url})`,
+        `[![${label}](https://img.shields.io/badge/${shieldsBadgeLabel(label)}-FF0000?style=flat&logo=youtube&logoColor=white)](${account.url})`,
       );
     }
   }
@@ -66,6 +84,10 @@ function classicTemplate(ctx: TemplateContext): string {
 
   if (ctx.preambleContent) {
     parts.push(ctx.preambleContent);
+  }
+
+  if (ctx.socialBadges) {
+    parts.push(ctx.socialBadges);
   }
 
   for (const svg of ctx.svgs) {
