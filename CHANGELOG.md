@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.3 (2026-02-18)
+
+### Bug Fixes
+
+- use first-person AI prompts and show usernames in social badges ([f0d6afd](https://github.com/urmzd/github-metrics/commit/f0d6afdbfbc39766f53fbbac922e1b8edbfe360b))
+
+### Refactoring
+
+- move template preview READMEs to examples/ directory ([35bfaf0](https://github.com/urmzd/github-metrics/commit/35bfaf0472d01da4758b4424e614931f3d9b8c42))
+
+
 ## 0.4.2 (2026-02-17)
 
 ### Bug Fixes
