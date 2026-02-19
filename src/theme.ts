@@ -16,10 +16,9 @@ export const LAYOUT = {
   padX: 24,
   padY: 24,
   sectionGap: 30,
-  barLabelWidth: 150,
   barHeight: 18,
-  barRowHeight: 28,
-  barMaxWidth: 500,
+  barRowHeight: 42,
+  barMaxWidth: 700,
 } as const;
 
 export const BAR_COLORS = [

@@ -10,7 +10,7 @@ export function renderBarChart(
 ): RenderResult {
   if (items.length === 0) return { svg: "", height: 0 };
 
-  const { barLabelWidth, barHeight, barRowHeight, barMaxWidth, padX } = LAYOUT;
+  const { barHeight, barRowHeight, barMaxWidth, padX } = LAYOUT;
   const useItemColors = options.useItemColors === true;
   const maxValue = Math.max(...items.map((d) => d.value));
 
@@ -22,7 +22,7 @@ export function renderBarChart(
         const color = useItemColors
           ? item.color || BAR_COLORS[i % BAR_COLORS.length]
           : BAR_COLORS[i % BAR_COLORS.length];
-        const label = escapeXml(truncate(item.name, 20));
+        const label = escapeXml(truncate(item.name, 40));
         const valueLabel = item.percent
           ? `${item.percent}%`
           : String(item.value);
@@ -33,19 +33,15 @@ export function renderBarChart(
               {label}
             </text>
             <rect
-              x={padX + barLabelWidth}
-              y={ry + 2}
+              x={padX}
+              y={ry + 20}
               width={barWidth}
               height={barHeight}
               rx="3"
               fill={color}
               opacity="0.85"
             />
-            <text
-              x={padX + barLabelWidth + barWidth + 8}
-              y={ry + 14}
-              className="t t-value"
-            >
+            <text x={padX + barWidth + 8} y={ry + 34} className="t t-value">
               {valueLabel}
             </text>
           </>

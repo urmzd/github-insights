@@ -10,11 +10,11 @@ export function renderTechHighlights(
   if (highlights.length === 0) return { svg: "", height: 0 };
 
   const { padX, barHeight, barMaxWidth } = LAYOUT;
-  const labelMaxChars = 24;
-  const skillMaxChars = 90;
+  const labelMaxChars = 60;
+  const skillMaxChars = 120;
   const skillLineHeight = 16;
-  const barX = padX + 180;
-  const scoreX = barX + barMaxWidth + 10;
+  const labelLineHeight = 20;
+  const scoreX = padX + barMaxWidth + 10;
   const skillY = 16;
   const rowGap = 14;
 
@@ -29,9 +29,9 @@ export function renderTechHighlights(
 
     const baseY = y + height;
 
-    // Category label (uppercase, left-aligned, truncated to fit before bar)
+    // Category label (uppercase, left-aligned, on its own line)
     svg += (
-      <text x={padX} y={baseY + barHeight / 2 + 4} className="t t-subhdr">
+      <text x={padX} y={baseY + 14} className="t t-subhdr">
         {escapeXml(truncate(group.category.toUpperCase(), labelMaxChars))}
       </text>
     );
@@ -39,8 +39,8 @@ export function renderTechHighlights(
     // Bar track (full width, low opacity)
     svg += (
       <rect
-        x={barX}
-        y={baseY}
+        x={padX}
+        y={baseY + labelLineHeight}
         width={barMaxWidth}
         height={barHeight}
         rx={4}
@@ -53,8 +53,8 @@ export function renderTechHighlights(
     if (fillWidth > 0) {
       svg += (
         <rect
-          x={barX}
-          y={baseY}
+          x={padX}
+          y={baseY + labelLineHeight}
           width={fillWidth}
           height={barHeight}
           rx={4}
@@ -66,7 +66,11 @@ export function renderTechHighlights(
 
     // Score label (right of bar)
     svg += (
-      <text x={scoreX} y={baseY + barHeight / 2 + 4} className="t t-value">
+      <text
+        x={scoreX}
+        y={baseY + labelLineHeight + barHeight / 2 + 4}
+        className="t t-value"
+      >
         {`${score}%`}
       </text>
     );
@@ -80,8 +84,10 @@ export function renderTechHighlights(
     for (let li = 0; li < skillLines.length; li++) {
       svg += (
         <text
-          x={barX}
-          y={baseY + barHeight + skillY + li * skillLineHeight}
+          x={padX}
+          y={
+            baseY + labelLineHeight + barHeight + skillY + li * skillLineHeight
+          }
           className="t t-card-detail"
         >
           {escapeXml(skillLines[li])}
@@ -90,7 +96,11 @@ export function renderTechHighlights(
     }
 
     height +=
-      barHeight + skillY + (skillLines.length - 1) * skillLineHeight + rowGap;
+      labelLineHeight +
+      barHeight +
+      skillY +
+      (skillLines.length - 1) * skillLineHeight +
+      rowGap;
   }
 
   return { svg, height };
