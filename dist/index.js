@@ -32216,10 +32216,9 @@ const theme_LAYOUT = {
     padX: 24,
     padY: 24,
     sectionGap: 30,
-    barLabelWidth: 150,
     barHeight: 18,
-    barRowHeight: 28,
-    barMaxWidth: 500,
+    barRowHeight: 42,
+    barMaxWidth: 700,
 };
 const BAR_COLORS = [
     "#58a6ff",
@@ -32273,7 +32272,7 @@ const wrapText = (text, maxChars) => {
 function renderBarChart(items, y, options = {}) {
     if (items.length === 0)
         return { svg: "", height: 0 };
-    const { barLabelWidth, barHeight, barRowHeight, barMaxWidth, padX } = theme_LAYOUT;
+    const { barHeight, barRowHeight, barMaxWidth, padX } = theme_LAYOUT;
     const useItemColors = options.useItemColors === true;
     const maxValue = Math.max(...items.map((d) => d.value));
     const svg = (jsx_factory_h(Fragment, null, items.map((item, i) => {
@@ -32282,14 +32281,14 @@ function renderBarChart(items, y, options = {}) {
         const color = useItemColors
             ? item.color || BAR_COLORS[i % BAR_COLORS.length]
             : BAR_COLORS[i % BAR_COLORS.length];
-        const label = svg_utils_escapeXml(truncate(item.name, 20));
+        const label = svg_utils_escapeXml(truncate(item.name, 40));
         const valueLabel = item.percent
             ? `${item.percent}%`
             : String(item.value);
         return (jsx_factory_h(Fragment, null,
             jsx_factory_h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
-            jsx_factory_h("rect", { x: padX + barLabelWidth, y: ry + 2, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
-            jsx_factory_h("text", { x: padX + barLabelWidth + barWidth + 8, y: ry + 14, className: "t t-value" }, valueLabel)));
+            jsx_factory_h("rect", { x: padX, y: ry + 20, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
+            jsx_factory_h("text", { x: padX + barWidth + 8, y: ry + 34, className: "t t-value" }, valueLabel)));
     })));
     return { svg, height: items.length * barRowHeight };
 }
@@ -33769,11 +33768,11 @@ function renderTechHighlights(highlights, y) {
     if (highlights.length === 0)
         return { svg: "", height: 0 };
     const { padX, barHeight, barMaxWidth } = theme_LAYOUT;
-    const labelMaxChars = 24;
-    const skillMaxChars = 90;
+    const labelMaxChars = 60;
+    const skillMaxChars = 120;
     const skillLineHeight = 16;
-    const barX = padX + 180;
-    const scoreX = barX + barMaxWidth + 10;
+    const labelLineHeight = 20;
+    const scoreX = padX + barMaxWidth + 10;
     const skillY = 16;
     const rowGap = 14;
     let svg = "";
@@ -33784,26 +33783,30 @@ function renderTechHighlights(highlights, y) {
         const score = Math.max(0, Math.min(100, group.score));
         const fillWidth = (score / 100) * barMaxWidth;
         const baseY = y + height;
-        // Category label (uppercase, left-aligned, truncated to fit before bar)
-        svg += (jsx_factory_h("text", { x: padX, y: baseY + barHeight / 2 + 4, className: "t t-subhdr" }, svg_utils_escapeXml(truncate(group.category.toUpperCase(), labelMaxChars))));
+        // Category label (uppercase, left-aligned, on its own line)
+        svg += (jsx_factory_h("text", { x: padX, y: baseY + 14, className: "t t-subhdr" }, svg_utils_escapeXml(truncate(group.category.toUpperCase(), labelMaxChars))));
         // Bar track (full width, low opacity)
-        svg += (jsx_factory_h("rect", { x: barX, y: baseY, width: barMaxWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.15" }));
+        svg += (jsx_factory_h("rect", { x: padX, y: baseY + labelLineHeight, width: barMaxWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.15" }));
         // Bar fill (proportional to score)
         if (fillWidth > 0) {
-            svg += (jsx_factory_h("rect", { x: barX, y: baseY, width: fillWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.85" }));
+            svg += (jsx_factory_h("rect", { x: padX, y: baseY + labelLineHeight, width: fillWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.85" }));
         }
         // Score label (right of bar)
-        svg += (jsx_factory_h("text", { x: scoreX, y: baseY + barHeight / 2 + 4, className: "t t-value" }, `${score}%`));
+        svg += (jsx_factory_h("text", { x: scoreX, y: baseY + labelLineHeight + barHeight / 2 + 4, className: "t t-value" }, `${score}%`));
         // Skill items text (below bar, muted, wrapped to avoid overflow)
         const skillText = group.items
             .map((item) => truncate(item, 30))
             .join(" \u00B7 ");
         const skillLines = wrapText(skillText, skillMaxChars);
         for (let li = 0; li < skillLines.length; li++) {
-            svg += (jsx_factory_h("text", { x: barX, y: baseY + barHeight + skillY + li * skillLineHeight, className: "t t-card-detail" }, svg_utils_escapeXml(skillLines[li])));
+            svg += (jsx_factory_h("text", { x: padX, y: baseY + labelLineHeight + barHeight + skillY + li * skillLineHeight, className: "t t-card-detail" }, svg_utils_escapeXml(skillLines[li])));
         }
         height +=
-            barHeight + skillY + (skillLines.length - 1) * skillLineHeight + rowGap;
+            labelLineHeight +
+                barHeight +
+                skillY +
+                (skillLines.length - 1) * skillLineHeight +
+                rowGap;
     }
     return { svg, height };
 }

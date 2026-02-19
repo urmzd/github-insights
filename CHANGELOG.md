@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.4 (2026-02-19)
+
+### Bug Fixes
+
+- separate labels and bars onto two lines to prevent text overlap ([f4bbe42](https://github.com/urmzd/github-metrics/commit/f4bbe42fc37015a7d0eced6ad8da55a59a5c22ca))
+
+
 ## 0.4.3 (2026-02-18)
 
 ### Bug Fixes
