@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.5 (2026-02-20)
+
+### Bug Fixes
+
+- increase vertical spacing between text labels and bar SVGs ([3ff1b0d](https://github.com/urmzd/github-metrics/commit/3ff1b0de497cad1c211f3e901f0e48132dacd536))
+
+
 ## 0.4.4 (2026-02-19)
 
 ### Bug Fixes

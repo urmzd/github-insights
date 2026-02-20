@@ -14,7 +14,7 @@ export declare const LAYOUT: {
     readonly padY: 24;
     readonly sectionGap: 30;
     readonly barHeight: 18;
-    readonly barRowHeight: 42;
+    readonly barRowHeight: 48;
     readonly barMaxWidth: 700;
 };
 export declare const BAR_COLORS: readonly ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#39d2c0", "#db61a2", "#79c0ff"];
