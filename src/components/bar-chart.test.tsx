@@ -21,7 +21,7 @@ describe("renderBarChart", () => {
 
   it("height matches item count * row height", () => {
     const result = renderBarChart(items, 0);
-    expect(result.height).toBe(items.length * 42);
+    expect(result.height).toBe(items.length * 48);
   });
 
   it("svg contains item names", () => {
