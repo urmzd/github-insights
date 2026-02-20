@@ -32217,7 +32217,7 @@ const theme_LAYOUT = {
     padY: 24,
     sectionGap: 30,
     barHeight: 18,
-    barRowHeight: 42,
+    barRowHeight: 48,
     barMaxWidth: 700,
 };
 const BAR_COLORS = [
@@ -32287,8 +32287,8 @@ function renderBarChart(items, y, options = {}) {
             : String(item.value);
         return (jsx_factory_h(Fragment, null,
             jsx_factory_h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
-            jsx_factory_h("rect", { x: padX, y: ry + 20, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
-            jsx_factory_h("text", { x: padX + barWidth + 8, y: ry + 34, className: "t t-value" }, valueLabel)));
+            jsx_factory_h("rect", { x: padX, y: ry + 26, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
+            jsx_factory_h("text", { x: padX + barWidth + 8, y: ry + 40, className: "t t-value" }, valueLabel)));
     })));
     return { svg, height: items.length * barRowHeight };
 }
@@ -33771,7 +33771,7 @@ function renderTechHighlights(highlights, y) {
     const labelMaxChars = 60;
     const skillMaxChars = 120;
     const skillLineHeight = 16;
-    const labelLineHeight = 20;
+    const labelLineHeight = 26;
     const scoreX = padX + barMaxWidth + 10;
     const skillY = 16;
     const rowGap = 14;
