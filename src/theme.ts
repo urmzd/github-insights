@@ -17,7 +17,7 @@ export const LAYOUT = {
   padY: 24,
   sectionGap: 30,
   barHeight: 18,
-  barRowHeight: 42,
+  barRowHeight: 48,
   barMaxWidth: 700,
 } as const;
 

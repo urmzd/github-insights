@@ -34,14 +34,14 @@ export function renderBarChart(
             </text>
             <rect
               x={padX}
-              y={ry + 20}
+              y={ry + 26}
               width={barWidth}
               height={barHeight}
               rx="3"
               fill={color}
               opacity="0.85"
             />
-            <text x={padX + barWidth + 8} y={ry + 34} className="t t-value">
+            <text x={padX + barWidth + 8} y={ry + 40} className="t t-value">
               {valueLabel}
             </text>
           </>

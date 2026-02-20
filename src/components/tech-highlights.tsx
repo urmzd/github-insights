@@ -13,7 +13,7 @@ export function renderTechHighlights(
   const labelMaxChars = 60;
   const skillMaxChars = 120;
   const skillLineHeight = 16;
-  const labelLineHeight = 20;
+  const labelLineHeight = 26;
   const scoreX = padX + barMaxWidth + 10;
   const skillY = 16;
   const rowGap = 14;
