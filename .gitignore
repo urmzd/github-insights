@@ -5,3 +5,8 @@ dist.tar.gz
 *.tsbuildinfo
 .env
 _README.md
+.claude/
+.vscode/
+.env.*
+.DS_Store
+.idea/
