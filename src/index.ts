@@ -176,7 +176,8 @@ async function run(): Promise<void> {
         languages,
         techHighlights,
         contributionData,
-        projects,
+        activeProjects,
+        popularProjects: projects,
       };
 
       if (preambleContent) {
