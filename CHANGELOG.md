@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 (2026-02-27)
+
+### Features
+
+- publish to npm on release ([152067e](https://github.com/urmzd/github-metrics/commit/152067e5f9c01100da7d1f6ac01544e92e30c26b))
+
+
 ## 0.4.6 (2026-02-27)
 
 ### Bug Fixes
