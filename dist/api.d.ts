@@ -14,7 +14,8 @@ export interface PreambleContext {
     }[];
     techHighlights: TechHighlight[];
     contributionData: ContributionData;
-    projects: ProjectItem[];
+    activeProjects: ProjectItem[];
+    popularProjects: ProjectItem[];
 }
 export declare const fetchAIPreamble: (token: string, context: PreambleContext, variant?: "full" | "short") => Promise<string | undefined>;
 export declare const fetchExpertiseAnalysis: (token: string, languages: {
