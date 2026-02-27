@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1 (2026-02-27)
+
+### Bug Fixes
+
+- use npm trusted publishing with OIDC instead of token ([dc81e99](https://github.com/urmzd/github-metrics/commit/dc81e993cfd3e7fdf777a5282d713364936713df))
+
+### Miscellaneous
+
+- **release**: v0.5.0 [skip ci] ([da30654](https://github.com/urmzd/github-metrics/commit/da306547f0a9c9ca8bb5e05ff89c973f3b4043b2))
+
+
 ## 0.5.0 (2026-02-27)
 
 
