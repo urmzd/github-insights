@@ -13,8 +13,7 @@
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   },
-  "name": "github-metrics",
-  "private": true,
+  "name": "@urmzd/github-metrics",
   "scripts": {
     "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "fmt": "biome format src/",

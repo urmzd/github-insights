@@ -36,6 +36,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          registry-url: https://registry.npmjs.org
 
       - run: npm ci
       - run: npm run build
@@ -48,3 +49,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           force: ${{ inputs.force }}
+
+      - name: Publish to npm
+        if: steps.sr.outputs.released == 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
