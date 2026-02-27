@@ -31911,15 +31911,19 @@ const fetchUserProfile = async (token, username) => {
 };
 const fetchAIPreamble = async (token, context, variant = "full") => {
     try {
-        const { profile, userConfig, languages, techHighlights, contributionData, projects, } = context;
+        const { profile, userConfig, languages, techHighlights, contributionData, activeProjects, popularProjects, } = context;
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
             .join("\n");
         const techLines = techHighlights
             .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
             .join("\n");
-        const projectLines = projects
-            .slice(0, 10)
+        const activeProjectLines = activeProjects
+            .slice(0, 5)
+            .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
+            .join("\n");
+        const popularProjectLines = popularProjects
+            .slice(0, 5)
             .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
             .join("\n");
         const profileLines = [
@@ -31971,8 +31975,11 @@ ${langLines}
 Expertise areas:
 ${techLines}
 
-Notable projects:
-${projectLines}
+Active projects (recently updated, currently being worked on):
+${activeProjectLines || "None"}
+
+Popular projects (most starred, may no longer be actively maintained):
+${popularProjectLines || "None"}
 
 Contribution stats (last year):
 - Commits: ${contributionData.contributions.totalCommitContributions}
@@ -31986,7 +31993,7 @@ ${socialLines}
 Generate a markdown preamble (2-4 short paragraphs max) that:
 - Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
 - Highlights the developer's primary domains and strengths (from expertise areas + languages)
-- Mentions notable projects if applicable
+- When mentioning projects, clearly distinguish between active work and past/popular projects. Only describe active projects as current work. Refer to popular-but-inactive projects as notable past work or well-known projects, not as things currently being worked on
 - Keep tone professional but friendly, no self-aggrandizing
 - Do NOT include social links, badges, or contact info — those are handled separately
 - Do NOT include a heading — the README already has one
@@ -34436,7 +34443,8 @@ async function run() {
                 languages,
                 techHighlights,
                 contributionData,
-                projects,
+                activeProjects,
+                popularProjects: projects,
             };
             if (preambleContent) {
                 // User-provided preamble is used as-is for both variants

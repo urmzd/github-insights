@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.6 (2026-02-27)
+
+### Bug Fixes
+
+- distinguish active vs popular projects in AI preamble prompt ([b7cef11](https://github.com/urmzd/github-metrics/commit/b7cef11780f0ae93242bc2dc3cebddf16e9b122b))
+
+### Miscellaneous
+
+- standardize GitHub Actions workflows ([1937089](https://github.com/urmzd/github-metrics/commit/1937089fc291b42821e0e3a8366dd17ed2ce1742))
+- add sensitive paths to .gitignore ([006d95b](https://github.com/urmzd/github-metrics/commit/006d95bf711cf2a7fd0b083b86757a8546ca3533))
+
+
 ## 0.4.5 (2026-02-20)
 
 ### Bug Fixes
