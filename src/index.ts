@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, relative } from "node:path";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
@@ -104,7 +104,7 @@ async function run(): Promise<void> {
     const languages = aggregateLanguages(repos);
     const projects = getTopProjectsByStars(repos);
     const { active: activeProjects, legacy: legacyProjects } =
-      splitProjectsByRecency(repos);
+      splitProjectsByRecency(repos, contributionData);
 
     const allDeps = collectAllDependencies(repos, manifests);
     const allTopics = collectAllTopics(repos);
@@ -261,30 +261,38 @@ async function run(): Promise<void> {
 
       // ── Local template previews ──────────────────────────────────────────
       if (!process.env.CI) {
-        const previewDir = "examples";
-        mkdirSync(previewDir, { recursive: true });
-        const previewSvgDir = relative(previewDir, outputDir) || ".";
-
-        const previewSvgs = indexOnly
-          ? [{ label: "GitHub Metrics", path: `${previewSvgDir}/index.svg` }]
-          : activeSections.map((s) => ({
-              label: s.title,
-              path: `${previewSvgDir}/${s.filename}`,
-            }));
-
-        const previewSectionSvgs: Record<string, string> = {};
-        for (const [key, filename] of Object.entries(SECTION_KEYS)) {
-          if (activeSections.some((s) => s.filename === filename)) {
-            previewSectionSvgs[key] = `${previewSvgDir}/${filename}`;
-          }
-        }
-
         const allTemplateNames: TemplateName[] = [
           "classic",
           "modern",
           "minimal",
         ];
         for (const tplName of allTemplateNames) {
+          const tplDir = `examples/${tplName}`;
+          mkdirSync(tplDir, { recursive: true });
+
+          // Copy SVGs into the subfolder
+          copyFileSync(`${outputDir}/index.svg`, `${tplDir}/index.svg`);
+          for (const section of activeSections) {
+            copyFileSync(
+              `${outputDir}/${section.filename}`,
+              `${tplDir}/${section.filename}`,
+            );
+          }
+
+          const previewSvgs = indexOnly
+            ? [{ label: "GitHub Metrics", path: `./index.svg` }]
+            : activeSections.map((s) => ({
+                label: s.title,
+                path: `./${s.filename}`,
+              }));
+
+          const previewSectionSvgs: Record<string, string> = {};
+          for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+            if (activeSections.some((s) => s.filename === filename)) {
+              previewSectionSvgs[key] = `./${filename}`;
+            }
+          }
+
           const template = getTemplate(tplName);
           const output = template({
             username,
@@ -305,10 +313,10 @@ async function run(): Promise<void> {
             techHighlights,
             contributionData,
             socialBadges,
-            svgDir: previewSvgDir,
+            svgDir: ".",
           });
 
-          const previewPath = `${previewDir}/${tplName}.md`;
+          const previewPath = `${tplDir}/README.md`;
           writeFileSync(previewPath, output);
           core.info(`Wrote ${previewPath} (template preview: ${tplName})`);
         }
