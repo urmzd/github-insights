@@ -31795,6 +31795,10 @@ const fetchContributionData = async (token, username) => {
             totalPullRequestContributions
             totalPullRequestReviewContributions
             totalRepositoriesWithContributedCommits
+            commitContributionsByRepository(maxRepositories: 100) {
+              repository { name nameWithOwner }
+              contributions { totalCount }
+            }
             contributionCalendar {
               totalContributions
               weeks {
@@ -31823,6 +31827,7 @@ const fetchContributionData = async (token, username) => {
             },
             externalRepos: user.repositoriesContributedTo,
             contributionCalendar: collection.contributionCalendar,
+            commitContributionsByRepository: collection.commitContributionsByRepository,
         };
     }
     catch (err) {
@@ -34034,19 +34039,31 @@ const getTopProjectsByStars = (repos) => repos
     stars: repo.stargazerCount,
 }));
 // ── Project recency split ───────────────────────────────────────────────────
-const splitProjectsByRecency = (repos, thresholdDays = 30) => {
-    const cutoff = Date.now() - thresholdDays * 24 * 60 * 60 * 1000;
-    const active = [];
-    const legacy = [];
+const splitProjectsByRecency = (repos, contributionData) => {
+    const commitMap = new Map();
+    for (const entry of contributionData.commitContributionsByRepository || []) {
+        commitMap.set(entry.repository.name, entry.contributions.totalCount);
+    }
+    const activeRepos = [];
+    const legacyRepos = [];
     for (const repo of repos) {
-        if (new Date(repo.pushedAt).getTime() >= cutoff) {
-            active.push(repo);
+        if ((commitMap.get(repo.name) || 0) > 0) {
+            activeRepos.push(repo);
         }
         else {
-            legacy.push(repo);
+            legacyRepos.push(repo);
         }
     }
-    const toItems = (list) => list
+    const active = activeRepos
+        .sort((a, b) => (commitMap.get(b.name) || 0) - (commitMap.get(a.name) || 0))
+        .slice(0, 5)
+        .map((r) => ({
+        name: r.name,
+        url: r.url,
+        description: r.description || "",
+        stars: r.stargazerCount,
+    }));
+    const legacy = legacyRepos
         .sort((a, b) => b.stargazerCount - a.stargazerCount)
         .slice(0, 5)
         .map((r) => ({
@@ -34055,7 +34072,7 @@ const splitProjectsByRecency = (repos, thresholdDays = 30) => {
         description: r.description || "",
         stars: r.stargazerCount,
     }));
-    return { active: toItems(active), legacy: toItems(legacy) };
+    return { active, legacy };
 };
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
@@ -34403,7 +34420,7 @@ async function run() {
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
         const projects = getTopProjectsByStars(repos);
-        const { active: activeProjects, legacy: legacyProjects } = splitProjectsByRecency(repos);
+        const { active: activeProjects, legacy: legacyProjects } = splitProjectsByRecency(repos, contributionData);
         const allDeps = collectAllDependencies(repos, manifests);
         const allTopics = collectAllTopics(repos);
         core.info("Fetching expertise analysis from GitHub Models...");
@@ -34514,27 +34531,31 @@ async function run() {
             core.info(`Wrote ${readmePath} (template: ${templateName})`);
             // ── Local template previews ──────────────────────────────────────────
             if (!process.env.CI) {
-                const previewDir = "examples";
-                (0,external_node_fs_namespaceObject.mkdirSync)(previewDir, { recursive: true });
-                const previewSvgDir = (0,external_node_path_namespaceObject.relative)(previewDir, outputDir) || ".";
-                const previewSvgs = indexOnly
-                    ? [{ label: "GitHub Metrics", path: `${previewSvgDir}/index.svg` }]
-                    : activeSections.map((s) => ({
-                        label: s.title,
-                        path: `${previewSvgDir}/${s.filename}`,
-                    }));
-                const previewSectionSvgs = {};
-                for (const [key, filename] of Object.entries(SECTION_KEYS)) {
-                    if (activeSections.some((s) => s.filename === filename)) {
-                        previewSectionSvgs[key] = `${previewSvgDir}/${filename}`;
-                    }
-                }
                 const allTemplateNames = [
                     "classic",
                     "modern",
                     "minimal",
                 ];
                 for (const tplName of allTemplateNames) {
+                    const tplDir = `examples/${tplName}`;
+                    (0,external_node_fs_namespaceObject.mkdirSync)(tplDir, { recursive: true });
+                    // Copy SVGs into the subfolder
+                    (0,external_node_fs_namespaceObject.copyFileSync)(`${outputDir}/index.svg`, `${tplDir}/index.svg`);
+                    for (const section of activeSections) {
+                        (0,external_node_fs_namespaceObject.copyFileSync)(`${outputDir}/${section.filename}`, `${tplDir}/${section.filename}`);
+                    }
+                    const previewSvgs = indexOnly
+                        ? [{ label: "GitHub Metrics", path: `./index.svg` }]
+                        : activeSections.map((s) => ({
+                            label: s.title,
+                            path: `./${s.filename}`,
+                        }));
+                    const previewSectionSvgs = {};
+                    for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+                        if (activeSections.some((s) => s.filename === filename)) {
+                            previewSectionSvgs[key] = `./${filename}`;
+                        }
+                    }
                     const template = getTemplate(tplName);
                     const output = template({
                         username,
@@ -34555,9 +34576,9 @@ async function run() {
                         techHighlights,
                         contributionData,
                         socialBadges,
-                        svgDir: previewSvgDir,
+                        svgDir: ".",
                     });
-                    const previewPath = `${previewDir}/${tplName}.md`;
+                    const previewPath = `${tplDir}/README.md`;
                     (0,external_node_fs_namespaceObject.writeFileSync)(previewPath, output);
                     core.info(`Wrote ${previewPath} (template preview: ${tplName})`);
                 }
