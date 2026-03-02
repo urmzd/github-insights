@@ -99,6 +99,13 @@ export interface ExternalRepo {
   primaryLanguage: { name: string } | null;
 }
 
+// ── Commit contributions by repository ────────────────────────────────────
+
+export interface RepoCommitContribution {
+  repository: { name: string; nameWithOwner: string };
+  contributions: { totalCount: number };
+}
+
 // ── Contribution calendar ──────────────────────────────────────────────────
 
 export interface ContributionDay {
@@ -120,6 +127,7 @@ export interface ContributionData {
   contributions: ContributionsCollection;
   externalRepos: { totalCount: number; nodes: ExternalRepo[] };
   contributionCalendar?: ContributionCalendar;
+  commitContributionsByRepository?: RepoCommitContribution[];
 }
 
 // ── Manifest types ──────────────────────────────────────────────────────────
