@@ -27,7 +27,7 @@ generate:
     GITHUB_TOKEN=$(gh auth token) GITHUB_REPOSITORY_OWNER=$(gh api user --jq .login) npx tsx src/index.ts
 
 # Generate metrics + preview all templates side by side (requires gh auth)
-# Outputs: _README.md (primary), examples/classic.md, examples/modern.md, examples/minimal.md
+# Outputs: _README.md (primary), examples/{classic,modern,minimal}/README.md + SVGs
 preview-templates: generate
 
 # Full CI check
