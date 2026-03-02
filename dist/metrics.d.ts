@@ -4,7 +4,7 @@ export declare const aggregateLanguages: (repos: RepoNode[]) => LanguageItem[];
 export declare const collectAllDependencies: (repos: RepoNode[], manifests: ManifestMap) => string[];
 export declare const collectAllTopics: (repos: RepoNode[]) => string[];
 export declare const getTopProjectsByStars: (repos: RepoNode[]) => ProjectItem[];
-export declare const splitProjectsByRecency: (repos: RepoNode[], thresholdDays?: number) => {
+export declare const splitProjectsByRecency: (repos: RepoNode[], contributionData: ContributionData) => {
     active: ProjectItem[];
     legacy: ProjectItem[];
 };

@@ -272,71 +272,83 @@ describe("getTopProjectsByStars", () => {
 // ── splitProjectsByRecency ──────────────────────────────────────────────────
 
 describe("splitProjectsByRecency", () => {
-  it("splits repos into active and legacy", () => {
-    const now = new Date();
-    const recent = new Date(now);
-    recent.setDate(recent.getDate() - 5);
-    const old = new Date(now);
-    old.setDate(old.getDate() - 60);
-
+  it("classifies repos with user commits as active and others as legacy", () => {
     const repos = [
-      makeRepo({
-        name: "active-repo",
-        stargazerCount: 20,
-        pushedAt: recent.toISOString(),
-      }),
-      makeRepo({
-        name: "legacy-repo",
-        stargazerCount: 15,
-        pushedAt: old.toISOString(),
-      }),
+      makeRepo({ name: "active-repo", stargazerCount: 20 }),
+      makeRepo({ name: "legacy-repo", stargazerCount: 15 }),
     ];
-    const { active, legacy } = splitProjectsByRecency(repos);
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        { repository: { name: "active-repo", nameWithOwner: "user/active-repo" }, contributions: { totalCount: 10 } },
+      ],
+    });
+    const { active, legacy } = splitProjectsByRecency(repos, contribData);
     expect(active.map((p) => p.name)).toContain("active-repo");
     expect(legacy.map((p) => p.name)).toContain("legacy-repo");
   });
 
-  it("sorts each group by stars descending", () => {
-    const now = new Date();
-    const recent = new Date(now);
-    recent.setDate(recent.getDate() - 5);
-
+  it("sorts active repos by commit count descending", () => {
     const repos = [
-      makeRepo({
-        name: "low-stars",
-        stargazerCount: 5,
-        pushedAt: recent.toISOString(),
-      }),
-      makeRepo({
-        name: "high-stars",
-        stargazerCount: 50,
-        pushedAt: recent.toISOString(),
-      }),
+      makeRepo({ name: "few-commits", stargazerCount: 100 }),
+      makeRepo({ name: "many-commits", stargazerCount: 1 }),
     ];
-    const { active } = splitProjectsByRecency(repos);
-    expect(active[0].name).toBe("high-stars");
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        { repository: { name: "few-commits", nameWithOwner: "user/few-commits" }, contributions: { totalCount: 3 } },
+        { repository: { name: "many-commits", nameWithOwner: "user/many-commits" }, contributions: { totalCount: 50 } },
+      ],
+    });
+    const { active } = splitProjectsByRecency(repos, contribData);
+    expect(active[0].name).toBe("many-commits");
+    expect(active[1].name).toBe("few-commits");
+  });
+
+  it("sorts legacy repos by stars descending", () => {
+    const repos = [
+      makeRepo({ name: "low-stars", stargazerCount: 5 }),
+      makeRepo({ name: "high-stars", stargazerCount: 50 }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [],
+    });
+    const { legacy } = splitProjectsByRecency(repos, contribData);
+    expect(legacy[0].name).toBe("high-stars");
+    expect(legacy[1].name).toBe("low-stars");
   });
 
   it("limits each group to 5 items", () => {
-    const now = new Date();
-    const recent = new Date(now);
-    recent.setDate(recent.getDate() - 5);
-
     const repos = Array.from({ length: 8 }, (_, i) =>
-      makeRepo({
-        name: `repo-${i}`,
-        stargazerCount: i,
-        pushedAt: recent.toISOString(),
-      }),
+      makeRepo({ name: `repo-${i}`, stargazerCount: i }),
     );
-    const { active } = splitProjectsByRecency(repos);
+    const contribData = makeContributionData({
+      commitContributionsByRepository: repos.map((r, idx) => ({
+        repository: { name: r.name, nameWithOwner: `user/${r.name}` },
+        contributions: { totalCount: idx + 1 },
+      })),
+    });
+    // All 8 repos have commits → all active
+    const { active } = splitProjectsByRecency(repos, contribData);
     expect(active.length).toBeLessThanOrEqual(5);
   });
 
   it("returns empty arrays for no repos", () => {
-    const { active, legacy } = splitProjectsByRecency([]);
+    const contribData = makeContributionData();
+    const { active, legacy } = splitProjectsByRecency([], contribData);
     expect(active).toEqual([]);
     expect(legacy).toEqual([]);
+  });
+
+  it("treats all repos as legacy when commitContributionsByRepository is missing", () => {
+    const repos = [
+      makeRepo({ name: "repo-a", stargazerCount: 30 }),
+      makeRepo({ name: "repo-b", stargazerCount: 10 }),
+    ];
+    const contribData = makeContributionData();
+    // default makeContributionData has no commitContributionsByRepository
+    const { active, legacy } = splitProjectsByRecency(repos, contribData);
+    expect(active).toEqual([]);
+    expect(legacy).toHaveLength(2);
+    expect(legacy[0].name).toBe("repo-a");
   });
 });
 
