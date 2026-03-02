@@ -129,6 +129,10 @@ export const fetchContributionData = async (
             totalPullRequestContributions
             totalPullRequestReviewContributions
             totalRepositoriesWithContributedCommits
+            commitContributionsByRepository(maxRepositories: 100) {
+              repository { name nameWithOwner }
+              contributions { totalCount }
+            }
             contributionCalendar {
               totalContributions
               weeks {
@@ -162,6 +166,8 @@ export const fetchContributionData = async (
       },
       externalRepos: user.repositoriesContributedTo,
       contributionCalendar: collection.contributionCalendar,
+      commitContributionsByRepository:
+        collection.commitContributionsByRepository,
     } as ContributionData;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
