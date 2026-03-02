@@ -102,32 +102,45 @@ export const getTopProjectsByStars = (repos: RepoNode[]): ProjectItem[] =>
 
 export const splitProjectsByRecency = (
   repos: RepoNode[],
-  thresholdDays = 30,
+  contributionData: ContributionData,
 ): { active: ProjectItem[]; legacy: ProjectItem[] } => {
-  const cutoff = Date.now() - thresholdDays * 24 * 60 * 60 * 1000;
-  const active: RepoNode[] = [];
-  const legacy: RepoNode[] = [];
+  const commitMap = new Map<string, number>();
+  for (const entry of contributionData.commitContributionsByRepository || []) {
+    commitMap.set(entry.repository.name, entry.contributions.totalCount);
+  }
+
+  const activeRepos: RepoNode[] = [];
+  const legacyRepos: RepoNode[] = [];
 
   for (const repo of repos) {
-    if (new Date(repo.pushedAt).getTime() >= cutoff) {
-      active.push(repo);
+    if ((commitMap.get(repo.name) || 0) > 0) {
+      activeRepos.push(repo);
     } else {
-      legacy.push(repo);
+      legacyRepos.push(repo);
     }
   }
 
-  const toItems = (list: RepoNode[]): ProjectItem[] =>
-    list
-      .sort((a, b) => b.stargazerCount - a.stargazerCount)
-      .slice(0, 5)
-      .map((r) => ({
-        name: r.name,
-        url: r.url,
-        description: r.description || "",
-        stars: r.stargazerCount,
-      }));
+  const active: ProjectItem[] = activeRepos
+    .sort((a, b) => (commitMap.get(b.name) || 0) - (commitMap.get(a.name) || 0))
+    .slice(0, 5)
+    .map((r) => ({
+      name: r.name,
+      url: r.url,
+      description: r.description || "",
+      stars: r.stargazerCount,
+    }));
 
-  return { active: toItems(active), legacy: toItems(legacy) };
+  const legacy: ProjectItem[] = legacyRepos
+    .sort((a, b) => b.stargazerCount - a.stargazerCount)
+    .slice(0, 5)
+    .map((r) => ({
+      name: r.name,
+      url: r.url,
+      description: r.description || "",
+      stars: r.stargazerCount,
+    }));
+
+  return { active, legacy };
 };
 
 // ── Section definitions ─────────────────────────────────────────────────────
