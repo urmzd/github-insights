@@ -87,6 +87,15 @@ export interface ExternalRepo {
         name: string;
     } | null;
 }
+export interface RepoCommitContribution {
+    repository: {
+        name: string;
+        nameWithOwner: string;
+    };
+    contributions: {
+        totalCount: number;
+    };
+}
 export interface ContributionDay {
     contributionCount: number;
     date: string;
@@ -106,6 +115,7 @@ export interface ContributionData {
         nodes: ExternalRepo[];
     };
     contributionCalendar?: ContributionCalendar;
+    commitContributionsByRepository?: RepoCommitContribution[];
 }
 export type ManifestMap = Map<string, Record<string, string>>;
 export type ReadmeMap = Map<string, string>;
