@@ -279,7 +279,13 @@ describe("splitProjectsByRecency", () => {
     ];
     const contribData = makeContributionData({
       commitContributionsByRepository: [
-        { repository: { name: "active-repo", nameWithOwner: "user/active-repo" }, contributions: { totalCount: 10 } },
+        {
+          repository: {
+            name: "active-repo",
+            nameWithOwner: "user/active-repo",
+          },
+          contributions: { totalCount: 10 },
+        },
       ],
     });
     const { active, legacy } = splitProjectsByRecency(repos, contribData);
@@ -294,8 +300,20 @@ describe("splitProjectsByRecency", () => {
     ];
     const contribData = makeContributionData({
       commitContributionsByRepository: [
-        { repository: { name: "few-commits", nameWithOwner: "user/few-commits" }, contributions: { totalCount: 3 } },
-        { repository: { name: "many-commits", nameWithOwner: "user/many-commits" }, contributions: { totalCount: 50 } },
+        {
+          repository: {
+            name: "few-commits",
+            nameWithOwner: "user/few-commits",
+          },
+          contributions: { totalCount: 3 },
+        },
+        {
+          repository: {
+            name: "many-commits",
+            nameWithOwner: "user/many-commits",
+          },
+          contributions: { totalCount: 50 },
+        },
       ],
     });
     const { active } = splitProjectsByRecency(repos, contribData);
