@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0 (2026-03-05)
+
+### Features
+
+- **examples**: generate template examples in subdirectories ([ff257e2](https://github.com/urmzd/github-metrics/commit/ff257e29045c5ae046a9d0a604b0fa91162fdca9))
+- **metrics**: classify projects by commit activity ([59d11a9](https://github.com/urmzd/github-metrics/commit/59d11a91faab801ad18859443a399a2a969b8cc1))
+- **api**: fetch commit contributions by repository ([42c2e2e](https://github.com/urmzd/github-metrics/commit/42c2e2ea50283305eb085d1b04ba87b115a06bee))
+
+### Bug Fixes
+
+- **ci**: format long lines in metrics.test.ts for biome compliance ([d889d64](https://github.com/urmzd/github-metrics/commit/d889d64870f1a3728d006c061d6f05a86b7bd449))
+
+### Miscellaneous
+
+- **metrics**: update generated metrics ([cdde265](https://github.com/urmzd/github-metrics/commit/cdde2657eb36d624fba5a96af1ba6ddb4a030dca))
+
+
 ## 0.5.1 (2026-02-27)
 
 ### Bug Fixes
