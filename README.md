@@ -142,6 +142,18 @@ just fmt-fix     # format fix
 | `metrics/metrics-contributions.svg` | External open source contributions |
 | `README.md` | Generated profile README (CI); `_README.md` locally |
 
+## Agent Skill
+
+This project ships an [Agent Skill](https://github.com/vercel-labs/skills) for use with Claude Code, Cursor, and other compatible agents.
+
+**Install:**
+
+```sh
+npx skills add urmzd/github-metrics
+```
+
+Once installed, use `/github-metrics` to generate and customize SVG profile metrics.
+
 ---
 
 <sub>Created using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>
