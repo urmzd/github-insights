@@ -18,20 +18,20 @@ const MANIFEST_FILES = [
   "requirements.txt",
 ];
 
-type GraphQL = ReturnType<typeof github.getOctokit>["graphql"];
+export type GraphQL = ReturnType<typeof github.getOctokit>["graphql"];
 
-const makeGraphql = (token: string): GraphQL =>
+export const makeGraphql = (token: string): GraphQL =>
   github.getOctokit(token).graphql;
 
 export const fetchAllRepoData = async (
-  token: string,
+  graphql: GraphQL,
   username: string,
 ): Promise<RepoNode[]> => {
-  const graphql = makeGraphql(token);
   const data: {
     user: { repositories: { nodes: RepoNode[] } };
-  } = await graphql(`{
-    user(login: "${username}") {
+  } = await graphql(
+    `query($username: String!) {
+    user(login: $username) {
       repositories(first: 100, orderBy: {field: STARGAZERS, direction: DESC}, ownerAffiliations: OWNER, privacy: PUBLIC) {
         nodes {
           name
@@ -53,40 +53,52 @@ export const fetchAllRepoData = async (
         }
       }
     }
-  }`);
+  }`,
+    { username },
+  );
 
   return data.user.repositories.nodes.filter((r) => !r.isArchived && !r.isFork);
 };
 
 export const fetchManifestsForRepos = async (
-  token: string,
+  graphql: GraphQL,
   username: string,
   repos: RepoNode[],
 ): Promise<ManifestMap> => {
-  const graphql = makeGraphql(token);
   const manifests: ManifestMap = new Map();
   const batchSize = 10;
 
   for (let i = 0; i < repos.length; i += batchSize) {
     const batch = repos.slice(i, i + batchSize);
+    const varDefs = batch
+      .map((_, idx) => `$name_${idx}: String!`)
+      .join(", ");
     const aliases = batch
-      .map((repo, idx) => {
+      .map((_, idx) => {
         const alias = `repo_${idx}`;
         const fileQueries = MANIFEST_FILES.map((file) => {
           const fieldName = file.replace(/[-.]/g, "_");
           return `${fieldName}: object(expression: "HEAD:${file}") { ... on Blob { text } }`;
         }).join("\n            ");
-        return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
+        return `${alias}: repository(owner: $owner, name: $name_${idx}) {
             ${fileQueries}
           }`;
       })
       .join("\n      ");
 
+    const variables: Record<string, string> = { owner: username };
+    batch.forEach((repo, idx) => {
+      variables[`name_${idx}`] = repo.name;
+    });
+
     try {
       const data: Record<
         string,
         Record<string, { text?: string } | null>
-      > = await graphql(`{ ${aliases} }`);
+      > = await graphql(
+        `query($owner: String!, ${varDefs}) { ${aliases} }`,
+        variables,
+      );
       batch.forEach((repo, idx) => {
         const repoData = data[`repo_${idx}`];
         if (!repoData) return;
@@ -112,18 +124,17 @@ export const fetchManifestsForRepos = async (
 };
 
 export const fetchContributionData = async (
-  token: string,
+  graphql: GraphQL,
   username: string,
 ): Promise<ContributionData> => {
-  const graphql = makeGraphql(token);
   try {
     const now = new Date();
     const from = new Date(now);
     from.setFullYear(from.getFullYear() - 1);
 
     const data = await graphql(
-      `query($from: DateTime!, $to: DateTime!) {
-        user(login: "${username}") {
+      `query($username: String!, $from: DateTime!, $to: DateTime!) {
+        user(login: $username) {
           contributionsCollection(from: $from, to: $to) {
             totalCommitContributions
             totalPullRequestContributions
@@ -150,7 +161,7 @@ export const fetchContributionData = async (
           }
         }
       }`,
-      { from: from.toISOString(), to: now.toISOString() },
+      { username, from: from.toISOString(), to: now.toISOString() },
     );
 
     const user = (data as Record<string, Record<string, unknown>>).user;
@@ -185,28 +196,38 @@ export const fetchContributionData = async (
 };
 
 export const fetchReadmeForRepos = async (
-  token: string,
+  graphql: GraphQL,
   username: string,
   repos: RepoNode[],
 ): Promise<ReadmeMap> => {
-  const graphql = makeGraphql(token);
   const readmeMap: ReadmeMap = new Map();
   const batchSize = 10;
 
   for (let i = 0; i < repos.length; i += batchSize) {
     const batch = repos.slice(i, i + batchSize);
+    const varDefs = batch
+      .map((_, idx) => `$name_${idx}: String!`)
+      .join(", ");
     const aliases = batch
-      .map((repo, idx) => {
+      .map((_, idx) => {
         const alias = `repo_${idx}`;
-        return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
+        return `${alias}: repository(owner: $owner, name: $name_${idx}) {
             readme: object(expression: "HEAD:README.md") { ... on Blob { text } }
           }`;
       })
       .join("\n      ");
 
+    const variables: Record<string, string> = { owner: username };
+    batch.forEach((repo, idx) => {
+      variables[`name_${idx}`] = repo.name;
+    });
+
     try {
       const data: Record<string, { readme?: { text?: string } } | null> =
-        await graphql(`{ ${aliases} }`);
+        await graphql(
+          `query($owner: String!, ${varDefs}) { ${aliases} }`,
+          variables,
+        );
       batch.forEach((repo, idx) => {
         const repoData = data[`repo_${idx}`];
         if (repoData?.readme?.text) {
@@ -223,13 +244,13 @@ export const fetchReadmeForRepos = async (
 };
 
 export const fetchUserProfile = async (
-  token: string,
+  graphql: GraphQL,
   username: string,
 ): Promise<UserProfile> => {
-  const graphql = makeGraphql(token);
   try {
-    const data = await graphql(`{
-      user(login: "${username}") {
+    const data = await graphql(
+      `query($username: String!) {
+      user(login: $username) {
         name
         bio
         company
@@ -238,7 +259,9 @@ export const fetchUserProfile = async (
         twitterUsername
         socialAccounts(first: 10) { nodes { provider url } }
       }
-    }`);
+    }`,
+      { username },
+    );
 
     const user = (data as Record<string, Record<string, unknown>>).user;
     return {
@@ -275,7 +298,7 @@ export interface PreambleContext {
   techHighlights: TechHighlight[];
   contributionData: ContributionData;
   activeProjects: ProjectItem[];
-  popularProjects: ProjectItem[];
+  complexProjects: ProjectItem[];
 }
 
 export const fetchAIPreamble = async (
@@ -291,7 +314,7 @@ export const fetchAIPreamble = async (
       techHighlights,
       contributionData,
       activeProjects,
-      popularProjects,
+      complexProjects,
     } = context;
 
     const langLines = languages
@@ -300,14 +323,15 @@ export const fetchAIPreamble = async (
     const techLines = techHighlights
       .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
       .join("\n");
-    const activeProjectLines = activeProjects
-      .slice(0, 5)
-      .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
-      .join("\n");
-    const popularProjectLines = popularProjects
-      .slice(0, 5)
-      .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
-      .join("\n");
+
+    const formatProject = (p: ProjectItem): string => {
+      const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
+      const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
+      return `- ${p.name} (${p.stars} stars${size})${langs}: ${p.description}`;
+    };
+
+    const activeProjectLines = activeProjects.map(formatProject).join("\n");
+    const complexProjectLines = complexProjects.map(formatProject).join("\n");
 
     const profileLines = [
       profile.name ? `Name: ${profile.name}` : null,
@@ -342,8 +366,15 @@ ${langLines}
 Expertise areas:
 ${techLines}
 
+Most technically complex projects (by language diversity, codebase size, and depth):
+${complexProjectLines || "None"}
+
+Active projects (recently committed to):
+${activeProjectLines || "None"}
+
 Generate 1-2 sentences that:
 - Write in first person (use I/my). Describe what you work on
+- Lead with the most technically impressive or complex work — projects with multiple languages, large codebases, or deep domain expertise
 - Reference their top 2-3 languages or technologies naturally
 - Keep tone professional but friendly
 - Do NOT include social links, badges, or contact info
@@ -361,11 +392,11 @@ ${langLines}
 Expertise areas:
 ${techLines}
 
-Active projects (recently updated, currently being worked on):
-${activeProjectLines || "None"}
+Most technically complex projects (ranked by language diversity, codebase size, and depth):
+${complexProjectLines || "None"}
 
-Popular projects (most starred, may no longer be actively maintained):
-${popularProjectLines || "None"}
+Active projects (recently committed to, currently being worked on):
+${activeProjectLines || "None"}
 
 Contribution stats (last year):
 - Commits: ${contributionData.contributions.totalCommitContributions}
@@ -379,7 +410,9 @@ ${socialLines}
 Generate a markdown preamble (2-4 short paragraphs max) that:
 - Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
 - Highlights the developer's primary domains and strengths (from expertise areas + languages)
-- When mentioning projects, clearly distinguish between active work and past/popular projects. Only describe active projects as current work. Refer to popular-but-inactive projects as notable past work or well-known projects, not as things currently being worked on
+- Lead with the most technically impressive work — projects that use multiple languages, have large codebases, or demonstrate deep domain expertise. These signal engineering depth and should be featured prominently
+- Clearly distinguish between active projects (currently being worked on) and complex-but-inactive projects (notable past work). Only describe active projects as current work
+- If a project appears in both the complex and active lists, emphasize it — it represents the developer's deepest current investment
 - Keep tone professional but friendly, no self-aggrandizing
 - Do NOT include social links, badges, or contact info — those are handled separately
 - Do NOT include a heading — the README already has one
