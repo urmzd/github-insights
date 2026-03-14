@@ -24,6 +24,9 @@ export interface ProjectItem {
   url: string;
   description: string;
   stars: number;
+  languageCount?: number;
+  codeSize?: number;
+  languages?: string[];
 }
 
 // ── Bar chart generics ──────────────────────────────────────────────────────
