@@ -255,6 +255,9 @@ describe("getTopProjectsByStars", () => {
       url: "https://github.com/user/my-project",
       description: "A cool project",
       stars: 42,
+      languageCount: 2,
+      codeSize: 1024,
+      languages: ["TypeScript", "JavaScript"],
     });
   });
 
@@ -293,35 +296,58 @@ describe("splitProjectsByRecency", () => {
     expect(legacy.map((p) => p.name)).toContain("legacy-repo");
   });
 
-  it("sorts active repos by commit count descending", () => {
+  it("sorts active repos by complexity descending", () => {
     const repos = [
-      makeRepo({ name: "few-commits", stargazerCount: 100 }),
-      makeRepo({ name: "many-commits", stargazerCount: 1 }),
+      makeRepo({
+        name: "simple-repo",
+        stargazerCount: 100,
+        diskUsage: 512,
+        languages: {
+          totalSize: 10000,
+          edges: [
+            { size: 10000, node: { name: "JavaScript", color: "#f1e05a" } },
+          ],
+        },
+      }),
+      makeRepo({
+        name: "complex-repo",
+        stargazerCount: 1,
+        diskUsage: 50000,
+        languages: {
+          totalSize: 100000,
+          edges: [
+            { size: 40000, node: { name: "TypeScript", color: "#3178c6" } },
+            { size: 30000, node: { name: "Rust", color: "#dea584" } },
+            { size: 20000, node: { name: "Python", color: "#3572A5" } },
+            { size: 10000, node: { name: "Go", color: "#00ADD8" } },
+          ],
+        },
+      }),
     ];
     const contribData = makeContributionData({
       commitContributionsByRepository: [
         {
           repository: {
-            name: "few-commits",
-            nameWithOwner: "user/few-commits",
+            name: "simple-repo",
+            nameWithOwner: "user/simple-repo",
           },
-          contributions: { totalCount: 3 },
+          contributions: { totalCount: 50 },
         },
         {
           repository: {
-            name: "many-commits",
-            nameWithOwner: "user/many-commits",
+            name: "complex-repo",
+            nameWithOwner: "user/complex-repo",
           },
-          contributions: { totalCount: 50 },
+          contributions: { totalCount: 10 },
         },
       ],
     });
     const { active } = splitProjectsByRecency(repos, contribData);
-    expect(active[0].name).toBe("many-commits");
-    expect(active[1].name).toBe("few-commits");
+    expect(active[0].name).toBe("complex-repo");
+    expect(active[1].name).toBe("simple-repo");
   });
 
-  it("sorts legacy repos by stars descending", () => {
+  it("sorts legacy repos by complexity descending", () => {
     const repos = [
       makeRepo({ name: "low-stars", stargazerCount: 5 }),
       makeRepo({ name: "high-stars", stargazerCount: 50 }),
@@ -334,19 +360,44 @@ describe("splitProjectsByRecency", () => {
     expect(legacy[1].name).toBe("low-stars");
   });
 
-  it("limits each group to 5 items", () => {
+  it("returns all qualifying repos without a cap", () => {
     const repos = Array.from({ length: 8 }, (_, i) =>
       makeRepo({ name: `repo-${i}`, stargazerCount: i }),
     );
     const contribData = makeContributionData({
-      commitContributionsByRepository: repos.map((r, idx) => ({
+      commitContributionsByRepository: repos.map((r) => ({
         repository: { name: r.name, nameWithOwner: `user/${r.name}` },
-        contributions: { totalCount: idx + 1 },
+        contributions: { totalCount: 10 },
       })),
     });
-    // All 8 repos have commits → all active
+    // All 8 repos have 10 commits (above threshold) → all active
     const { active } = splitProjectsByRecency(repos, contribData);
-    expect(active.length).toBeLessThanOrEqual(5);
+    expect(active).toHaveLength(8);
+  });
+
+  it("classifies repos below commit threshold as legacy", () => {
+    const repos = [
+      makeRepo({ name: "busy-repo", stargazerCount: 5 }),
+      makeRepo({ name: "one-off-repo", stargazerCount: 50 }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "busy-repo", nameWithOwner: "user/busy-repo" },
+          contributions: { totalCount: 20 },
+        },
+        {
+          repository: {
+            name: "one-off-repo",
+            nameWithOwner: "user/one-off-repo",
+          },
+          contributions: { totalCount: 1 },
+        },
+      ],
+    });
+    const { active, legacy } = splitProjectsByRecency(repos, contribData);
+    expect(active.map((p) => p.name)).toEqual(["busy-repo"]);
+    expect(legacy.map((p) => p.name)).toEqual(["one-off-repo"]);
   });
 
   it("returns empty arrays for no repos", () => {
