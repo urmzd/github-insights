@@ -78,10 +78,10 @@ export const MyParser: PackageParser = {
 
 - Tests use [Vitest](https://vitest.dev/) with `*.test.ts` and `*.test.tsx` naming conventions
 - Use `.test.tsx` for tests that exercise JSX components (e.g., `src/components/section.test.tsx`)
-- Run tests: `just test` or `npm test`
+- Run tests: `npm test`
 - Tests live alongside source files (e.g., `src/config.test.ts`, `src/components/donut-chart.test.tsx`)
 
 ## Code Style
 
-- Enforced by [Biome](https://biomejs.dev/) — run `just fmt` to check, `just fmt-fix` to auto-fix
-- Run `just ci` before submitting a PR to catch formatting, lint, type, and test issues
+- Enforced by [Biome](https://biomejs.dev/) — run `npm run fmt` to check, `npm run fmt:fix` to auto-fix
+- Run `npm run ci` before submitting a PR to catch formatting, lint, type, and test issues

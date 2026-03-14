@@ -10,5 +10,5 @@
 
 ## Verification
 
-- [ ] `just ci` passes (fmt, lint, typecheck, test, build)
-- [ ] `just generate` runs locally without overwriting project README
+- [ ] `npm run ci` passes (fmt, lint, typecheck, test, build)
+- [ ] `npm run generate` runs locally without overwriting project README

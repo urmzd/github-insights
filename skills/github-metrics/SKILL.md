@@ -11,7 +11,7 @@ Generate GitHub profile metrics using `@urmzd/github-metrics`.
 ## Local Generation
 
 ```sh
-just generate
+npm run generate
 ```
 
 This requires `gh` CLI to be authenticated. Outputs go to `metrics/` and `_README.md` (locally).
@@ -42,9 +42,9 @@ Requires permissions: `contents: write`, `models: read` (for AI features).
 ## Development
 
 ```sh
-just ci          # Full CI check
-just build       # Build ncc bundle
-just test        # Run vitest
-just typecheck   # tsc --noEmit
-just lint        # biome check
+npm run ci          # Full CI check
+npm run build       # Build ncc bundle
+npm test            # Run vitest
+npm run typecheck   # tsc --noEmit
+npm run lint        # biome check
 ```
