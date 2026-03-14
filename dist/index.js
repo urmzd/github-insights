@@ -34054,7 +34054,10 @@ const complexityScore = (repo) => {
     const topics = repo.repositoryTopics.nodes.length;
     // Weighted sum: language diversity matters most, then code size, then
     // social proof (stars) and topic breadth as tie-breakers.
-    return langCount * 10 + Math.min(sizeMb, 50) * 2 + Math.log2(stars + 1) * 3 + topics * 2;
+    return (langCount * 10 +
+        Math.min(sizeMb, 50) * 2 +
+        Math.log2(stars + 1) * 3 +
+        topics * 2);
 };
 const toProjectItem = (repo) => ({
     name: repo.name,
