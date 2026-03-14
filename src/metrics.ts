@@ -85,20 +85,53 @@ export const collectAllTopics = (repos: RepoNode[]): string[] => {
   return [...seen].sort();
 };
 
+// ── Project complexity scoring ──────────────────────────────────────────────
+
+const repoLanguages = (repo: RepoNode): string[] =>
+  repo.languages.edges.map((e) => e.node.name);
+
+export const complexityScore = (repo: RepoNode): number => {
+  const langCount = repo.languages.edges.length;
+  const sizeMb = repo.diskUsage / 1024;
+  const stars = repo.stargazerCount;
+  const topics = repo.repositoryTopics.nodes.length;
+
+  // Weighted sum: language diversity matters most, then code size, then
+  // social proof (stars) and topic breadth as tie-breakers.
+  return langCount * 10 + Math.min(sizeMb, 50) * 2 + Math.log2(stars + 1) * 3 + topics * 2;
+};
+
+const toProjectItem = (repo: RepoNode): ProjectItem => ({
+  name: repo.name,
+  url: repo.url,
+  description: repo.description || "",
+  stars: repo.stargazerCount,
+  languageCount: repo.languages.edges.length,
+  codeSize: repo.diskUsage,
+  languages: repoLanguages(repo),
+});
+
 // ── Top Projects by Stars ───────────────────────────────────────────────────
 
 export const getTopProjectsByStars = (repos: RepoNode[]): ProjectItem[] =>
-  repos
+  [...repos]
     .sort((a, b) => b.stargazerCount - a.stargazerCount)
     .slice(0, 5)
-    .map((repo) => ({
-      name: repo.name,
-      url: repo.url,
-      description: repo.description || "",
-      stars: repo.stargazerCount,
-    }));
+    .map(toProjectItem);
+
+// ── Top Projects by Complexity ─────────────────────────────────────────────
+
+export const getTopProjectsByComplexity = (repos: RepoNode[]): ProjectItem[] => {
+  const sorted = [...repos].sort((a, b) => complexityScore(b) - complexityScore(a));
+  for (const repo of sorted) {
+    console.info(`[complexity] ${repo.name}: ${complexityScore(repo).toFixed(1)} (${repo.languages.edges.length} langs, ${repo.diskUsage}KB)`);
+  }
+  return sorted.map(toProjectItem);
+};
 
 // ── Project recency split ───────────────────────────────────────────────────
+
+const ACTIVE_COMMIT_THRESHOLD = 5;
 
 export const splitProjectsByRecency = (
   repos: RepoNode[],
@@ -113,32 +146,25 @@ export const splitProjectsByRecency = (
   const legacyRepos: RepoNode[] = [];
 
   for (const repo of repos) {
-    if ((commitMap.get(repo.name) || 0) > 0) {
+    const commits = commitMap.get(repo.name) || 0;
+    if (commits >= ACTIVE_COMMIT_THRESHOLD) {
       activeRepos.push(repo);
+      console.info(`[active]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
     } else {
       legacyRepos.push(repo);
+      console.info(`[legacy]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
     }
   }
 
+  console.info(`Split: ${activeRepos.length} active, ${legacyRepos.length} legacy (threshold: ${ACTIVE_COMMIT_THRESHOLD} commits)`);
+
   const active: ProjectItem[] = activeRepos
-    .sort((a, b) => (commitMap.get(b.name) || 0) - (commitMap.get(a.name) || 0))
-    .slice(0, 5)
-    .map((r) => ({
-      name: r.name,
-      url: r.url,
-      description: r.description || "",
-      stars: r.stargazerCount,
-    }));
+    .sort((a, b) => complexityScore(b) - complexityScore(a))
+    .map(toProjectItem);
 
   const legacy: ProjectItem[] = legacyRepos
-    .sort((a, b) => b.stargazerCount - a.stargazerCount)
-    .slice(0, 5)
-    .map((r) => ({
-      name: r.name,
-      url: r.url,
-      description: r.description || "",
-      stars: r.stargazerCount,
-    }));
+    .sort((a, b) => complexityScore(b) - complexityScore(a))
+    .map(toProjectItem);
 
   return { active, legacy };
 };
