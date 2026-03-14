@@ -3,7 +3,9 @@ export declare const SECTION_KEYS: Record<string, string>;
 export declare const aggregateLanguages: (repos: RepoNode[]) => LanguageItem[];
 export declare const collectAllDependencies: (repos: RepoNode[], manifests: ManifestMap) => string[];
 export declare const collectAllTopics: (repos: RepoNode[]) => string[];
+export declare const complexityScore: (repo: RepoNode) => number;
 export declare const getTopProjectsByStars: (repos: RepoNode[]) => ProjectItem[];
+export declare const getTopProjectsByComplexity: (repos: RepoNode[]) => ProjectItem[];
 export declare const splitProjectsByRecency: (repos: RepoNode[], contributionData: ContributionData) => {
     active: ProjectItem[];
     legacy: ProjectItem[];

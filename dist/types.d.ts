@@ -17,6 +17,9 @@ export interface ProjectItem {
     url: string;
     description: string;
     stars: number;
+    languageCount?: number;
+    codeSize?: number;
+    languages?: string[];
 }
 export interface BarItem {
     name: string;
