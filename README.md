@@ -112,23 +112,22 @@ The action produces a profile README with the following layout:
 ### Prerequisites
 
 - Node.js 22+
-- [just](https://github.com/casey/just) command runner
 - `gh` CLI (authenticated) for local generation
 
 ### Commands
 
 ```sh
-just ci          # full CI check (fmt, lint, typecheck, test, build)
-just generate    # generate metrics locally (uses gh auth token)
-just build       # build ncc bundle
-just test        # run tests
-just typecheck   # type-check
-just lint        # lint
-just fmt         # format check
-just fmt-fix     # format fix
+npm run ci          # full CI check (fmt, lint, typecheck, test, build)
+npm run generate    # generate metrics locally (uses gh auth token)
+npm run build       # build ncc bundle
+npm test            # run tests
+npm run typecheck   # type-check
+npm run lint        # lint
+npm run fmt         # format check
+npm run fmt:fix     # format fix
 ```
 
-> **Note:** When running locally (outside CI), `commit-push` defaults to `false` and `readme-path` defaults to `_README.md`, so `just generate` will not overwrite your project README or push commits.
+> **Note:** When running locally (outside CI), `commit-push` defaults to `false` and `readme-path` defaults to `_README.md`, so `npm run generate` will not overwrite your project README or push commits.
 
 ## Output Files
 

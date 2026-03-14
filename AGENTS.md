@@ -32,14 +32,14 @@ TypeScript/Node.js GitHub Action using React JSX for SVG rendering.
 
 | Task | Command |
 |------|---------|
-| Build | `just build` or `npm run build` (ncc bundle to dist/) |
-| Test | `just test` or `npm run test` (vitest) |
-| Type-check | `just typecheck` or `npm run typecheck` (tsc --noEmit) |
-| Lint | `just lint` or `npm run lint` (biome check) |
-| Format check | `just fmt` or `npm run fmt` |
-| Format fix | `just fmt-fix` or `npm run fmt:fix` |
-| Generate locally | `just generate` (requires `gh auth`) |
-| Full CI | `just ci` (fmt + lint + typecheck + test + build) |
+| Build | `npm run build` (ncc bundle to dist/) |
+| Test | `npm test` (vitest) |
+| Type-check | `npm run typecheck` (tsc --noEmit) |
+| Lint | `npm run lint` (biome check) |
+| Format check | `npm run fmt` |
+| Format fix | `npm run fmt:fix` |
+| Generate locally | `npm run generate` (requires `gh auth`) |
+| Full CI | `npm run ci` (fmt + lint + typecheck + test + build) |
 
 ## Code Style
 
