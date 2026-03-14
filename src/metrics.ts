@@ -98,7 +98,12 @@ export const complexityScore = (repo: RepoNode): number => {
 
   // Weighted sum: language diversity matters most, then code size, then
   // social proof (stars) and topic breadth as tie-breakers.
-  return langCount * 10 + Math.min(sizeMb, 50) * 2 + Math.log2(stars + 1) * 3 + topics * 2;
+  return (
+    langCount * 10 +
+    Math.min(sizeMb, 50) * 2 +
+    Math.log2(stars + 1) * 3 +
+    topics * 2
+  );
 };
 
 const toProjectItem = (repo: RepoNode): ProjectItem => ({
@@ -121,10 +126,16 @@ export const getTopProjectsByStars = (repos: RepoNode[]): ProjectItem[] =>
 
 // ── Top Projects by Complexity ─────────────────────────────────────────────
 
-export const getTopProjectsByComplexity = (repos: RepoNode[]): ProjectItem[] => {
-  const sorted = [...repos].sort((a, b) => complexityScore(b) - complexityScore(a));
+export const getTopProjectsByComplexity = (
+  repos: RepoNode[],
+): ProjectItem[] => {
+  const sorted = [...repos].sort(
+    (a, b) => complexityScore(b) - complexityScore(a),
+  );
   for (const repo of sorted) {
-    console.info(`[complexity] ${repo.name}: ${complexityScore(repo).toFixed(1)} (${repo.languages.edges.length} langs, ${repo.diskUsage}KB)`);
+    console.info(
+      `[complexity] ${repo.name}: ${complexityScore(repo).toFixed(1)} (${repo.languages.edges.length} langs, ${repo.diskUsage}KB)`,
+    );
   }
   return sorted.map(toProjectItem);
 };
@@ -149,14 +160,20 @@ export const splitProjectsByRecency = (
     const commits = commitMap.get(repo.name) || 0;
     if (commits >= ACTIVE_COMMIT_THRESHOLD) {
       activeRepos.push(repo);
-      console.info(`[active]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
+      console.info(
+        `[active]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`,
+      );
     } else {
       legacyRepos.push(repo);
-      console.info(`[legacy]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
+      console.info(
+        `[legacy]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`,
+      );
     }
   }
 
-  console.info(`Split: ${activeRepos.length} active, ${legacyRepos.length} legacy (threshold: ${ACTIVE_COMMIT_THRESHOLD} commits)`);
+  console.info(
+    `Split: ${activeRepos.length} active, ${legacyRepos.length} legacy (threshold: ${ACTIVE_COMMIT_THRESHOLD} commits)`,
+  );
 
   const active: ProjectItem[] = activeRepos
     .sort((a, b) => complexityScore(b) - complexityScore(a))
