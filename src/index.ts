@@ -10,6 +10,7 @@ import {
   fetchManifestsForRepos,
   fetchReadmeForRepos,
   fetchUserProfile,
+  makeGraphql,
 } from "./api.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
@@ -19,6 +20,7 @@ import {
   buildSections,
   collectAllDependencies,
   collectAllTopics,
+  getTopProjectsByComplexity,
   getTopProjectsByStars,
   SECTION_KEYS,
   splitProjectsByRecency,
@@ -78,8 +80,10 @@ async function run(): Promise<void> {
     }
 
     // ── Fetch ─────────────────────────────────────────────────────────────
+    const graphql = makeGraphql(token);
+
     core.info("Fetching repo data...");
-    const repos = await fetchAllRepoData(token, username);
+    const repos = await fetchAllRepoData(graphql, username);
     core.info(`Found ${repos.length} public repos`);
 
     core.info("Fetching dependency manifests...");
@@ -88,10 +92,10 @@ async function run(): Promise<void> {
     core.info("Fetching user profile...");
     const [manifests, contributionData, readmeMap, userProfile] =
       await Promise.all([
-        fetchManifestsForRepos(token, username, repos),
-        fetchContributionData(token, username),
-        fetchReadmeForRepos(token, username, repos),
-        fetchUserProfile(token, username),
+        fetchManifestsForRepos(graphql, username, repos),
+        fetchContributionData(graphql, username),
+        fetchReadmeForRepos(graphql, username, repos),
+        fetchUserProfile(graphql, username),
       ]);
     core.info(`Fetched manifests for ${manifests.size} repos`);
     core.info(
@@ -103,6 +107,7 @@ async function run(): Promise<void> {
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
     const projects = getTopProjectsByStars(repos);
+    const complexProjects = getTopProjectsByComplexity(repos);
     const { active: activeProjects, legacy: legacyProjects } =
       splitProjectsByRecency(repos, contributionData);
 
@@ -177,7 +182,7 @@ async function run(): Promise<void> {
         techHighlights,
         contributionData,
         activeProjects,
-        popularProjects: projects,
+        complexProjects,
       };
 
       if (preambleContent) {
