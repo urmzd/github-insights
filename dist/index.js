@@ -31710,10 +31710,9 @@ const MANIFEST_FILES = [
     "requirements.txt",
 ];
 const makeGraphql = (token) => github.getOctokit(token).graphql;
-const fetchAllRepoData = async (token, username) => {
-    const graphql = makeGraphql(token);
-    const data = await graphql(`{
-    user(login: "${username}") {
+const fetchAllRepoData = async (graphql, username) => {
+    const data = await graphql(`query($username: String!) {
+    user(login: $username) {
       repositories(first: 100, orderBy: {field: STARGAZERS, direction: DESC}, ownerAffiliations: OWNER, privacy: PUBLIC) {
         nodes {
           name
@@ -31735,29 +31734,35 @@ const fetchAllRepoData = async (token, username) => {
         }
       }
     }
-  }`);
+  }`, { username });
     return data.user.repositories.nodes.filter((r) => !r.isArchived && !r.isFork);
 };
-const fetchManifestsForRepos = async (token, username, repos) => {
-    const graphql = makeGraphql(token);
+const fetchManifestsForRepos = async (graphql, username, repos) => {
     const manifests = new Map();
     const batchSize = 10;
     for (let i = 0; i < repos.length; i += batchSize) {
         const batch = repos.slice(i, i + batchSize);
+        const varDefs = batch
+            .map((_, idx) => `$name_${idx}: String!`)
+            .join(", ");
         const aliases = batch
-            .map((repo, idx) => {
+            .map((_, idx) => {
             const alias = `repo_${idx}`;
             const fileQueries = MANIFEST_FILES.map((file) => {
                 const fieldName = file.replace(/[-.]/g, "_");
                 return `${fieldName}: object(expression: "HEAD:${file}") { ... on Blob { text } }`;
             }).join("\n            ");
-            return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
+            return `${alias}: repository(owner: $owner, name: $name_${idx}) {
             ${fileQueries}
           }`;
         })
             .join("\n      ");
+        const variables = { owner: username };
+        batch.forEach((repo, idx) => {
+            variables[`name_${idx}`] = repo.name;
+        });
         try {
-            const data = await graphql(`{ ${aliases} }`);
+            const data = await graphql(`query($owner: String!, ${varDefs}) { ${aliases} }`, variables);
             batch.forEach((repo, idx) => {
                 const repoData = data[`repo_${idx}`];
                 if (!repoData)
@@ -31782,14 +31787,13 @@ const fetchManifestsForRepos = async (token, username, repos) => {
     }
     return manifests;
 };
-const fetchContributionData = async (token, username) => {
-    const graphql = makeGraphql(token);
+const fetchContributionData = async (graphql, username) => {
     try {
         const now = new Date();
         const from = new Date(now);
         from.setFullYear(from.getFullYear() - 1);
-        const data = await graphql(`query($from: DateTime!, $to: DateTime!) {
-        user(login: "${username}") {
+        const data = await graphql(`query($username: String!, $from: DateTime!, $to: DateTime!) {
+        user(login: $username) {
           contributionsCollection(from: $from, to: $to) {
             totalCommitContributions
             totalPullRequestContributions
@@ -31815,7 +31819,7 @@ const fetchContributionData = async (token, username) => {
             nodes { nameWithOwner url stargazerCount description primaryLanguage { name } }
           }
         }
-      }`, { from: from.toISOString(), to: now.toISOString() });
+      }`, { username, from: from.toISOString(), to: now.toISOString() });
         const user = data.user;
         const collection = user.contributionsCollection;
         return {
@@ -31844,22 +31848,28 @@ const fetchContributionData = async (token, username) => {
         };
     }
 };
-const fetchReadmeForRepos = async (token, username, repos) => {
-    const graphql = makeGraphql(token);
+const fetchReadmeForRepos = async (graphql, username, repos) => {
     const readmeMap = new Map();
     const batchSize = 10;
     for (let i = 0; i < repos.length; i += batchSize) {
         const batch = repos.slice(i, i + batchSize);
+        const varDefs = batch
+            .map((_, idx) => `$name_${idx}: String!`)
+            .join(", ");
         const aliases = batch
-            .map((repo, idx) => {
+            .map((_, idx) => {
             const alias = `repo_${idx}`;
-            return `${alias}: repository(owner: "${username}", name: "${repo.name}") {
+            return `${alias}: repository(owner: $owner, name: $name_${idx}) {
             readme: object(expression: "HEAD:README.md") { ... on Blob { text } }
           }`;
         })
             .join("\n      ");
+        const variables = { owner: username };
+        batch.forEach((repo, idx) => {
+            variables[`name_${idx}`] = repo.name;
+        });
         try {
-            const data = await graphql(`{ ${aliases} }`);
+            const data = await graphql(`query($owner: String!, ${varDefs}) { ${aliases} }`, variables);
             batch.forEach((repo, idx) => {
                 const repoData = data[`repo_${idx}`];
                 if (repoData?.readme?.text) {
@@ -31874,11 +31884,10 @@ const fetchReadmeForRepos = async (token, username, repos) => {
     }
     return readmeMap;
 };
-const fetchUserProfile = async (token, username) => {
-    const graphql = makeGraphql(token);
+const fetchUserProfile = async (graphql, username) => {
     try {
-        const data = await graphql(`{
-      user(login: "${username}") {
+        const data = await graphql(`query($username: String!) {
+      user(login: $username) {
         name
         bio
         company
@@ -31887,7 +31896,7 @@ const fetchUserProfile = async (token, username) => {
         twitterUsername
         socialAccounts(first: 10) { nodes { provider url } }
       }
-    }`);
+    }`, { username });
         const user = data.user;
         return {
             name: user.name || null,
@@ -31916,21 +31925,20 @@ const fetchUserProfile = async (token, username) => {
 };
 const fetchAIPreamble = async (token, context, variant = "full") => {
     try {
-        const { profile, userConfig, languages, techHighlights, contributionData, activeProjects, popularProjects, } = context;
+        const { profile, userConfig, languages, techHighlights, contributionData, activeProjects, complexProjects, } = context;
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
             .join("\n");
         const techLines = techHighlights
             .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
             .join("\n");
-        const activeProjectLines = activeProjects
-            .slice(0, 5)
-            .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
-            .join("\n");
-        const popularProjectLines = popularProjects
-            .slice(0, 5)
-            .map((p) => `- ${p.name} (${p.stars} stars): ${p.description}`)
-            .join("\n");
+        const formatProject = (p) => {
+            const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
+            const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
+            return `- ${p.name} (${p.stars} stars${size})${langs}: ${p.description}`;
+        };
+        const activeProjectLines = activeProjects.map(formatProject).join("\n");
+        const complexProjectLines = complexProjects.map(formatProject).join("\n");
         const profileLines = [
             profile.name ? `Name: ${profile.name}` : null,
             profile.bio ? `Bio: ${profile.bio}` : null,
@@ -31961,8 +31969,15 @@ ${langLines}
 Expertise areas:
 ${techLines}
 
+Most technically complex projects (by language diversity, codebase size, and depth):
+${complexProjectLines || "None"}
+
+Active projects (recently committed to):
+${activeProjectLines || "None"}
+
 Generate 1-2 sentences that:
 - Write in first person (use I/my). Describe what you work on
+- Lead with the most technically impressive or complex work — projects with multiple languages, large codebases, or deep domain expertise
 - Reference their top 2-3 languages or technologies naturally
 - Keep tone professional but friendly
 - Do NOT include social links, badges, or contact info
@@ -31980,11 +31995,11 @@ ${langLines}
 Expertise areas:
 ${techLines}
 
-Active projects (recently updated, currently being worked on):
-${activeProjectLines || "None"}
+Most technically complex projects (ranked by language diversity, codebase size, and depth):
+${complexProjectLines || "None"}
 
-Popular projects (most starred, may no longer be actively maintained):
-${popularProjectLines || "None"}
+Active projects (recently committed to, currently being worked on):
+${activeProjectLines || "None"}
 
 Contribution stats (last year):
 - Commits: ${contributionData.contributions.totalCommitContributions}
@@ -31998,7 +32013,9 @@ ${socialLines}
 Generate a markdown preamble (2-4 short paragraphs max) that:
 - Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
 - Highlights the developer's primary domains and strengths (from expertise areas + languages)
-- When mentioning projects, clearly distinguish between active work and past/popular projects. Only describe active projects as current work. Refer to popular-but-inactive projects as notable past work or well-known projects, not as things currently being worked on
+- Lead with the most technically impressive work — projects that use multiple languages, have large codebases, or demonstrate deep domain expertise. These signal engineering depth and should be featured prominently
+- Clearly distinguish between active projects (currently being worked on) and complex-but-inactive projects (notable past work). Only describe active projects as current work
+- If a project appears in both the complex and active lists, emphasize it — it represents the developer's deepest current investment
 - Keep tone professional but friendly, no self-aggrandizing
 - Do NOT include social links, badges, or contact info — those are handled separately
 - Do NOT include a heading — the README already has one
@@ -34028,17 +34045,41 @@ const collectAllTopics = (repos) => {
     }
     return [...seen].sort();
 };
-// ── Top Projects by Stars ───────────────────────────────────────────────────
-const getTopProjectsByStars = (repos) => repos
-    .sort((a, b) => b.stargazerCount - a.stargazerCount)
-    .slice(0, 5)
-    .map((repo) => ({
+// ── Project complexity scoring ──────────────────────────────────────────────
+const repoLanguages = (repo) => repo.languages.edges.map((e) => e.node.name);
+const complexityScore = (repo) => {
+    const langCount = repo.languages.edges.length;
+    const sizeMb = repo.diskUsage / 1024;
+    const stars = repo.stargazerCount;
+    const topics = repo.repositoryTopics.nodes.length;
+    // Weighted sum: language diversity matters most, then code size, then
+    // social proof (stars) and topic breadth as tie-breakers.
+    return langCount * 10 + Math.min(sizeMb, 50) * 2 + Math.log2(stars + 1) * 3 + topics * 2;
+};
+const toProjectItem = (repo) => ({
     name: repo.name,
     url: repo.url,
     description: repo.description || "",
     stars: repo.stargazerCount,
-}));
+    languageCount: repo.languages.edges.length,
+    codeSize: repo.diskUsage,
+    languages: repoLanguages(repo),
+});
+// ── Top Projects by Stars ───────────────────────────────────────────────────
+const getTopProjectsByStars = (repos) => [...repos]
+    .sort((a, b) => b.stargazerCount - a.stargazerCount)
+    .slice(0, 5)
+    .map(toProjectItem);
+// ── Top Projects by Complexity ─────────────────────────────────────────────
+const getTopProjectsByComplexity = (repos) => {
+    const sorted = [...repos].sort((a, b) => complexityScore(b) - complexityScore(a));
+    for (const repo of sorted) {
+        console.info(`[complexity] ${repo.name}: ${complexityScore(repo).toFixed(1)} (${repo.languages.edges.length} langs, ${repo.diskUsage}KB)`);
+    }
+    return sorted.map(toProjectItem);
+};
 // ── Project recency split ───────────────────────────────────────────────────
+const ACTIVE_COMMIT_THRESHOLD = 5;
 const splitProjectsByRecency = (repos, contributionData) => {
     const commitMap = new Map();
     for (const entry of contributionData.commitContributionsByRepository || []) {
@@ -34047,31 +34088,23 @@ const splitProjectsByRecency = (repos, contributionData) => {
     const activeRepos = [];
     const legacyRepos = [];
     for (const repo of repos) {
-        if ((commitMap.get(repo.name) || 0) > 0) {
+        const commits = commitMap.get(repo.name) || 0;
+        if (commits >= ACTIVE_COMMIT_THRESHOLD) {
             activeRepos.push(repo);
+            console.info(`[active]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
         }
         else {
             legacyRepos.push(repo);
+            console.info(`[legacy]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
         }
     }
+    console.info(`Split: ${activeRepos.length} active, ${legacyRepos.length} legacy (threshold: ${ACTIVE_COMMIT_THRESHOLD} commits)`);
     const active = activeRepos
-        .sort((a, b) => (commitMap.get(b.name) || 0) - (commitMap.get(a.name) || 0))
-        .slice(0, 5)
-        .map((r) => ({
-        name: r.name,
-        url: r.url,
-        description: r.description || "",
-        stars: r.stargazerCount,
-    }));
+        .sort((a, b) => complexityScore(b) - complexityScore(a))
+        .map(toProjectItem);
     const legacy = legacyRepos
-        .sort((a, b) => b.stargazerCount - a.stargazerCount)
-        .slice(0, 5)
-        .map((r) => ({
-        name: r.name,
-        url: r.url,
-        description: r.description || "",
-        stars: r.stargazerCount,
-    }));
+        .sort((a, b) => complexityScore(b) - complexityScore(a))
+        .map(toProjectItem);
     return { active, legacy };
 };
 // ── Section definitions ─────────────────────────────────────────────────────
@@ -34400,18 +34433,19 @@ async function run() {
             return;
         }
         // ── Fetch ─────────────────────────────────────────────────────────────
+        const graphql = makeGraphql(token);
         core.info("Fetching repo data...");
-        const repos = await fetchAllRepoData(token, username);
+        const repos = await fetchAllRepoData(graphql, username);
         core.info(`Found ${repos.length} public repos`);
         core.info("Fetching dependency manifests...");
         core.info("Fetching contribution data...");
         core.info("Fetching READMEs...");
         core.info("Fetching user profile...");
         const [manifests, contributionData, readmeMap, userProfile] = await Promise.all([
-            fetchManifestsForRepos(token, username, repos),
-            fetchContributionData(token, username),
-            fetchReadmeForRepos(token, username, repos),
-            fetchUserProfile(token, username),
+            fetchManifestsForRepos(graphql, username, repos),
+            fetchContributionData(graphql, username),
+            fetchReadmeForRepos(graphql, username, repos),
+            fetchUserProfile(graphql, username),
         ]);
         core.info(`Fetched manifests for ${manifests.size} repos`);
         core.info(`Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
@@ -34420,6 +34454,7 @@ async function run() {
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
         const projects = getTopProjectsByStars(repos);
+        const complexProjects = getTopProjectsByComplexity(repos);
         const { active: activeProjects, legacy: legacyProjects } = splitProjectsByRecency(repos, contributionData);
         const allDeps = collectAllDependencies(repos, manifests);
         const allTopics = collectAllTopics(repos);
@@ -34461,7 +34496,7 @@ async function run() {
                 techHighlights,
                 contributionData,
                 activeProjects,
-                popularProjects: projects,
+                complexProjects,
             };
             if (preambleContent) {
                 // User-provided preamble is used as-is for both variants
