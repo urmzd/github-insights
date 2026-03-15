@@ -1,4 +1,4 @@
-import type { ContributionData, LanguageItem, ManifestMap, ProjectItem, RepoNode, SectionDef, TechHighlight } from "./types.js";
+import type { ContributionData, LanguageItem, ManifestMap, ProjectItem, RepoClassificationInput, RepoClassificationOutput, RepoNode, SectionDef, TechHighlight } from "./types.js";
 export declare const SECTION_KEYS: Record<string, string>;
 export declare const aggregateLanguages: (repos: RepoNode[]) => LanguageItem[];
 export declare const collectAllDependencies: (repos: RepoNode[], manifests: ManifestMap) => string[];
@@ -6,9 +6,11 @@ export declare const collectAllTopics: (repos: RepoNode[]) => string[];
 export declare const complexityScore: (repo: RepoNode) => number;
 export declare const getTopProjectsByStars: (repos: RepoNode[]) => ProjectItem[];
 export declare const getTopProjectsByComplexity: (repos: RepoNode[]) => ProjectItem[];
-export declare const splitProjectsByRecency: (repos: RepoNode[], contributionData: ContributionData) => {
+export declare const buildClassificationInputs: (repos: RepoNode[], contributionData: ContributionData) => RepoClassificationInput[];
+export declare const splitProjectsByRecency: (repos: RepoNode[], contributionData: ContributionData, aiClassifications?: RepoClassificationOutput[]) => {
     active: ProjectItem[];
-    legacy: ProjectItem[];
+    maintained: ProjectItem[];
+    inactive: ProjectItem[];
 };
 export declare const buildSections: ({ languages, techHighlights, projects, contributionData, }: {
     languages: LanguageItem[];
