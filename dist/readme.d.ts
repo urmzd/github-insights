@@ -4,7 +4,7 @@ export interface ReadmeOptions {
     name: string;
     pronunciation?: string;
     title?: string;
-    preambleContent?: string;
+    preamble?: string;
     svgs: SvgEmbed[];
     bio?: string;
 }

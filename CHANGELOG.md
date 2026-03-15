@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0 (2026-03-15)
+
+### Features
+
+- enrich project display with AI summaries, h3 headings, and complexity ranking ([93fdeed](https://github.com/urmzd/github-metrics/commit/93fdeed2c6277d29b8d65b69fb790ac8ec0eeaaf))
+
+### Documentation
+
+- **skill**: comprehensive rewrite of github-metrics agent skill ([4d641fd](https://github.com/urmzd/github-metrics/commit/4d641fd664190993cb0c4408d0eca35fd7cca41e))
+
+[Full Changelog](https://github.com/urmzd/github-metrics/compare/v1.0.1...v1.1.0)
+
+
 ## 1.0.1 (2026-03-15)
 
 ### Bug Fixes

@@ -1,5 +1,5 @@
 import * as github from "@actions/github";
-import type { ContributionData, ManifestMap, ProjectItem, ReadmeMap, RepoNode, TechHighlight, UserConfig, UserProfile } from "./types.js";
+import type { ContributionData, ManifestMap, ProjectItem, ReadmeMap, RepoClassificationInput, RepoClassificationOutput, RepoNode, TechHighlight, UserConfig, UserProfile } from "./types.js";
 export type GraphQL = ReturnType<typeof github.getOctokit>["graphql"];
 export declare const makeGraphql: (token: string) => GraphQL;
 export declare const fetchAllRepoData: (graphql: GraphQL, username: string) => Promise<RepoNode[]>;
@@ -16,12 +16,12 @@ export interface PreambleContext {
         percent: string;
     }[];
     techHighlights: TechHighlight[];
-    contributionData: ContributionData;
     activeProjects: ProjectItem[];
     complexProjects: ProjectItem[];
 }
-export declare const fetchAIPreamble: (token: string, context: PreambleContext, variant?: "full" | "short") => Promise<string | undefined>;
+export declare const fetchAIPreamble: (token: string, context: PreambleContext) => Promise<string | undefined>;
 export declare const fetchExpertiseAnalysis: (token: string, languages: {
     name: string;
     percent: string;
 }[], allDeps: string[], allTopics: string[], repos: RepoNode[], readmeMap: ReadmeMap, userConfig?: UserConfig) => Promise<TechHighlight[]>;
+export declare const fetchProjectClassifications: (token: string, repos: RepoClassificationInput[]) => Promise<RepoClassificationOutput[]>;
