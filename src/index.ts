@@ -8,6 +8,7 @@ import {
   fetchContributionData,
   fetchExpertiseAnalysis,
   fetchManifestsForRepos,
+  fetchProjectClassifications,
   fetchReadmeForRepos,
   fetchUserProfile,
   makeGraphql,
@@ -17,11 +18,11 @@ import { renderSection } from "./components/section.js";
 import { loadUserConfig } from "./config.js";
 import {
   aggregateLanguages,
+  buildClassificationInputs,
   buildSections,
   collectAllDependencies,
   collectAllTopics,
   getTopProjectsByComplexity,
-  getTopProjectsByStars,
   SECTION_KEYS,
   splitProjectsByRecency,
 } from "./metrics.js";
@@ -106,25 +107,42 @@ async function run(): Promise<void> {
 
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
-    const projects = getTopProjectsByStars(repos);
     const complexProjects = getTopProjectsByComplexity(repos);
-    const { active: activeProjects, legacy: legacyProjects } =
-      splitProjectsByRecency(repos, contributionData);
+    const projects = complexProjects.slice(0, 5);
 
     const allDeps = collectAllDependencies(repos, manifests);
     const allTopics = collectAllTopics(repos);
 
-    core.info("Fetching expertise analysis from GitHub Models...");
-    const techHighlights = await fetchExpertiseAnalysis(
-      token,
-      languages,
-      allDeps,
-      allTopics,
+    core.info("Fetching project classifications from GitHub Models...");
+    const classificationInputs = buildClassificationInputs(
       repos,
-      readmeMap,
-      userConfig,
+      contributionData,
+    );
+    const [aiClassifications, techHighlights] = await Promise.all([
+      fetchProjectClassifications(token, classificationInputs),
+      (async () => {
+        core.info("Fetching expertise analysis from GitHub Models...");
+        return fetchExpertiseAnalysis(
+          token,
+          languages,
+          allDeps,
+          allTopics,
+          repos,
+          readmeMap,
+          userConfig,
+        );
+      })(),
+    ]);
+    core.info(
+      `Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`,
     );
     core.info(`Expertise analysis: ${techHighlights.length} categories`);
+
+    const {
+      active: activeProjects,
+      maintained: maintainedProjects,
+      inactive: inactiveProjects,
+    } = splitProjectsByRecency(repos, contributionData, aiClassifications);
 
     const sectionDefs = buildSections({
       languages,
@@ -171,51 +189,19 @@ async function run(): Promise<void> {
     if (readmePath && readmePath !== "none") {
       const svgDir = relative(dirname(readmePath), outputDir) || ".";
 
-      let preambleContent = loadPreamble(userConfig.preamble);
-      let shortPreambleContent: string | undefined;
+      let preamble = loadPreamble(userConfig.preamble);
 
-      const preambleContext = {
-        username,
-        profile: userProfile,
-        userConfig,
-        languages,
-        techHighlights,
-        contributionData,
-        activeProjects,
-        complexProjects,
-      };
-
-      if (preambleContent) {
-        // User-provided preamble is used as-is for both variants
-        shortPreambleContent = preambleContent;
-      } else if (process.env.CI) {
-        // CI: only fetch what the configured template needs
-        if (templateName === "classic") {
-          core.info("No PREAMBLE.md found, generating with AI...");
-          preambleContent = await fetchAIPreamble(
-            token,
-            preambleContext,
-            "full",
-          );
-        } else {
-          core.info("Generating short preamble with AI...");
-          shortPreambleContent = await fetchAIPreamble(
-            token,
-            preambleContext,
-            "short",
-          );
-        }
-      } else {
-        // Local: fetch both variants for all template previews
-        core.info(
-          "Generating both preamble variants for local template preview...",
-        );
-        const [fullPreamble, shortPreamble] = await Promise.all([
-          fetchAIPreamble(token, preambleContext, "full"),
-          fetchAIPreamble(token, preambleContext, "short"),
-        ]);
-        preambleContent = fullPreamble;
-        shortPreambleContent = shortPreamble;
+      if (!preamble) {
+        core.info("No PREAMBLE.md found, generating with AI...");
+        preamble = await fetchAIPreamble(token, {
+          username,
+          profile: userProfile,
+          userConfig,
+          languages,
+          techHighlights,
+          activeProjects,
+          complexProjects,
+        });
       }
 
       const svgs = indexOnly
@@ -245,14 +231,14 @@ async function run(): Promise<void> {
           pronunciation: userConfig.pronunciation,
           title: userConfig.title,
           bio: userConfig.bio,
-          preambleContent,
-          shortPreambleContent,
+          preamble,
           svgs,
           sectionSvgs,
           profile: userProfile,
           activeProjects,
-          legacyProjects,
-          allProjects: projects,
+          maintainedProjects,
+          inactiveProjects,
+          allProjects: complexProjects,
           languages,
           techHighlights,
           contributionData,
@@ -306,14 +292,14 @@ async function run(): Promise<void> {
             pronunciation: userConfig.pronunciation,
             title: userConfig.title,
             bio: userConfig.bio,
-            preambleContent,
-            shortPreambleContent,
+            preamble,
             svgs: previewSvgs,
             sectionSvgs: previewSectionSvgs,
             profile: userProfile,
             activeProjects,
-            legacyProjects,
-            allProjects: projects,
+            maintainedProjects,
+            inactiveProjects,
+            allProjects: complexProjects,
             languages,
             techHighlights,
             contributionData,

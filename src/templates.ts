@@ -1,4 +1,5 @@
 import type {
+  ProjectItem,
   TemplateContext,
   TemplateFunction,
   TemplateName,
@@ -67,6 +68,25 @@ export function buildSocialBadges(profile: UserProfile): string {
   return badges.join(" ");
 }
 
+// ── Project section helper (modern template) ─────────────────────────────
+
+function renderProjectSection(title: string, projects: ProjectItem[]): string {
+  if (projects.length === 0) return "";
+
+  const items = projects
+    .map((p) => {
+      const desc = p.summary || p.description || "No description";
+      const meta: string[] = [];
+      if (p.stars > 0) meta.push(`\u2605 ${p.stars}`);
+      if (p.languages?.length) meta.push(p.languages.slice(0, 3).join(", "));
+      const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
+      return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
+    })
+    .join("\n\n");
+
+  return `## ${title}\n\n${items}`;
+}
+
 // ── Classic template ───────────────────────────────────────────────────────
 
 function classicTemplate(ctx: TemplateContext): string {
@@ -82,8 +102,8 @@ function classicTemplate(ctx: TemplateContext): string {
     parts.push(`> ${ctx.title}`);
   }
 
-  if (ctx.preambleContent) {
-    parts.push(ctx.preambleContent);
+  if (ctx.preamble) {
+    parts.push(ctx.preamble);
   }
 
   if (ctx.socialBadges) {
@@ -110,33 +130,31 @@ function modernTemplate(ctx: TemplateContext): string {
 
   parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
 
-  if (ctx.shortPreambleContent) {
-    parts.push(ctx.shortPreambleContent);
+  if (ctx.preamble) {
+    parts.push(ctx.preamble);
   }
 
   if (ctx.socialBadges) {
     parts.push(ctx.socialBadges);
   }
 
-  if (ctx.activeProjects.length > 0) {
-    const items = ctx.activeProjects
-      .map(
-        (p) =>
-          `- **${p.name}** - ${p.description || "No description"}${p.stars > 0 ? ` (${p.stars} ★)` : ""}`,
-      )
-      .join("\n");
-    parts.push(`## Active Projects\n\n${items}`);
-  }
+  const activeSection = renderProjectSection(
+    "Active Projects",
+    ctx.activeProjects,
+  );
+  if (activeSection) parts.push(activeSection);
 
-  if (ctx.legacyProjects.length > 0) {
-    const items = ctx.legacyProjects
-      .map(
-        (p) =>
-          `- **${p.name}** - ${p.description || "No description"}${p.stars > 0 ? ` (${p.stars} ★)` : ""}`,
-      )
-      .join("\n");
-    parts.push(`## Legacy Work\n\n${items}`);
-  }
+  const maintainedSection = renderProjectSection(
+    "Maintained Projects",
+    ctx.maintainedProjects,
+  );
+  if (maintainedSection) parts.push(maintainedSection);
+
+  const inactiveSection = renderProjectSection(
+    "Inactive Projects",
+    ctx.inactiveProjects,
+  );
+  if (inactiveSection) parts.push(inactiveSection);
 
   // GitHub Stats section: pulse + calendar
   const statsImages: string[] = [];
@@ -169,8 +187,8 @@ function minimalTemplate(ctx: TemplateContext): string {
 
   parts.push(`# ${ctx.firstName}`);
 
-  if (ctx.shortPreambleContent) {
-    parts.push(ctx.shortPreambleContent);
+  if (ctx.preamble) {
+    parts.push(ctx.preamble);
   }
 
   if (ctx.socialBadges) {

@@ -10,6 +10,9 @@ import type {
   LanguageItem,
   ManifestMap,
   ProjectItem,
+  ProjectStatus,
+  RepoClassificationInput,
+  RepoClassificationOutput,
   RepoNode,
   SectionDef,
   TechHighlight,
@@ -140,50 +143,105 @@ export const getTopProjectsByComplexity = (
   return sorted.map(toProjectItem);
 };
 
-// ── Project recency split ───────────────────────────────────────────────────
+// ── Project classification ──────────────────────────────────────────────────
 
 const ACTIVE_COMMIT_THRESHOLD = 5;
 
-export const splitProjectsByRecency = (
+export const buildClassificationInputs = (
   repos: RepoNode[],
   contributionData: ContributionData,
-): { active: ProjectItem[]; legacy: ProjectItem[] } => {
+): RepoClassificationInput[] => {
   const commitMap = new Map<string, number>();
   for (const entry of contributionData.commitContributionsByRepository || []) {
     commitMap.set(entry.repository.name, entry.contributions.totalCount);
   }
 
-  const activeRepos: RepoNode[] = [];
-  const legacyRepos: RepoNode[] = [];
+  return repos.map((repo) => ({
+    name: repo.name,
+    description: repo.description || "",
+    stars: repo.stargazerCount,
+    diskUsageKb: repo.diskUsage,
+    languages: repo.languages.edges.map((e) => e.node.name),
+    commitsLastYear: commitMap.get(repo.name) || 0,
+    createdAt: repo.createdAt,
+    pushedAt: repo.pushedAt,
+    topicCount: repo.repositoryTopics.nodes.length,
+  }));
+};
 
-  for (const repo of repos) {
-    const commits = commitMap.get(repo.name) || 0;
-    if (commits >= ACTIVE_COMMIT_THRESHOLD) {
-      activeRepos.push(repo);
-      console.info(
-        `[active]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`,
-      );
-    } else {
-      legacyRepos.push(repo);
-      console.info(
-        `[legacy]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`,
-      );
+const heuristicStatus = (commits: number): ProjectStatus => {
+  if (commits >= ACTIVE_COMMIT_THRESHOLD) return "active";
+  if (commits > 0) return "maintained";
+  return "inactive";
+};
+
+export const splitProjectsByRecency = (
+  repos: RepoNode[],
+  contributionData: ContributionData,
+  aiClassifications?: RepoClassificationOutput[],
+): {
+  active: ProjectItem[];
+  maintained: ProjectItem[];
+  inactive: ProjectItem[];
+} => {
+  const commitMap = new Map<string, number>();
+  for (const entry of contributionData.commitContributionsByRepository || []) {
+    commitMap.set(entry.repository.name, entry.contributions.totalCount);
+  }
+
+  const aiMap = new Map<string, RepoClassificationOutput>();
+  if (aiClassifications) {
+    for (const c of aiClassifications) {
+      aiMap.set(c.name, c);
     }
   }
 
+  const activeRepos: RepoNode[] = [];
+  const maintainedRepos: RepoNode[] = [];
+  const inactiveRepos: RepoNode[] = [];
+
+  for (const repo of repos) {
+    const commits = commitMap.get(repo.name) || 0;
+    const aiEntry = aiMap.get(repo.name);
+    const status = aiEntry?.status || heuristicStatus(commits);
+    const source = aiEntry ? "ai" : "heuristic";
+
+    if (status === "active") {
+      activeRepos.push(repo);
+    } else if (status === "maintained") {
+      maintainedRepos.push(repo);
+    } else {
+      inactiveRepos.push(repo);
+    }
+
+    console.info(
+      `[${status.padEnd(10)}] ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)}, source=${source})`,
+    );
+  }
+
   console.info(
-    `Split: ${activeRepos.length} active, ${legacyRepos.length} legacy (threshold: ${ACTIVE_COMMIT_THRESHOLD} commits)`,
+    `Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive`,
   );
 
+  const sortByComplexity = (a: RepoNode, b: RepoNode) =>
+    complexityScore(b) - complexityScore(a);
+
+  const toProjectItemWithSummary = (repo: RepoNode): ProjectItem => ({
+    ...toProjectItem(repo),
+    summary: aiMap.get(repo.name)?.summary || undefined,
+  });
+
   const active: ProjectItem[] = activeRepos
-    .sort((a, b) => complexityScore(b) - complexityScore(a))
-    .map(toProjectItem);
+    .sort(sortByComplexity)
+    .map(toProjectItemWithSummary);
+  const maintained: ProjectItem[] = maintainedRepos
+    .sort(sortByComplexity)
+    .map(toProjectItemWithSummary);
+  const inactive: ProjectItem[] = inactiveRepos
+    .sort(sortByComplexity)
+    .map(toProjectItemWithSummary);
 
-  const legacy: ProjectItem[] = legacyRepos
-    .sort((a, b) => complexityScore(b) - complexityScore(a))
-    .map(toProjectItem);
-
-  return { active, legacy };
+  return { active, maintained, inactive };
 };
 
 // ── Section definitions ─────────────────────────────────────────────────────
@@ -256,7 +314,7 @@ export const buildSections = ({
   sections.push({
     filename: "metrics-complexity.svg",
     title: "Signature Projects",
-    subtitle: "Top projects by stars",
+    subtitle: "Top projects by technical complexity",
     renderBody: (y: number) => renderProjectCards(projects, y),
   });
 
