@@ -31723,6 +31723,7 @@ const fetchAllRepoData = async (graphql, username) => {
           primaryLanguage { name color }
           isArchived
           isFork
+          createdAt
           pushedAt
           repositoryTopics(first: 20) {
             nodes { topic { name } }
@@ -31919,9 +31920,9 @@ const fetchUserProfile = async (graphql, username) => {
         };
     }
 };
-const fetchAIPreamble = async (token, context, variant = "full") => {
+const fetchAIPreamble = async (token, context) => {
     try {
-        const { profile, userConfig, languages, techHighlights, contributionData, activeProjects, complexProjects, } = context;
+        const { profile, userConfig, languages, techHighlights, activeProjects, complexProjects, } = context;
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
             .join("\n");
@@ -31944,17 +31945,7 @@ const fetchAIPreamble = async (token, context, variant = "full") => {
         ]
             .filter(Boolean)
             .join("\n");
-        const socialLines = [
-            profile.websiteUrl ? `Website: ${profile.websiteUrl}` : null,
-            profile.twitterUsername
-                ? `Twitter/X: https://x.com/${profile.twitterUsername}`
-                : null,
-            ...profile.socialAccounts.map((s) => `${s.provider}: ${s.url}`),
-        ]
-            .filter(Boolean)
-            .join("\n");
-        const prompt = variant === "short"
-            ? `You are generating a very short tagline for a developer's GitHub profile README.
+        const prompt = `You are generating a very short tagline for a developer's GitHub profile README.
 
 Profile:
 ${profileLines}
@@ -31979,44 +31970,7 @@ Generate 1-2 sentences that:
 - Do NOT include social links, badges, or contact info
 - Do NOT include a heading — the README already has one
 - Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`
-            : `You are generating a concise markdown preamble for a developer's GitHub profile README.
-
-Profile:
-${profileLines}
-
-Languages (by code volume):
-${langLines}
-
-Expertise areas:
-${techLines}
-
-Most technically complex projects (ranked by language diversity, codebase size, and depth):
-${complexProjectLines || "None"}
-
-Active projects (recently committed to, currently being worked on):
-${activeProjectLines || "None"}
-
-Contribution stats (last year):
-- Commits: ${contributionData.contributions.totalCommitContributions}
-- Pull requests: ${contributionData.contributions.totalPullRequestContributions}
-- Code reviews: ${contributionData.contributions.totalPullRequestReviewContributions}
-- Contributed to ${contributionData.externalRepos.totalCount} external repos
-
-Social/contact links available:
-${socialLines}
-
-Generate a markdown preamble (2-4 short paragraphs max) that:
-- Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
-- Highlights the developer's primary domains and strengths (from expertise areas + languages)
-- Lead with the most technically impressive work — projects that use multiple languages, have large codebases, or demonstrate deep domain expertise. These signal engineering depth and should be featured prominently
-- Clearly distinguish between active projects (currently being worked on) and complex-but-inactive projects (notable past work). Only describe active projects as current work
-- If a project appears in both the complex and active lists, emphasize it — it represents the developer's deepest current investment
-- Keep tone professional but friendly, no self-aggrandizing
-- Do NOT include social links, badges, or contact info — those are handled separately
-- Do NOT include a heading — the README already has one
-- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the bio paragraph`;
+- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
         const res = await fetch("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
@@ -32069,7 +32023,7 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
             .replace(/\n?```\s*$/, "")
             .trim();
         // Reject degenerate output (conversational filler with no real content)
-        const minLength = variant === "short" ? 20 : 50;
+        const minLength = 20;
         if (cleaned.length < minLength) {
             console.warn(`AI preamble too short after cleaning (${cleaned.length} chars), discarding`);
             return undefined;
@@ -32183,6 +32137,95 @@ From this data, produce a curated expertise profile:
     catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
+        return [];
+    }
+};
+const fetchProjectClassifications = async (token, repos) => {
+    try {
+        const repoData = JSON.stringify(repos, null, 2);
+        const prompt = `You are classifying GitHub repositories by their maintenance status and generating a brief summary for each.
+
+For each repository, determine its status and write a 1-2 sentence summary:
+- "active": Actively developed — significant recent commits, ongoing feature work, or frequent iteration.
+- "maintained": Still alive but not actively developed — occasional bug fixes, dependency updates, or minor patches. The project works and is kept functional but isn't seeing new features.
+- "inactive": Dormant or abandoned — no meaningful recent activity, likely a completed project, experiment, or archived work.
+
+Repository data:
+${repoData}
+
+Classification guidelines:
+- commitsLastYear is the number of commits in the past 12 months
+- pushedAt is the last push date (any git push, not just commits)
+- Judge activity by commit *density* relative to the repo's age: divide commitsLastYear by the number of months since createdAt (capped at 12). A new repo (< 6 months old) with 15 commits is very active; an old repo (> 2 years) with 15 commits/year is merely maintained
+- A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
+- A repo with 1-4 commits is likely maintained unless it's very old with a single recent typo fix
+- SDKs, libraries, and tools that are stable may have few commits but still be actively maintained
+- Profile READMEs (e.g. repos named after the username) should be "active" if they have any recent commits
+
+Summary guidelines:
+- Write 1-2 factual sentences describing what the project IS and what technologies it uses
+- Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
+- Do NOT hallucinate features or details not present in the input data
+- Base the summary only on: name, description, languages, stars, and disk usage`;
+        const res = await fetch("https://models.github.ai/inference/chat/completions", {
+            method: "POST",
+            headers: {
+                Authorization: `bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "gpt-4.1",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.1,
+                response_format: {
+                    type: "json_schema",
+                    json_schema: {
+                        name: "project_classifications",
+                        strict: true,
+                        schema: {
+                            type: "object",
+                            properties: {
+                                classifications: {
+                                    type: "array",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            name: { type: "string" },
+                                            status: {
+                                                type: "string",
+                                                enum: ["active", "maintained", "inactive"],
+                                            },
+                                            summary: { type: "string" },
+                                        },
+                                        required: ["name", "status", "summary"],
+                                        additionalProperties: false,
+                                    },
+                                },
+                            },
+                            required: ["classifications"],
+                            additionalProperties: false,
+                        },
+                    },
+                },
+            }),
+        });
+        if (!res.ok) {
+            console.warn(`GitHub Models API error (classifications): ${res.status}`);
+            return [];
+        }
+        const json = (await res.json());
+        const content = json.choices?.[0]?.message?.content || "{}";
+        const parsed = JSON.parse(content);
+        return (parsed.classifications || [])
+            .filter((c) => c.name &&
+            (c.status === "active" ||
+                c.status === "maintained" ||
+                c.status === "inactive"))
+            .map((c) => ({ ...c, summary: c.summary || "" }));
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`Project classification failed (non-fatal): ${msg}`);
         return [];
     }
 };
@@ -34077,34 +34120,78 @@ const getTopProjectsByComplexity = (repos) => {
     }
     return sorted.map(toProjectItem);
 };
-// ── Project recency split ───────────────────────────────────────────────────
+// ── Project classification ──────────────────────────────────────────────────
 const ACTIVE_COMMIT_THRESHOLD = 5;
-const splitProjectsByRecency = (repos, contributionData) => {
+const buildClassificationInputs = (repos, contributionData) => {
     const commitMap = new Map();
     for (const entry of contributionData.commitContributionsByRepository || []) {
         commitMap.set(entry.repository.name, entry.contributions.totalCount);
     }
-    const activeRepos = [];
-    const legacyRepos = [];
-    for (const repo of repos) {
-        const commits = commitMap.get(repo.name) || 0;
-        if (commits >= ACTIVE_COMMIT_THRESHOLD) {
-            activeRepos.push(repo);
-            console.info(`[active]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
-        }
-        else {
-            legacyRepos.push(repo);
-            console.info(`[legacy]  ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)})`);
+    return repos.map((repo) => ({
+        name: repo.name,
+        description: repo.description || "",
+        stars: repo.stargazerCount,
+        diskUsageKb: repo.diskUsage,
+        languages: repo.languages.edges.map((e) => e.node.name),
+        commitsLastYear: commitMap.get(repo.name) || 0,
+        createdAt: repo.createdAt,
+        pushedAt: repo.pushedAt,
+        topicCount: repo.repositoryTopics.nodes.length,
+    }));
+};
+const heuristicStatus = (commits) => {
+    if (commits >= ACTIVE_COMMIT_THRESHOLD)
+        return "active";
+    if (commits > 0)
+        return "maintained";
+    return "inactive";
+};
+const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
+    const commitMap = new Map();
+    for (const entry of contributionData.commitContributionsByRepository || []) {
+        commitMap.set(entry.repository.name, entry.contributions.totalCount);
+    }
+    const aiMap = new Map();
+    if (aiClassifications) {
+        for (const c of aiClassifications) {
+            aiMap.set(c.name, c);
         }
     }
-    console.info(`Split: ${activeRepos.length} active, ${legacyRepos.length} legacy (threshold: ${ACTIVE_COMMIT_THRESHOLD} commits)`);
+    const activeRepos = [];
+    const maintainedRepos = [];
+    const inactiveRepos = [];
+    for (const repo of repos) {
+        const commits = commitMap.get(repo.name) || 0;
+        const aiEntry = aiMap.get(repo.name);
+        const status = aiEntry?.status || heuristicStatus(commits);
+        const source = aiEntry ? "ai" : "heuristic";
+        if (status === "active") {
+            activeRepos.push(repo);
+        }
+        else if (status === "maintained") {
+            maintainedRepos.push(repo);
+        }
+        else {
+            inactiveRepos.push(repo);
+        }
+        console.info(`[${status.padEnd(10)}] ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)}, source=${source})`);
+    }
+    console.info(`Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive`);
+    const sortByComplexity = (a, b) => complexityScore(b) - complexityScore(a);
+    const toProjectItemWithSummary = (repo) => ({
+        ...toProjectItem(repo),
+        summary: aiMap.get(repo.name)?.summary || undefined,
+    });
     const active = activeRepos
-        .sort((a, b) => complexityScore(b) - complexityScore(a))
-        .map(toProjectItem);
-    const legacy = legacyRepos
-        .sort((a, b) => complexityScore(b) - complexityScore(a))
-        .map(toProjectItem);
-    return { active, legacy };
+        .sort(sortByComplexity)
+        .map(toProjectItemWithSummary);
+    const maintained = maintainedRepos
+        .sort(sortByComplexity)
+        .map(toProjectItemWithSummary);
+    const inactive = inactiveRepos
+        .sort(sortByComplexity)
+        .map(toProjectItemWithSummary);
+    return { active, maintained, inactive };
 };
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
@@ -34156,7 +34243,7 @@ const buildSections = ({ languages, techHighlights, projects, contributionData, 
     sections.push({
         filename: "metrics-complexity.svg",
         title: "Signature Projects",
-        subtitle: "Top projects by stars",
+        subtitle: "Top projects by technical complexity",
         renderBody: (y) => renderProjectCards(projects, y),
     });
     // 5. Contribution Calendar
@@ -34211,8 +34298,8 @@ function generateReadme(options) {
         parts.push(`> ${options.title}`);
     }
     // Preamble
-    if (options.preambleContent) {
-        parts.push(options.preambleContent);
+    if (options.preamble) {
+        parts.push(options.preamble);
     }
     // SVG embeds
     for (const svg of options.svgs) {
@@ -34291,6 +34378,24 @@ function buildSocialBadges(profile) {
     }
     return badges.join(" ");
 }
+// ── Project section helper (modern template) ─────────────────────────────
+function renderProjectSection(title, projects) {
+    if (projects.length === 0)
+        return "";
+    const items = projects
+        .map((p) => {
+        const desc = p.summary || p.description || "No description";
+        const meta = [];
+        if (p.stars > 0)
+            meta.push(`\u2605 ${p.stars}`);
+        if (p.languages?.length)
+            meta.push(p.languages.slice(0, 3).join(", "));
+        const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
+        return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
+    })
+        .join("\n\n");
+    return `## ${title}\n\n${items}`;
+}
 // ── Classic template ───────────────────────────────────────────────────────
 function classicTemplate(ctx) {
     const parts = [];
@@ -34303,8 +34408,8 @@ function classicTemplate(ctx) {
     if (ctx.title) {
         parts.push(`> ${ctx.title}`);
     }
-    if (ctx.preambleContent) {
-        parts.push(ctx.preambleContent);
+    if (ctx.preamble) {
+        parts.push(ctx.preamble);
     }
     if (ctx.socialBadges) {
         parts.push(ctx.socialBadges);
@@ -34322,24 +34427,21 @@ function classicTemplate(ctx) {
 function modernTemplate(ctx) {
     const parts = [];
     parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
-    if (ctx.shortPreambleContent) {
-        parts.push(ctx.shortPreambleContent);
+    if (ctx.preamble) {
+        parts.push(ctx.preamble);
     }
     if (ctx.socialBadges) {
         parts.push(ctx.socialBadges);
     }
-    if (ctx.activeProjects.length > 0) {
-        const items = ctx.activeProjects
-            .map((p) => `- **${p.name}** - ${p.description || "No description"}${p.stars > 0 ? ` (${p.stars} ★)` : ""}`)
-            .join("\n");
-        parts.push(`## Active Projects\n\n${items}`);
-    }
-    if (ctx.legacyProjects.length > 0) {
-        const items = ctx.legacyProjects
-            .map((p) => `- **${p.name}** - ${p.description || "No description"}${p.stars > 0 ? ` (${p.stars} ★)` : ""}`)
-            .join("\n");
-        parts.push(`## Legacy Work\n\n${items}`);
-    }
+    const activeSection = renderProjectSection("Active Projects", ctx.activeProjects);
+    if (activeSection)
+        parts.push(activeSection);
+    const maintainedSection = renderProjectSection("Maintained Projects", ctx.maintainedProjects);
+    if (maintainedSection)
+        parts.push(maintainedSection);
+    const inactiveSection = renderProjectSection("Inactive Projects", ctx.inactiveProjects);
+    if (inactiveSection)
+        parts.push(inactiveSection);
     // GitHub Stats section: pulse + calendar
     const statsImages = [];
     if (ctx.sectionSvgs.pulse) {
@@ -34362,8 +34464,8 @@ function modernTemplate(ctx) {
 function minimalTemplate(ctx) {
     const parts = [];
     parts.push(`# ${ctx.firstName}`);
-    if (ctx.shortPreambleContent) {
-        parts.push(ctx.shortPreambleContent);
+    if (ctx.preamble) {
+        parts.push(ctx.preamble);
     }
     if (ctx.socialBadges) {
         parts.push(ctx.socialBadges);
@@ -34452,14 +34554,22 @@ async function run() {
         core.info(`User profile: ${userProfile.name || username}`);
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
-        const projects = getTopProjectsByStars(repos);
         const complexProjects = getTopProjectsByComplexity(repos);
-        const { active: activeProjects, legacy: legacyProjects } = splitProjectsByRecency(repos, contributionData);
+        const projects = complexProjects.slice(0, 5);
         const allDeps = collectAllDependencies(repos, manifests);
         const allTopics = collectAllTopics(repos);
-        core.info("Fetching expertise analysis from GitHub Models...");
-        const techHighlights = await fetchExpertiseAnalysis(token, languages, allDeps, allTopics, repos, readmeMap, userConfig);
+        core.info("Fetching project classifications from GitHub Models...");
+        const classificationInputs = buildClassificationInputs(repos, contributionData);
+        const [aiClassifications, techHighlights] = await Promise.all([
+            fetchProjectClassifications(token, classificationInputs),
+            (async () => {
+                core.info("Fetching expertise analysis from GitHub Models...");
+                return fetchExpertiseAnalysis(token, languages, allDeps, allTopics, repos, readmeMap, userConfig);
+            })(),
+        ]);
+        core.info(`Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`);
         core.info(`Expertise analysis: ${techHighlights.length} categories`);
+        const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
         const sectionDefs = buildSections({
             languages,
             techHighlights,
@@ -34485,42 +34595,18 @@ async function run() {
         // ── README ─────────────────────────────────────────────────────────────
         if (readmePath && readmePath !== "none") {
             const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(readmePath), outputDir) || ".";
-            let preambleContent = loadPreamble(userConfig.preamble);
-            let shortPreambleContent;
-            const preambleContext = {
-                username,
-                profile: userProfile,
-                userConfig,
-                languages,
-                techHighlights,
-                contributionData,
-                activeProjects,
-                complexProjects,
-            };
-            if (preambleContent) {
-                // User-provided preamble is used as-is for both variants
-                shortPreambleContent = preambleContent;
-            }
-            else if (process.env.CI) {
-                // CI: only fetch what the configured template needs
-                if (templateName === "classic") {
-                    core.info("No PREAMBLE.md found, generating with AI...");
-                    preambleContent = await fetchAIPreamble(token, preambleContext, "full");
-                }
-                else {
-                    core.info("Generating short preamble with AI...");
-                    shortPreambleContent = await fetchAIPreamble(token, preambleContext, "short");
-                }
-            }
-            else {
-                // Local: fetch both variants for all template previews
-                core.info("Generating both preamble variants for local template preview...");
-                const [fullPreamble, shortPreamble] = await Promise.all([
-                    fetchAIPreamble(token, preambleContext, "full"),
-                    fetchAIPreamble(token, preambleContext, "short"),
-                ]);
-                preambleContent = fullPreamble;
-                shortPreambleContent = shortPreamble;
+            let preamble = loadPreamble(userConfig.preamble);
+            if (!preamble) {
+                core.info("No PREAMBLE.md found, generating with AI...");
+                preamble = await fetchAIPreamble(token, {
+                    username,
+                    profile: userProfile,
+                    userConfig,
+                    languages,
+                    techHighlights,
+                    activeProjects,
+                    complexProjects,
+                });
             }
             const svgs = indexOnly
                 ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
@@ -34546,14 +34632,14 @@ async function run() {
                     pronunciation: userConfig.pronunciation,
                     title: userConfig.title,
                     bio: userConfig.bio,
-                    preambleContent,
-                    shortPreambleContent,
+                    preamble,
                     svgs,
                     sectionSvgs,
                     profile: userProfile,
                     activeProjects,
-                    legacyProjects,
-                    allProjects: projects,
+                    maintainedProjects,
+                    inactiveProjects,
+                    allProjects: complexProjects,
                     languages,
                     techHighlights,
                     contributionData,
@@ -34598,14 +34684,14 @@ async function run() {
                         pronunciation: userConfig.pronunciation,
                         title: userConfig.title,
                         bio: userConfig.bio,
-                        preambleContent,
-                        shortPreambleContent,
+                        preamble,
                         svgs: previewSvgs,
                         sectionSvgs: previewSectionSvgs,
                         profile: userProfile,
                         activeProjects,
-                        legacyProjects,
-                        allProjects: projects,
+                        maintainedProjects,
+                        inactiveProjects,
+                        allProjects: complexProjects,
                         languages,
                         techHighlights,
                         contributionData,
