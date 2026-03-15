@@ -53,7 +53,7 @@ describe("generateReadme", () => {
   it("includes preamble content when set", () => {
     const result = generateReadme({
       name: "Urmzd",
-      preambleContent: "Hello, I build things.",
+      preamble: "Hello, I build things.",
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
     });
     expect(result).toContain("Hello, I build things.");
@@ -73,7 +73,7 @@ describe("generateReadme", () => {
   it("preamble is not wrapped in code fences", () => {
     const result = generateReadme({
       name: "Urmzd",
-      preambleContent: "Hello, I build things.",
+      preamble: "Hello, I build things.",
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
     });
     expect(result).toContain("Hello, I build things.");
@@ -85,7 +85,7 @@ describe("generateReadme", () => {
       "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
     const result = generateReadme({
       name: "Urmzd",
-      preambleContent: preamble,
+      preamble: preamble,
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
     });
     expect(result).toContain(preamble);
@@ -97,7 +97,7 @@ describe("generateReadme", () => {
       "I am **bold** and have [![Badge](https://img.shields.io)](https://example.com) and a [link](https://example.com).";
     const result = generateReadme({
       name: "Urmzd",
-      preambleContent: preamble,
+      preamble: preamble,
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
     });
     expect(result).toContain("**bold**");
@@ -113,7 +113,7 @@ describe("generateReadme", () => {
       name: "Urmzd",
       pronunciation: "/ˈʊrm.zəd/",
       title: "Senior Backend Engineer",
-      preambleContent: "Welcome to my profile!",
+      preamble: "Welcome to my profile!",
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
       bio: "Building tools for developers",
     });
@@ -165,7 +165,7 @@ describe("generateReadme", () => {
       name: "Urmzd Maharramoff",
       pronunciation: "/ˈʊrm.zəd/",
       title: "Senior Backend Engineer",
-      preambleContent: "Welcome to my profile!",
+      preamble: "Welcome to my profile!",
       svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
       bio: "Building tools for developers",
     });

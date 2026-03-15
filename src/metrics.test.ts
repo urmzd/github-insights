@@ -275,10 +275,11 @@ describe("getTopProjectsByStars", () => {
 // ── splitProjectsByRecency ──────────────────────────────────────────────────
 
 describe("splitProjectsByRecency", () => {
-  it("classifies repos with user commits as active and others as legacy", () => {
+  it("classifies repos into active, maintained, and inactive", () => {
     const repos = [
       makeRepo({ name: "active-repo", stargazerCount: 20 }),
-      makeRepo({ name: "legacy-repo", stargazerCount: 15 }),
+      makeRepo({ name: "maintained-repo", stargazerCount: 15 }),
+      makeRepo({ name: "inactive-repo", stargazerCount: 10 }),
     ];
     const contribData = makeContributionData({
       commitContributionsByRepository: [
@@ -289,11 +290,22 @@ describe("splitProjectsByRecency", () => {
           },
           contributions: { totalCount: 10 },
         },
+        {
+          repository: {
+            name: "maintained-repo",
+            nameWithOwner: "user/maintained-repo",
+          },
+          contributions: { totalCount: 3 },
+        },
       ],
     });
-    const { active, legacy } = splitProjectsByRecency(repos, contribData);
+    const { active, maintained, inactive } = splitProjectsByRecency(
+      repos,
+      contribData,
+    );
     expect(active.map((p) => p.name)).toContain("active-repo");
-    expect(legacy.map((p) => p.name)).toContain("legacy-repo");
+    expect(maintained.map((p) => p.name)).toContain("maintained-repo");
+    expect(inactive.map((p) => p.name)).toContain("inactive-repo");
   });
 
   it("sorts active repos by complexity descending", () => {
@@ -347,7 +359,7 @@ describe("splitProjectsByRecency", () => {
     expect(active[1].name).toBe("simple-repo");
   });
 
-  it("sorts legacy repos by complexity descending", () => {
+  it("sorts inactive repos by complexity descending", () => {
     const repos = [
       makeRepo({ name: "low-stars", stargazerCount: 5 }),
       makeRepo({ name: "high-stars", stargazerCount: 50 }),
@@ -355,9 +367,9 @@ describe("splitProjectsByRecency", () => {
     const contribData = makeContributionData({
       commitContributionsByRepository: [],
     });
-    const { legacy } = splitProjectsByRecency(repos, contribData);
-    expect(legacy[0].name).toBe("high-stars");
-    expect(legacy[1].name).toBe("low-stars");
+    const { inactive } = splitProjectsByRecency(repos, contribData);
+    expect(inactive[0].name).toBe("high-stars");
+    expect(inactive[1].name).toBe("low-stars");
   });
 
   it("returns all qualifying repos without a cap", () => {
@@ -375,7 +387,7 @@ describe("splitProjectsByRecency", () => {
     expect(active).toHaveLength(8);
   });
 
-  it("classifies repos below commit threshold as legacy", () => {
+  it("classifies repos below active threshold but with commits as maintained", () => {
     const repos = [
       makeRepo({ name: "busy-repo", stargazerCount: 5 }),
       makeRepo({ name: "one-off-repo", stargazerCount: 50 }),
@@ -395,29 +407,97 @@ describe("splitProjectsByRecency", () => {
         },
       ],
     });
-    const { active, legacy } = splitProjectsByRecency(repos, contribData);
+    const { active, maintained } = splitProjectsByRecency(repos, contribData);
     expect(active.map((p) => p.name)).toEqual(["busy-repo"]);
-    expect(legacy.map((p) => p.name)).toEqual(["one-off-repo"]);
+    expect(maintained.map((p) => p.name)).toEqual(["one-off-repo"]);
   });
 
   it("returns empty arrays for no repos", () => {
     const contribData = makeContributionData();
-    const { active, legacy } = splitProjectsByRecency([], contribData);
+    const { active, maintained, inactive } = splitProjectsByRecency(
+      [],
+      contribData,
+    );
     expect(active).toEqual([]);
-    expect(legacy).toEqual([]);
+    expect(maintained).toEqual([]);
+    expect(inactive).toEqual([]);
   });
 
-  it("treats all repos as legacy when commitContributionsByRepository is missing", () => {
+  it("treats all repos as inactive when commitContributionsByRepository is missing", () => {
     const repos = [
       makeRepo({ name: "repo-a", stargazerCount: 30 }),
       makeRepo({ name: "repo-b", stargazerCount: 10 }),
     ];
     const contribData = makeContributionData();
     // default makeContributionData has no commitContributionsByRepository
-    const { active, legacy } = splitProjectsByRecency(repos, contribData);
+    const { active, maintained, inactive } = splitProjectsByRecency(
+      repos,
+      contribData,
+    );
     expect(active).toEqual([]);
-    expect(legacy).toHaveLength(2);
-    expect(legacy[0].name).toBe("repo-a");
+    expect(maintained).toEqual([]);
+    expect(inactive).toHaveLength(2);
+    expect(inactive[0].name).toBe("repo-a");
+  });
+
+  it("uses AI classifications when provided, overriding heuristic", () => {
+    const repos = [
+      makeRepo({ name: "sdk-repo", stargazerCount: 20 }),
+      makeRepo({ name: "old-repo", stargazerCount: 5 }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "sdk-repo", nameWithOwner: "user/sdk-repo" },
+          contributions: { totalCount: 2 }, // heuristic would say "maintained"
+        },
+      ],
+    });
+    const aiClassifications = [
+      {
+        name: "sdk-repo",
+        status: "active" as const,
+        summary: "SDK for API integration",
+      }, // AI overrides to active
+      {
+        name: "old-repo",
+        status: "inactive" as const,
+        summary: "Legacy project",
+      },
+    ];
+    const { active, maintained, inactive } = splitProjectsByRecency(
+      repos,
+      contribData,
+      aiClassifications,
+    );
+    expect(active.map((p) => p.name)).toEqual(["sdk-repo"]);
+    expect(maintained).toEqual([]);
+    expect(inactive.map((p) => p.name)).toEqual(["old-repo"]);
+  });
+
+  it("propagates AI summary to ProjectItem", () => {
+    const repos = [makeRepo({ name: "my-repo", stargazerCount: 10 })];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "my-repo", nameWithOwner: "user/my-repo" },
+          contributions: { totalCount: 10 },
+        },
+      ],
+    });
+    const aiClassifications = [
+      {
+        name: "my-repo",
+        status: "active" as const,
+        summary: "A great project for testing",
+      },
+    ];
+    const { active } = splitProjectsByRecency(
+      repos,
+      contribData,
+      aiClassifications,
+    );
+    expect(active[0].summary).toBe("A great project for testing");
   });
 });
 
@@ -521,6 +601,16 @@ describe("buildSections", () => {
     const sections = buildSections(baseSectionsInput());
     expect(sections.map((s) => s.filename)).not.toContain(
       "metrics-calendar.svg",
+    );
+  });
+
+  it("uses complexity-based subtitle for signature projects", () => {
+    const sections = buildSections(baseSectionsInput());
+    const projectSection = sections.find(
+      (s) => s.filename === "metrics-complexity.svg",
+    );
+    expect(projectSection?.subtitle).toBe(
+      "Top projects by technical complexity",
     );
   });
 
