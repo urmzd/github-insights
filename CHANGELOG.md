@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.0.0 (2026-03-15)
+
+### Breaking Changes
+
+- remove justfile build tool ([d126632](https://github.com/urmzd/github-metrics/commit/d126632c949d8081fc186aaa2c63ee44803b13f1))
+
+### Features
+
+- **types**: add complexity fields to ProjectItem ([638df32](https://github.com/urmzd/github-metrics/commit/638df328c8d58a2c51ca26709e1f6e7453d26d1b))
+- **index**: prioritize projects by technical complexity ([58ddc2a](https://github.com/urmzd/github-metrics/commit/58ddc2ac8a49bacd78e46da4a4d3356f16c5e4b0))
+- **metrics**: add project complexity scoring ([1e1a729](https://github.com/urmzd/github-metrics/commit/1e1a7298cd6a457f2235d56994968bf3973f208c))
+
+### Bug Fixes
+
+- **ci**: collapse varDefs chain to single line for biome compliance ([912a9d9](https://github.com/urmzd/github-metrics/commit/912a9d9290ae77d125161dbcd4bfcdb3633753ef))
+- **ci**: format long lines in metrics.ts for biome compliance ([60a9ae1](https://github.com/urmzd/github-metrics/commit/60a9ae1089c69251a478771db5eea01be74c2261))
+
+### Documentation
+
+- replace just commands with npm run across all documentation ([09675e5](https://github.com/urmzd/github-metrics/commit/09675e580974eb25740122da3f1797ce07cd7ba7))
+- add AGENTS.md and agent skill for Claude Code ([a7d6d05](https://github.com/urmzd/github-metrics/commit/a7d6d05045017429ec20394e222f895f1682df1c))
+
+### Refactoring
+
+- **api**: extract graphql client and refactor fetch functions ([62642d8](https://github.com/urmzd/github-metrics/commit/62642d81f9f5e4c0c687b59f7381df509ae49090))
+
+### Miscellaneous
+
+- regenerate dist bundle and example metrics ([59d7737](https://github.com/urmzd/github-metrics/commit/59d77373779e5ca51d8200bdcff36dbb8d185666))
+- **metrics**: update project sorting tests for complexity ranking ([004e14f](https://github.com/urmzd/github-metrics/commit/004e14f2b27455905801aba4967fc4860ca020cc))
+
+[Full Changelog](https://github.com/urmzd/github-metrics/compare/v0.6.0...v1.0.0)
+
+
 ## 0.6.0 (2026-03-05)
 
 ### Features
