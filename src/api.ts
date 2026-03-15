@@ -4,6 +4,8 @@ import type {
   ManifestMap,
   ProjectItem,
   ReadmeMap,
+  RepoClassificationInput,
+  RepoClassificationOutput,
   RepoNode,
   TechHighlight,
   UserConfig,
@@ -42,6 +44,7 @@ export const fetchAllRepoData = async (
           primaryLanguage { name color }
           isArchived
           isFork
+          createdAt
           pushedAt
           repositoryTopics(first: 20) {
             nodes { topic { name } }
@@ -292,7 +295,6 @@ export interface PreambleContext {
   userConfig: UserConfig;
   languages: { name: string; percent: string }[];
   techHighlights: TechHighlight[];
-  contributionData: ContributionData;
   activeProjects: ProjectItem[];
   complexProjects: ProjectItem[];
 }
@@ -300,7 +302,6 @@ export interface PreambleContext {
 export const fetchAIPreamble = async (
   token: string,
   context: PreambleContext,
-  variant: "full" | "short" = "full",
 ): Promise<string | undefined> => {
   try {
     const {
@@ -308,7 +309,6 @@ export const fetchAIPreamble = async (
       userConfig,
       languages,
       techHighlights,
-      contributionData,
       activeProjects,
       complexProjects,
     } = context;
@@ -339,19 +339,7 @@ export const fetchAIPreamble = async (
       .filter(Boolean)
       .join("\n");
 
-    const socialLines = [
-      profile.websiteUrl ? `Website: ${profile.websiteUrl}` : null,
-      profile.twitterUsername
-        ? `Twitter/X: https://x.com/${profile.twitterUsername}`
-        : null,
-      ...profile.socialAccounts.map((s) => `${s.provider}: ${s.url}`),
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const prompt =
-      variant === "short"
-        ? `You are generating a very short tagline for a developer's GitHub profile README.
+    const prompt = `You are generating a very short tagline for a developer's GitHub profile README.
 
 Profile:
 ${profileLines}
@@ -376,44 +364,7 @@ Generate 1-2 sentences that:
 - Do NOT include social links, badges, or contact info
 - Do NOT include a heading — the README already has one
 - Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`
-        : `You are generating a concise markdown preamble for a developer's GitHub profile README.
-
-Profile:
-${profileLines}
-
-Languages (by code volume):
-${langLines}
-
-Expertise areas:
-${techLines}
-
-Most technically complex projects (ranked by language diversity, codebase size, and depth):
-${complexProjectLines || "None"}
-
-Active projects (recently committed to, currently being worked on):
-${activeProjectLines || "None"}
-
-Contribution stats (last year):
-- Commits: ${contributionData.contributions.totalCommitContributions}
-- Pull requests: ${contributionData.contributions.totalPullRequestContributions}
-- Code reviews: ${contributionData.contributions.totalPullRequestReviewContributions}
-- Contributed to ${contributionData.externalRepos.totalCount} external repos
-
-Social/contact links available:
-${socialLines}
-
-Generate a markdown preamble (2-4 short paragraphs max) that:
-- Write in first person (use I/my). Open with a brief personal intro drawn from the profile bio/title
-- Highlights the developer's primary domains and strengths (from expertise areas + languages)
-- Lead with the most technically impressive work — projects that use multiple languages, have large codebases, or demonstrate deep domain expertise. These signal engineering depth and should be featured prominently
-- Clearly distinguish between active projects (currently being worked on) and complex-but-inactive projects (notable past work). Only describe active projects as current work
-- If a project appears in both the complex and active lists, emphasize it — it represents the developer's deepest current investment
-- Keep tone professional but friendly, no self-aggrandizing
-- Do NOT include social links, badges, or contact info — those are handled separately
-- Do NOT include a heading — the README already has one
-- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the bio paragraph`;
+- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
 
     const res = await fetch(
       "https://models.github.ai/inference/chat/completions",
@@ -479,7 +430,7 @@ Generate a markdown preamble (2-4 short paragraphs max) that:
       .trim();
 
     // Reject degenerate output (conversational filler with no real content)
-    const minLength = variant === "short" ? 20 : 50;
+    const minLength = 20;
     if (cleaned.length < minLength) {
       console.warn(
         `AI preamble too short after cleaning (${cleaned.length} chars), discarding`,
@@ -614,6 +565,112 @@ From this data, produce a curated expertise profile:
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
+    return [];
+  }
+};
+
+export const fetchProjectClassifications = async (
+  token: string,
+  repos: RepoClassificationInput[],
+): Promise<RepoClassificationOutput[]> => {
+  try {
+    const repoData = JSON.stringify(repos, null, 2);
+
+    const prompt = `You are classifying GitHub repositories by their maintenance status and generating a brief summary for each.
+
+For each repository, determine its status and write a 1-2 sentence summary:
+- "active": Actively developed — significant recent commits, ongoing feature work, or frequent iteration.
+- "maintained": Still alive but not actively developed — occasional bug fixes, dependency updates, or minor patches. The project works and is kept functional but isn't seeing new features.
+- "inactive": Dormant or abandoned — no meaningful recent activity, likely a completed project, experiment, or archived work.
+
+Repository data:
+${repoData}
+
+Classification guidelines:
+- commitsLastYear is the number of commits in the past 12 months
+- pushedAt is the last push date (any git push, not just commits)
+- Judge activity by commit *density* relative to the repo's age: divide commitsLastYear by the number of months since createdAt (capped at 12). A new repo (< 6 months old) with 15 commits is very active; an old repo (> 2 years) with 15 commits/year is merely maintained
+- A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
+- A repo with 1-4 commits is likely maintained unless it's very old with a single recent typo fix
+- SDKs, libraries, and tools that are stable may have few commits but still be actively maintained
+- Profile READMEs (e.g. repos named after the username) should be "active" if they have any recent commits
+
+Summary guidelines:
+- Write 1-2 factual sentences describing what the project IS and what technologies it uses
+- Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
+- Do NOT hallucinate features or details not present in the input data
+- Base the summary only on: name, description, languages, stars, and disk usage`;
+
+    const res = await fetch(
+      "https://models.github.ai/inference/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4.1",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.1,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "project_classifications",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  classifications: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        status: {
+                          type: "string",
+                          enum: ["active", "maintained", "inactive"],
+                        },
+                        summary: { type: "string" },
+                      },
+                      required: ["name", "status", "summary"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["classifications"],
+                additionalProperties: false,
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      console.warn(`GitHub Models API error (classifications): ${res.status}`);
+      return [];
+    }
+
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content) as {
+      classifications?: RepoClassificationOutput[];
+    };
+    return (parsed.classifications || [])
+      .filter(
+        (c) =>
+          c.name &&
+          (c.status === "active" ||
+            c.status === "maintained" ||
+            c.status === "inactive"),
+      )
+      .map((c) => ({ ...c, summary: c.summary || "" }));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`Project classification failed (non-fatal): ${msg}`);
     return [];
   }
 };

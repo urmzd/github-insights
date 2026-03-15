@@ -113,7 +113,7 @@ sections = ["pulse", "languages", "expertise", "projects", "contributions", "cal
 ### Templates
 
 - **`classic`** (default): Formal layout — `# Name`, blockquote title, full AI preamble (2–4 paragraphs), social badges, SVG metrics, bio footer, attribution.
-- **`modern`**: Friendly — `# Hi, I'm {firstName} 👋`, short preamble, active/legacy project lists in markdown, selective SVG sections.
+- **`modern`**: Friendly — `# Hi, I'm {firstName} 👋`, short preamble, active/maintained/inactive project lists in markdown, selective SVG sections.
 - **`minimal`**: Clean — `# {firstName}`, short preamble, social badges, SVG metrics, attribution.
 
 ## Architecture

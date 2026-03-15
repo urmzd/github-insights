@@ -14,6 +14,7 @@ export const makeRepo = (overrides: Partial<RepoNode> = {}): RepoNode => ({
   primaryLanguage: { name: "TypeScript", color: "#3178c6" },
   isArchived: false,
   isFork: false,
+  createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
   pushedAt: new Date().toISOString(),
   repositoryTopics: { nodes: [] },
   languages: {
