@@ -1,0 +1,24 @@
+# GitHub Metrics
+
+> A GitHub Action that generates beautiful SVG metrics visualizations for GitHub profile READMEs. Produces language breakdowns (donut chart), AI-powered expertise analysis with proficiency scores, contribution pulse, signature projects, external open source contributions, social badges, and an auto-generated profile introduction. Built with TypeScript/Node.js using React JSX for SVG rendering.
+
+## Docs
+
+- [README](https://github.com/urmzd/github-metrics/blob/main/README.md): Installation, usage, inputs, configuration, and examples
+- [AGENTS.md](https://github.com/urmzd/github-metrics/blob/main/AGENTS.md): Architecture and development guide
+- [CHANGELOG](https://github.com/urmzd/github-metrics/blob/main/CHANGELOG.md): Version history
+- [CONTRIBUTING](https://github.com/urmzd/github-metrics/blob/main/CONTRIBUTING.md): Adding metrics, parsers, config fields, and testing
+
+## API / Key Files
+
+- [src/index.ts](https://github.com/urmzd/github-metrics/blob/main/src/index.ts): Main action entry point
+- [src/api.ts](https://github.com/urmzd/github-metrics/blob/main/src/api.ts): GitHub GraphQL/REST API calls + AI model calls
+- [src/metrics.ts](https://github.com/urmzd/github-metrics/blob/main/src/metrics.ts): Data aggregation and section definitions
+- [src/types.ts](https://github.com/urmzd/github-metrics/blob/main/src/types.ts): Shared type definitions (UserConfig, SectionDef, etc.)
+- [src/components/](https://github.com/urmzd/github-metrics/blob/main/src/components/): SVG rendering components (donut chart, bar chart, stat cards)
+- [action.yml](https://github.com/urmzd/github-metrics/blob/main/action.yml): GitHub Action definition
+
+## Optional
+
+- [CONTRIBUTING](https://github.com/urmzd/github-metrics/blob/main/CONTRIBUTING.md): How to contribute
+- [Skill](https://github.com/urmzd/github-metrics/blob/main/skills/github-metrics/SKILL.md): Agent skill

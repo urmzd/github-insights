@@ -1,6 +1,19 @@
-# GitHub Metrics
+<p align="center">
+  <h1 align="center">GitHub Metrics</h1>
+  <p align="center">
+    Generate beautiful SVG metrics visualizations for your GitHub profile README.
+    <br /><br />
+    <a href="https://github.com/urmzd/github-metrics/releases">Install</a>
+    &middot;
+    <a href="https://github.com/urmzd/github-metrics/issues">Report Bug</a>
+    &middot;
+    <a href="https://github.com/urmzd">Profile Demo</a>
+  </p>
+</p>
 
-Generate beautiful SVG metrics visualizations for your GitHub profile README.
+<p align="center">
+  <a href="https://github.com/urmzd/github-metrics/actions/workflows/ci.yml"><img src="https://github.com/urmzd/github-metrics/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
 ![Example output](metrics/index.svg)
 
