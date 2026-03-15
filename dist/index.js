@@ -31742,9 +31742,7 @@ const fetchManifestsForRepos = async (graphql, username, repos) => {
     const batchSize = 10;
     for (let i = 0; i < repos.length; i += batchSize) {
         const batch = repos.slice(i, i + batchSize);
-        const varDefs = batch
-            .map((_, idx) => `$name_${idx}: String!`)
-            .join(", ");
+        const varDefs = batch.map((_, idx) => `$name_${idx}: String!`).join(", ");
         const aliases = batch
             .map((_, idx) => {
             const alias = `repo_${idx}`;
@@ -31853,9 +31851,7 @@ const fetchReadmeForRepos = async (graphql, username, repos) => {
     const batchSize = 10;
     for (let i = 0; i < repos.length; i += batchSize) {
         const batch = repos.slice(i, i + batchSize);
-        const varDefs = batch
-            .map((_, idx) => `$name_${idx}: String!`)
-            .join(", ");
+        const varDefs = batch.map((_, idx) => `$name_${idx}: String!`).join(", ");
         const aliases = batch
             .map((_, idx) => {
             const alias = `repo_${idx}`;
