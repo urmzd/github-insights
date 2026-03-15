@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 (2026-03-15)
+
+### Bug Fixes
+
+- **release**: use npm trusted publishing and add Apache-2.0 license field ([d181940](https://github.com/urmzd/github-metrics/commit/d181940db6debce9ffa0f4628a1c1f7db8bf48c4))
+
+[Full Changelog](https://github.com/urmzd/github-metrics/compare/v1.0.0...v1.0.1)
+
+
 ## 1.0.0 (2026-03-15)
 
 ### Breaking Changes
