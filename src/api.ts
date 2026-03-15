@@ -70,9 +70,7 @@ export const fetchManifestsForRepos = async (
 
   for (let i = 0; i < repos.length; i += batchSize) {
     const batch = repos.slice(i, i + batchSize);
-    const varDefs = batch
-      .map((_, idx) => `$name_${idx}: String!`)
-      .join(", ");
+    const varDefs = batch.map((_, idx) => `$name_${idx}: String!`).join(", ");
     const aliases = batch
       .map((_, idx) => {
         const alias = `repo_${idx}`;
@@ -205,9 +203,7 @@ export const fetchReadmeForRepos = async (
 
   for (let i = 0; i < repos.length; i += batchSize) {
     const batch = repos.slice(i, i + batchSize);
-    const varDefs = batch
-      .map((_, idx) => `$name_${idx}: String!`)
-      .join(", ");
+    const varDefs = batch.map((_, idx) => `$name_${idx}: String!`).join(", ");
     const aliases = batch
       .map((_, idx) => {
         const alias = `repo_${idx}`;
