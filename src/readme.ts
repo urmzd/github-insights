@@ -7,7 +7,7 @@ export interface ReadmeOptions {
   name: string;
   pronunciation?: string;
   title?: string;
-  preambleContent?: string;
+  preamble?: string;
   svgs: SvgEmbed[];
   bio?: string;
 }
@@ -30,8 +30,8 @@ export function generateReadme(options: ReadmeOptions): string {
   }
 
   // Preamble
-  if (options.preambleContent) {
-    parts.push(options.preambleContent);
+  if (options.preamble) {
+    parts.push(options.preamble);
   }
 
   // SVG embeds

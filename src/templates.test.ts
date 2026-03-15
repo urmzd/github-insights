@@ -17,8 +17,7 @@ const makeContext = (
   pronunciation: undefined,
   title: "Software Engineer",
   bio: "Building tools",
-  preambleContent: "A developer who builds things.",
-  shortPreambleContent: "A software developer in Austin, TX.",
+  preamble: "A software developer in Austin, TX.",
   svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
   sectionSvgs: {
     pulse: "metrics/metrics-pulse.svg",
@@ -34,7 +33,7 @@ const makeContext = (
       stars: 42,
     },
   ],
-  legacyProjects: [
+  maintainedProjects: [
     {
       name: "flappy-bird",
       url: "https://github.com/urmzd/flappy-bird",
@@ -42,6 +41,7 @@ const makeContext = (
       stars: 8,
     },
   ],
+  inactiveProjects: [],
   allProjects: [],
   languages: [
     { name: "TypeScript", value: 100, percent: "60.0", color: "#3178c6" },
@@ -185,7 +185,7 @@ describe("classicTemplate", () => {
 
   it("includes preamble content", () => {
     const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("A developer who builds things.");
+    expect(output).toContain("A software developer in Austin, TX.");
   });
 
   it("includes SVG embeds", () => {
@@ -229,22 +229,43 @@ describe("modernTemplate", () => {
     expect(output).toContain("# Hi, I'm Urmzd");
   });
 
-  it("includes short preamble", () => {
+  it("includes preamble", () => {
     const output = getTemplate("modern")(makeContext());
     expect(output).toContain("A software developer in Austin, TX.");
   });
 
-  it("includes active projects section", () => {
+  it("includes active projects section with h3 headings", () => {
     const output = getTemplate("modern")(makeContext());
     expect(output).toContain("## Active Projects");
-    expect(output).toContain("resume-generator");
-    expect(output).toContain("42 ★");
+    expect(output).toContain(
+      "### [resume-generator](https://github.com/urmzd/resume-generator)",
+    );
+    expect(output).toContain("\u2605 42");
   });
 
-  it("includes legacy work section", () => {
+  it("includes maintained projects section with h3 headings", () => {
     const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("## Legacy Work");
-    expect(output).toContain("flappy-bird");
+    expect(output).toContain("## Maintained Projects");
+    expect(output).toContain(
+      "### [flappy-bird](https://github.com/urmzd/flappy-bird)",
+    );
+  });
+
+  it("includes AI summary in project section when available", () => {
+    const output = getTemplate("modern")(
+      makeContext({
+        activeProjects: [
+          {
+            name: "my-tool",
+            url: "https://github.com/urmzd/my-tool",
+            description: "A CLI tool",
+            stars: 5,
+            summary: "AI-generated summary of the project.",
+          },
+        ],
+      }),
+    );
+    expect(output).toContain("AI-generated summary of the project.");
   });
 
   it("includes GitHub Stats section with pulse and calendar", () => {
@@ -279,7 +300,7 @@ describe("minimalTemplate", () => {
     expect(output).toContain("# Urmzd");
   });
 
-  it("includes short preamble", () => {
+  it("includes preamble", () => {
     const output = getTemplate("minimal")(makeContext());
     expect(output).toContain("A software developer in Austin, TX.");
   });

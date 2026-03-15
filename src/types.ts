@@ -27,6 +27,7 @@ export interface ProjectItem {
   languageCount?: number;
   codeSize?: number;
   languages?: string[];
+  summary?: string;
 }
 
 // ── Bar chart generics ──────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ export interface RepoNode {
   primaryLanguage: { name: string; color: string } | null;
   isArchived: boolean;
   isFork: boolean;
+  createdAt: string;
   pushedAt: string;
   repositoryTopics: { nodes: { topic: { name: string } }[] };
   languages: {
@@ -185,6 +187,26 @@ export interface SvgEmbed {
 
 export type TemplateName = "classic" | "modern" | "minimal";
 
+export type ProjectStatus = "active" | "maintained" | "inactive";
+
+export interface RepoClassificationInput {
+  name: string;
+  description: string;
+  stars: number;
+  diskUsageKb: number;
+  languages: string[];
+  commitsLastYear: number;
+  createdAt?: string;
+  pushedAt: string;
+  topicCount: number;
+}
+
+export interface RepoClassificationOutput {
+  name: string;
+  status: ProjectStatus;
+  summary: string;
+}
+
 export interface TemplateContext {
   username: string;
   name: string;
@@ -192,13 +214,13 @@ export interface TemplateContext {
   pronunciation?: string;
   title?: string;
   bio?: string;
-  preambleContent?: string;
-  shortPreambleContent?: string;
+  preamble?: string;
   svgs: SvgEmbed[];
   sectionSvgs: Record<string, string>;
   profile: UserProfile;
   activeProjects: ProjectItem[];
-  legacyProjects: ProjectItem[];
+  maintainedProjects: ProjectItem[];
+  inactiveProjects: ProjectItem[];
   allProjects: ProjectItem[];
   languages: LanguageItem[];
   techHighlights: TechHighlight[];
