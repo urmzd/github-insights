@@ -53,4 +53,6 @@ jobs:
 
       - name: Publish to npm
         if: steps.sr.outputs.released == 'true'
-        run: npm publish --provenance --access public
+        run: |
+          npm version "${{ steps.sr.outputs.version }}" --no-git-tag-version
+          npm publish --provenance --access public
