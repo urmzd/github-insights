@@ -222,6 +222,19 @@ async function run(): Promise<void> {
       const displayName = userConfig.name || userProfile.name || username;
       const socialBadges = buildSocialBadges(userProfile);
 
+      // Build categorized projects map for ecosystem template
+      const allProjectItems = [
+        ...activeProjects,
+        ...maintainedProjects,
+        ...inactiveProjects,
+      ];
+      const categorizedProjects: Record<string, typeof allProjectItems> = {};
+      for (const project of allProjectItems) {
+        const cat = project.category || "Other";
+        if (!categorizedProjects[cat]) categorizedProjects[cat] = [];
+        categorizedProjects[cat].push(project);
+      }
+
       {
         const template = getTemplate(templateName);
         const readme = template({
@@ -239,6 +252,7 @@ async function run(): Promise<void> {
           maintainedProjects,
           inactiveProjects,
           allProjects: complexProjects,
+          categorizedProjects,
           languages,
           techHighlights,
           contributionData,
@@ -256,6 +270,7 @@ async function run(): Promise<void> {
           "classic",
           "modern",
           "minimal",
+          "ecosystem",
         ];
         for (const tplName of allTemplateNames) {
           const tplDir = `examples/${tplName}`;
@@ -300,6 +315,7 @@ async function run(): Promise<void> {
             maintainedProjects,
             inactiveProjects,
             allProjects: complexProjects,
+            categorizedProjects,
             languages,
             techHighlights,
             contributionData,

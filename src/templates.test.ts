@@ -31,6 +31,7 @@ const makeContext = (
       url: "https://github.com/urmzd/resume-generator",
       description: "CLI tool for professional resumes",
       stars: 42,
+      category: "Applications",
     },
   ],
   maintainedProjects: [
@@ -39,10 +40,31 @@ const makeContext = (
       url: "https://github.com/urmzd/flappy-bird",
       description: "JavaFX game with design patterns",
       stars: 8,
+      category: "Research & Experiments",
     },
   ],
   inactiveProjects: [],
   allProjects: [],
+  categorizedProjects: {
+    Applications: [
+      {
+        name: "resume-generator",
+        url: "https://github.com/urmzd/resume-generator",
+        description: "CLI tool for professional resumes",
+        stars: 42,
+        category: "Applications",
+      },
+    ],
+    "Research & Experiments": [
+      {
+        name: "flappy-bird",
+        url: "https://github.com/urmzd/flappy-bird",
+        description: "JavaFX game with design patterns",
+        stars: 8,
+        category: "Research & Experiments",
+      },
+    ],
+  },
   languages: [
     { name: "TypeScript", value: 100, percent: "60.0", color: "#3178c6" },
     { name: "Rust", value: 50, percent: "30.0", color: "#dea584" },
@@ -167,6 +189,10 @@ describe("getTemplate", () => {
 
   it("returns a function for minimal", () => {
     expect(typeof getTemplate("minimal")).toBe("function");
+  });
+
+  it("returns a function for ecosystem", () => {
+    expect(typeof getTemplate("ecosystem")).toBe("function");
   });
 });
 
@@ -322,6 +348,65 @@ describe("minimalTemplate", () => {
 
   it("ends with trailing newline", () => {
     const output = getTemplate("minimal")(makeContext());
+    expect(output.endsWith("\n")).toBe(true);
+  });
+});
+
+// ── Ecosystem template ──────────────────────────────────────────────────
+
+describe("ecosystemTemplate", () => {
+  it("includes wave greeting with first name", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("# Hi, I'm Urmzd");
+  });
+
+  it("includes preamble", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("A software developer in Austin, TX.");
+  });
+
+  it("renders projects as categorized tables", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("### Applications");
+    expect(output).toContain("| Project | Description |");
+    expect(output).toContain(
+      "| [resume-generator](https://github.com/urmzd/resume-generator) |",
+    );
+  });
+
+  it("renders Research & Experiments category", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("### Research & Experiments");
+    expect(output).toContain(
+      "| [flappy-bird](https://github.com/urmzd/flappy-bird) |",
+    );
+  });
+
+  it("includes GitHub Stats section", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("## GitHub Stats");
+    expect(output).toContain("metrics/metrics-pulse.svg");
+    expect(output).toContain("metrics/metrics-calendar.svg");
+  });
+
+  it("includes expertise section", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("## Other Areas of Interest");
+    expect(output).toContain("metrics/metrics-expertise.svg");
+  });
+
+  it("includes social badges", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("img.shields.io");
+  });
+
+  it("includes attribution", () => {
+    const output = getTemplate("ecosystem")(makeContext());
+    expect(output).toContain("@urmzd/github-metrics");
+  });
+
+  it("ends with trailing newline", () => {
+    const output = getTemplate("ecosystem")(makeContext());
     expect(output.endsWith("\n")).toBe(true);
   });
 });
