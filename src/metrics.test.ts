@@ -277,7 +277,13 @@ describe("getTopProjectsByStars", () => {
 describe("splitProjectsByRecency", () => {
   it("classifies repos into active, maintained, and inactive", () => {
     const repos = [
-      makeRepo({ name: "active-repo", stargazerCount: 20 }),
+      makeRepo({
+        name: "active-repo",
+        stargazerCount: 20,
+        createdAt: new Date(
+          Date.now() - 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      }),
       makeRepo({ name: "maintained-repo", stargazerCount: 15 }),
       makeRepo({ name: "inactive-repo", stargazerCount: 10 }),
     ];
@@ -309,11 +315,15 @@ describe("splitProjectsByRecency", () => {
   });
 
   it("sorts active repos by complexity descending", () => {
+    const recentDate = new Date(
+      Date.now() - 30 * 24 * 60 * 60 * 1000,
+    ).toISOString();
     const repos = [
       makeRepo({
         name: "simple-repo",
         stargazerCount: 100,
         diskUsage: 512,
+        createdAt: recentDate,
         languages: {
           totalSize: 10000,
           edges: [
@@ -325,6 +335,7 @@ describe("splitProjectsByRecency", () => {
         name: "complex-repo",
         stargazerCount: 1,
         diskUsage: 50000,
+        createdAt: recentDate,
         languages: {
           totalSize: 100000,
           edges: [
@@ -373,8 +384,11 @@ describe("splitProjectsByRecency", () => {
   });
 
   it("returns all qualifying repos without a cap", () => {
+    const recentDate = new Date(
+      Date.now() - 30 * 24 * 60 * 60 * 1000,
+    ).toISOString();
     const repos = Array.from({ length: 8 }, (_, i) =>
-      makeRepo({ name: `repo-${i}`, stargazerCount: i }),
+      makeRepo({ name: `repo-${i}`, stargazerCount: i, createdAt: recentDate }),
     );
     const contribData = makeContributionData({
       commitContributionsByRepository: repos.map((r) => ({
@@ -388,16 +402,9 @@ describe("splitProjectsByRecency", () => {
   });
 
   it("classifies repos below active threshold but with commits as maintained", () => {
-    const repos = [
-      makeRepo({ name: "busy-repo", stargazerCount: 5 }),
-      makeRepo({ name: "one-off-repo", stargazerCount: 50 }),
-    ];
+    const repos = [makeRepo({ name: "one-off-repo", stargazerCount: 50 })];
     const contribData = makeContributionData({
       commitContributionsByRepository: [
-        {
-          repository: { name: "busy-repo", nameWithOwner: "user/busy-repo" },
-          contributions: { totalCount: 20 },
-        },
         {
           repository: {
             name: "one-off-repo",
@@ -407,9 +414,31 @@ describe("splitProjectsByRecency", () => {
         },
       ],
     });
-    const { active, maintained } = splitProjectsByRecency(repos, contribData);
-    expect(active.map((p) => p.name)).toEqual(["busy-repo"]);
+    const { maintained } = splitProjectsByRecency(repos, contribData);
     expect(maintained.map((p) => p.name)).toEqual(["one-off-repo"]);
+  });
+
+  it("old repo with many commits is maintained, not active", () => {
+    const repos = [
+      makeRepo({
+        name: "old-sdk",
+        stargazerCount: 100,
+        createdAt: new Date(
+          Date.now() - 3 * 365 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "old-sdk", nameWithOwner: "user/old-sdk" },
+          contributions: { totalCount: 50 },
+        },
+      ],
+    });
+    const { active, maintained } = splitProjectsByRecency(repos, contribData);
+    expect(active).toEqual([]);
+    expect(maintained.map((p) => p.name)).toEqual(["old-sdk"]);
   });
 
   it("returns empty arrays for no repos", () => {
