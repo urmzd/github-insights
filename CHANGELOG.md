@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.0 (2026-03-16)
+
+### Breaking Changes
+
+- rename project to github-insights with YAML config and new output dir ([9dbca28](https://github.com/urmzd/github-insights/commit/9dbca28f23f8ab8984b1d389f26f32dffa6c579a))
+
+### Bug Fixes
+
+- **ci**: apply biome formatting to config.ts ([4bc0821](https://github.com/urmzd/github-insights/commit/4bc08217885522ee7503dcc526b02315ca42da5e))
+
+### Miscellaneous
+
+- bump version to 2.0.0 after npm publish ([a4eb533](https://github.com/urmzd/github-insights/commit/a4eb533728cf27e0acb55eda1e3cdf4c99031f83))
+- rebuild dist bundle for github-insights rename ([d9e563b](https://github.com/urmzd/github-insights/commit/d9e563bb81a85e33dc1a882402189743cdec83a8))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v1.2.4...v2.0.0)
+
+
 ## 1.1.0 (2026-03-15)
 
 ### Features

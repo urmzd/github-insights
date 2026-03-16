@@ -16,6 +16,10 @@
   },
   "license": "Apache-2.0",
   "name": "@urmzd/github-insights",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/urmzd/github-insights.git"
+  },
   "scripts": {
     "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "ci": "npm run fmt && npm run lint && npm run typecheck && npm run test && npm run build",
@@ -25,10 +29,6 @@
     "lint": "biome check src/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/urmzd/github-insights.git"
   },
   "type": "module",
   "version": "2.0.0"
