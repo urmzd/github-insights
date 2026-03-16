@@ -12,6 +12,32 @@ import type {
   UserProfile,
 } from "./types.js";
 
+const MAX_RETRIES = 3;
+
+const fetchWithRetry = async (
+  url: string,
+  init: RequestInit,
+  label: string,
+): Promise<Response | null> => {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+
+    if (attempt === MAX_RETRIES) {
+      console.warn(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`);
+      return null;
+    }
+
+    const retryAfter = res.headers.get("retry-after");
+    const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
+    console.warn(
+      `${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`,
+    );
+    await new Promise((r) => setTimeout(r, waitSec * 1000));
+  }
+  return null;
+};
+
 const MANIFEST_FILES = [
   "package.json",
   "Cargo.toml",
@@ -366,7 +392,7 @@ Generate 1-2 sentences that:
 - Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
 - Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
 
-    const res = await fetch(
+    const res = await fetchWithRetry(
       "https://models.github.ai/inference/chat/completions",
       {
         method: "POST",
@@ -403,10 +429,12 @@ Generate 1-2 sentences that:
           },
         }),
       },
+      "Preamble",
     );
 
-    if (!res.ok) {
-      console.warn(`GitHub Models API error (preamble): ${res.status}`);
+    if (!res?.ok) {
+      if (res)
+        console.warn(`GitHub Models API error (preamble): ${res.status}`);
       return undefined;
     }
 
@@ -505,7 +533,7 @@ From this data, produce a curated expertise profile:
   language code volume, dependency count, topic mentions, and README depth.
   Use the full range (e.g. 80-95 for primary stack, 50-70 for secondary, 30-50 for minor).`;
 
-    const res = await fetch(
+    const res = await fetchWithRetry(
       "https://models.github.ai/inference/chat/completions",
       {
         method: "POST",
@@ -546,10 +574,11 @@ From this data, produce a curated expertise profile:
           },
         }),
       },
+      "Expertise",
     );
 
-    if (!res.ok) {
-      console.warn(`GitHub Models API error: ${res.status}`);
+    if (!res?.ok) {
+      if (res) console.warn(`GitHub Models API error: ${res.status}`);
       return [];
     }
 
@@ -576,12 +605,20 @@ export const fetchProjectClassifications = async (
   try {
     const repoData = JSON.stringify(repos, null, 2);
 
-    const prompt = `You are classifying GitHub repositories by their maintenance status and generating a brief summary for each.
+    const prompt = `You are classifying GitHub repositories by their maintenance status, purpose category, and generating a brief summary for each.
 
-For each repository, determine its status and write a 1-2 sentence summary:
-- "active": Actively developed — significant recent commits, ongoing feature work, or frequent iteration.
-- "maintained": Still alive but not actively developed — occasional bug fixes, dependency updates, or minor patches. The project works and is kept functional but isn't seeing new features.
-- "inactive": Dormant or abandoned — no meaningful recent activity, likely a completed project, experiment, or archived work.
+For each repository, determine its status, category, and write a 1-2 sentence summary:
+
+Status (project lifecycle — pick exactly one):
+- "active": The project is young and under active development. It was created or significantly reworked recently, AND has frequent, sustained commits indicating ongoing feature work or rapid iteration. A mature project with a recent burst of commits is NOT active — it's maintained.
+- "maintained": The project is established and functional. It may receive occasional updates — bug fixes, dependency bumps, documentation, or even periodic feature additions — but the core is stable. Most working projects fall here. An old project with recent commits is maintained, not active.
+- "inactive": The project has no meaningful recent activity. It may be a completed experiment, archived, or abandoned.
+
+Category (project purpose — pick exactly one):
+- "Developer Tools": CLIs, build tools, code generators, automation utilities, GitHub Actions
+- "SDKs": Libraries and SDKs meant to be imported by other projects
+- "Applications": End-user applications, desktop apps, web apps, APIs
+- "Research & Experiments": Academic projects, ML experiments, algorithm research, educational repos, game clones
 
 Repository data:
 ${repoData}
@@ -589,11 +626,14 @@ ${repoData}
 Classification guidelines:
 - commitsLastYear is the number of commits in the past 12 months
 - pushedAt is the last push date (any git push, not just commits)
-- Judge activity by commit *density* relative to the repo's age: divide commitsLastYear by the number of months since createdAt (capped at 12). A new repo (< 6 months old) with 15 commits is very active; an old repo (> 2 years) with 15 commits/year is merely maintained
+- The key distinction between active and maintained is project MATURITY, not just commit recency
+- A project created in the last ~6 months with sustained commits → active
+- A project older than ~1 year with any level of recent commits → maintained (unless it was clearly rearchitected/rewritten recently)
+- commitsLastYear alone does NOT determine active vs maintained — a 3-year-old project with 50 commits/year is maintained, not active
 - A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
-- A repo with 1-4 commits is likely maintained unless it's very old with a single recent typo fix
-- SDKs, libraries, and tools that are stable may have few commits but still be actively maintained
-- Profile READMEs (e.g. repos named after the username) should be "active" if they have any recent commits
+- Profile READMEs (e.g. repos named after the username) should be "maintained" (they get auto-generated updates but aren't actively developed)
+- SDKs and tools that are stable and working are "maintained" even with frequent commits — unless they're brand new
+- For category, judge by what the repo IS, not by its activity level. A game clone is "Research & Experiments" even if actively developed. A CLI tool is "Developer Tools" even if inactive.
 
 Summary guidelines:
 - Write 1-2 factual sentences describing what the project IS and what technologies it uses
@@ -601,7 +641,7 @@ Summary guidelines:
 - Do NOT hallucinate features or details not present in the input data
 - Base the summary only on: name, description, languages, stars, and disk usage`;
 
-    const res = await fetch(
+    const res = await fetchWithRetry(
       "https://models.github.ai/inference/chat/completions",
       {
         method: "POST",
@@ -632,8 +672,17 @@ Summary guidelines:
                           enum: ["active", "maintained", "inactive"],
                         },
                         summary: { type: "string" },
+                        category: {
+                          type: "string",
+                          enum: [
+                            "Developer Tools",
+                            "SDKs",
+                            "Applications",
+                            "Research & Experiments",
+                          ],
+                        },
                       },
-                      required: ["name", "status", "summary"],
+                      required: ["name", "status", "summary", "category"],
                       additionalProperties: false,
                     },
                   },
@@ -645,10 +694,14 @@ Summary guidelines:
           },
         }),
       },
+      "Classifications",
     );
 
-    if (!res.ok) {
-      console.warn(`GitHub Models API error (classifications): ${res.status}`);
+    if (!res?.ok) {
+      if (res)
+        console.warn(
+          `GitHub Models API error (classifications): ${res.status}`,
+        );
       return [];
     }
 
