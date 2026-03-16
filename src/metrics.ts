@@ -169,8 +169,15 @@ export const buildClassificationInputs = (
   }));
 };
 
-const heuristicStatus = (commits: number): ProjectStatus => {
-  if (commits >= ACTIVE_COMMIT_THRESHOLD) return "active";
+const heuristicStatus = (
+  commits: number,
+  createdAt?: string,
+): ProjectStatus => {
+  const isYoung = createdAt
+    ? Date.now() - new Date(createdAt).getTime() < 6 * 30 * 24 * 60 * 60 * 1000
+    : false;
+
+  if (isYoung && commits >= ACTIVE_COMMIT_THRESHOLD) return "active";
   if (commits > 0) return "maintained";
   return "inactive";
 };
@@ -203,7 +210,7 @@ export const splitProjectsByRecency = (
   for (const repo of repos) {
     const commits = commitMap.get(repo.name) || 0;
     const aiEntry = aiMap.get(repo.name);
-    const status = aiEntry?.status || heuristicStatus(commits);
+    const status = aiEntry?.status || heuristicStatus(commits, repo.createdAt);
     const source = aiEntry ? "ai" : "heuristic";
 
     if (status === "active") {
@@ -229,6 +236,7 @@ export const splitProjectsByRecency = (
   const toProjectItemWithSummary = (repo: RepoNode): ProjectItem => ({
     ...toProjectItem(repo),
     summary: aiMap.get(repo.name)?.summary || undefined,
+    category: aiMap.get(repo.name)?.category || undefined,
   });
 
   const active: ProjectItem[] = activeRepos
