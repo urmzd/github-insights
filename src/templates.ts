@@ -87,6 +87,23 @@ function renderProjectSection(title: string, projects: ProjectItem[]): string {
   return `## ${title}\n\n${items}`;
 }
 
+// ── Project table helper (ecosystem template) ────────────────────────────
+
+function renderProjectTable(title: string, projects: ProjectItem[]): string {
+  if (projects.length === 0) return "";
+
+  const header = `| Project | Description |\n|---------|-------------|`;
+  const rows = projects
+    .map((p) => {
+      const desc = p.summary || p.description || "No description";
+      const safeDesc = desc.replace(/\|/g, "\\|").replace(/\n/g, " ");
+      return `| [${p.name}](${p.url}) | ${safeDesc} |`;
+    })
+    .join("\n");
+
+  return `### ${title}\n\n${header}\n${rows}`;
+}
+
 // ── Classic template ───────────────────────────────────────────────────────
 
 function classicTemplate(ctx: TemplateContext): string {
@@ -204,12 +221,74 @@ function minimalTemplate(ctx: TemplateContext): string {
   return `${parts.join("\n\n")}\n`;
 }
 
+// ── Ecosystem template ────────────────────────────────────────────────────
+
+const CATEGORY_ORDER = [
+  "Developer Tools",
+  "SDKs",
+  "Applications",
+  "Research & Experiments",
+];
+
+function ecosystemTemplate(ctx: TemplateContext): string {
+  const parts: string[] = [];
+
+  parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
+
+  if (ctx.preamble) {
+    parts.push(ctx.preamble);
+  }
+
+  if (ctx.socialBadges) {
+    parts.push(ctx.socialBadges);
+  }
+
+  // Render project tables grouped by category
+  for (const category of CATEGORY_ORDER) {
+    const projects = ctx.categorizedProjects[category];
+    if (projects && projects.length > 0) {
+      parts.push(renderProjectTable(category, projects));
+    }
+  }
+
+  // Render any uncategorized projects that don't match known categories
+  for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
+    if (!CATEGORY_ORDER.includes(category) && projects.length > 0) {
+      parts.push(renderProjectTable(category, projects));
+    }
+  }
+
+  // GitHub Stats section: pulse + calendar
+  const statsImages: string[] = [];
+  if (ctx.sectionSvgs.pulse) {
+    statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+  }
+  if (ctx.sectionSvgs.calendar) {
+    statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+  }
+  if (statsImages.length > 0) {
+    parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
+  }
+
+  // Other areas of interest: expertise
+  if (ctx.sectionSvgs.expertise) {
+    parts.push(
+      `## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`,
+    );
+  }
+
+  parts.push(attribution());
+
+  return `${parts.join("\n\n")}\n`;
+}
+
 // ── Registry ───────────────────────────────────────────────────────────────
 
 const TEMPLATES: Record<TemplateName, TemplateFunction> = {
   classic: classicTemplate,
   modern: modernTemplate,
   minimal: minimalTemplate,
+  ecosystem: ecosystemTemplate,
 };
 
 export function getTemplate(name: TemplateName): TemplateFunction {

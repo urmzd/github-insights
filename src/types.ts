@@ -28,6 +28,7 @@ export interface ProjectItem {
   codeSize?: number;
   languages?: string[];
   summary?: string;
+  category?: string;
 }
 
 // ── Bar chart generics ──────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ export interface SvgEmbed {
 
 // ── Template types ────────────────────────────────────────────────────────
 
-export type TemplateName = "classic" | "modern" | "minimal";
+export type TemplateName = "classic" | "modern" | "minimal" | "ecosystem";
 
 export type ProjectStatus = "active" | "maintained" | "inactive";
 
@@ -205,6 +206,7 @@ export interface RepoClassificationOutput {
   name: string;
   status: ProjectStatus;
   summary: string;
+  category?: string;
 }
 
 export interface TemplateContext {
@@ -222,6 +224,7 @@ export interface TemplateContext {
   maintainedProjects: ProjectItem[];
   inactiveProjects: ProjectItem[];
   allProjects: ProjectItem[];
+  categorizedProjects: Record<string, ProjectItem[]>;
   languages: LanguageItem[];
   techHighlights: TechHighlight[];
   contributionData: ContributionData;
