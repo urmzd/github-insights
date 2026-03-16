@@ -1,5 +1,5 @@
-name: "GitHub Metrics"
-description: "Generate SVG metrics visualizations for your GitHub profile README"
+name: "GitHub Insights"
+description: "Generate SVG insights visualizations for your GitHub profile README"
 branding:
   icon: "bar-chart-2"
   color: "blue"
@@ -12,7 +12,7 @@ inputs:
     default: ${{ github.repository_owner }}
   output-dir:
     description: "Directory to write SVG files to"
-    default: "metrics"
+    default: "assets/insights"
   commit-push:
     description: "Whether to commit and push generated files"
     default: "true"
@@ -26,8 +26,8 @@ inputs:
     description: "Git user email for commits"
     default: "41898282+github-actions[bot]@users.noreply.github.com"
   config-file:
-    description: "Path to .github-metrics.toml config file"
-    default: ".github-metrics.toml"
+    description: "Path to github-insights.yml config file (also accepts .yaml or legacy .github-metrics.toml)"
+    default: "github-insights.yml"
   readme-path:
     description: "Output path for the generated profile README (set to 'none' to skip; defaults to _README.md locally)"
     default: "README.md"

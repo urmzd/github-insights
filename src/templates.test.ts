@@ -231,7 +231,7 @@ describe("classicTemplate", () => {
 
   it("includes attribution", () => {
     const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("@urmzd/github-metrics");
+    expect(output).toContain("@urmzd/github-insights");
   });
 
   it("includes pronunciation when provided", () => {
@@ -343,7 +343,7 @@ describe("minimalTemplate", () => {
 
   it("includes attribution", () => {
     const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("@urmzd/github-metrics");
+    expect(output).toContain("@urmzd/github-insights");
   });
 
   it("ends with trailing newline", () => {
@@ -402,7 +402,7 @@ describe("ecosystemTemplate", () => {
 
   it("includes attribution", () => {
     const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("@urmzd/github-metrics");
+    expect(output).toContain("@urmzd/github-insights");
   });
 
   it("ends with trailing newline", () => {

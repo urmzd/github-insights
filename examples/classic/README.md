@@ -6,4 +6,4 @@ I build robust, multi-language systems—from AI-powered CLI tools and resume ge
 
 ![GitHub Metrics](./index.svg)
 
-<sub>Last generated on 2026-03-16 using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>
+<sub>Last generated on 2026-03-16 using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>

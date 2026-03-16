@@ -3,7 +3,8 @@
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
-    "smol-toml": "^1.6.0"
+    "smol-toml": "^1.6.0",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
@@ -14,7 +15,7 @@
     "vitest": "^2.0.0"
   },
   "license": "Apache-2.0",
-  "name": "@urmzd/github-metrics",
+  "name": "@urmzd/github-insights",
   "scripts": {
     "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "ci": "npm run fmt && npm run lint && npm run typecheck && npm run test && npm run build",
@@ -27,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/urmzd/github-metrics.git"
+    "url": "https://github.com/urmzd/github-insights.git"
   },
   "type": "module",
   "version": "1.1.0"

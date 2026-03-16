@@ -86,8 +86,8 @@ jobs:
 
       - name: Verify SVGs generated
         run: |
-          if [ ! -f metrics/index.svg ]; then
-            echo "ERROR: metrics/index.svg was not generated"
+          if [ ! -f assets/insights/index.svg ]; then
+            echo "ERROR: assets/insights/index.svg was not generated"
             exit 1
           fi
-          echo "Self-test passed: metrics/index.svg generated"
+          echo "Self-test passed: assets/insights/index.svg generated"
