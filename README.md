@@ -109,16 +109,26 @@ permissions:
   models: read     # for AI expertise analysis and preamble generation
 ```
 
-## Generated README Structure
+## Templates
 
-The action produces a profile README with the following layout:
+Four built-in templates control the generated README layout:
 
-1. **Heading** — `# Name` with an optional pronunciation subscript
-2. **Title blockquote** — `> Title` (if `title` is set in config)
-3. **Preamble** — AI-generated introduction or custom `PREAMBLE.md` content
-4. **SVG metrics** — a single `index.svg` when `index-only: true` (default), or each section SVG as a separate image when `false`
-5. **Bio footer** — separator + bio in subscript (if `bio` is set in config)
-6. **Attribution** — `Last generated on YYYY-MM-DD using @urmzd/github-metrics`
+| Template | Description |
+|----------|-------------|
+| `classic` | Name heading, title blockquote, preamble, SVG metrics, bio footer |
+| `modern` | Wave greeting, social badges, projects by activity (Active/Maintained/Inactive), GitHub Stats, expertise |
+| `minimal` | First name heading, preamble, social badges, SVG metrics |
+| `ecosystem` | Wave greeting, social badges, projects by purpose (Developer Tools/SDKs/Applications/Research), GitHub Stats, expertise |
+
+Set via the `template` input (default: `classic`) or `.github-metrics.toml`:
+
+```yaml
+- uses: urmzd/github-metrics@v1
+  with:
+    template: ecosystem
+```
+
+The **ecosystem** template groups projects into purpose-based tables using AI classification, matching the layout used by [urmzd's profile README](https://github.com/urmzd).
 
 ## Local Development
 
