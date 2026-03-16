@@ -12,7 +12,7 @@ I build robust, multi-language systems—from AI-powered CLI tools and resume ge
 | [teasr](https://github.com/urmzd/teasr) | A Rust-based tool for capturing showcase screenshots and GIFs from web apps, desktop, and terminal, distributed as a single binary with no runtime dependencies. |
 | [semantic-release](https://github.com/urmzd/semantic-release) | A Rust CLI for trunk-based semantic release, supporting conventional commits, changelog generation, git tagging, and GitHub releases. |
 | [gitit](https://github.com/urmzd/gitit) | A Rust CLI tool for AI-powered git commands, generating atomic conventional commits, code reviews, branch names, and PR descriptions using Claude or Gemini. |
-| [github-metrics](https://github.com/urmzd/github-metrics) | A GitHub Action written in TypeScript that generates SVG visualizations of GitHub profile metrics. |
+| [github-insights](https://github.com/urmzd/github-insights) | A GitHub Action written in TypeScript that generates SVG visualizations of GitHub profile metrics. |
 | [resume-generator](https://github.com/urmzd/resume-generator) | A CLI tool written in Go that converts resume data from YAML/JSON/TOML into polished PDFs, DOCX, HTML, LaTeX, and Markdown, featuring multi-agent AI assessment via Ollama. |
 | [dotfiles](https://github.com/urmzd/dotfiles) | A collection of modern dotfiles managed with Chezmoi and Nix, enabling one-command environment bootstrap for macOS and Linux, including Neovim, Tmux, Zsh, and specialized development shells. |
 | [languide](https://github.com/urmzd/languide) | A Python CLI that generates scenario-based language learning PDFs with full Unicode/CJK support, covering topics for travelers and language learners. |
@@ -56,4 +56,4 @@ I build robust, multi-language systems—from AI-powered CLI tools and resume ge
 
 ![Expertise](./metrics-expertise.svg)
 
-<sub>Last generated on 2026-03-16 using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>
+<sub>Last generated on 2026-03-16 using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>

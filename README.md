@@ -1,21 +1,26 @@
 <p align="center">
-  <h1 align="center">GitHub Metrics</h1>
+  <h1 align="center">GitHub Insights</h1>
   <p align="center">
-    Generate beautiful SVG metrics visualizations for your GitHub profile README.
+    Generate beautiful SVG insights visualizations for your GitHub profile README.
     <br /><br />
-    <a href="https://github.com/urmzd/github-metrics/releases">Install</a>
+    <a href="https://github.com/urmzd/github-insights/releases">Install</a>
     &middot;
-    <a href="https://github.com/urmzd/github-metrics/issues">Report Bug</a>
+    <a href="https://github.com/urmzd/github-insights/issues">Report Bug</a>
     &middot;
     <a href="https://github.com/urmzd">Profile Demo</a>
   </p>
 </p>
 
 <p align="center">
-  <a href="https://github.com/urmzd/github-metrics/actions/workflows/ci.yml"><img src="https://github.com/urmzd/github-metrics/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/urmzd/github-insights/actions/workflows/ci.yml"><img src="https://github.com/urmzd/github-insights/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/urmzd/github-insights/actions/workflows/release.yml"><img src="https://github.com/urmzd/github-insights/actions/workflows/release.yml/badge.svg" alt="Release"></a>
+  <a href="https://github.com/urmzd/github-insights/issues"><img src="https://img.shields.io/github/issues/urmzd/github-insights" alt="Issues"></a>
+  <a href="https://github.com/urmzd/github-insights/pulls"><img src="https://img.shields.io/github/issues-pr/urmzd/github-insights" alt="Pull Requests"></a>
+  <a href="https://github.com/urmzd/github-insights/blob/main/LICENSE"><img src="https://img.shields.io/github/license/urmzd/github-insights" alt="License"></a>
+  <a href="https://www.npmjs.com/package/@urmzd/github-insights"><img src="https://img.shields.io/npm/v/@urmzd/github-insights" alt="npm version"></a>
 </p>
 
-![Example output](metrics/index.svg)
+![Example output](assets/insights/index.svg)
 
 ## Features
 
@@ -26,7 +31,7 @@
 - **Contribution pulse** — commits, PRs, reviews, and active repos at a glance
 - **Signature projects** — top repos by stars with descriptions
 - **Open source contributions** — external repos you've contributed to
-- **Configuration** — customize name, title, bio, and more via `.github-metrics.toml`
+- **Configuration** — customize name, title, bio, and more via `github-insights.yml`
 
 ## Quick Start
 
@@ -48,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: urmzd/github-metrics@main
+      - uses: urmzd/github-insights@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -61,29 +66,31 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 |-------|-------------|---------|
 | `github-token` | GitHub token (needs `repo` read + `models:read` for AI) | `${{ github.token }}` |
 | `username` | GitHub username to generate metrics for | `${{ github.repository_owner }}` |
-| `output-dir` | Directory to write SVG files to | `metrics` |
+| `output-dir` | Directory to write SVG files to | `assets/insights` |
 | `commit-push` | Whether to commit and push generated files | `true` (CI) / `false` (local) |
 | `commit-message` | Commit message for generated files | `chore: update metrics` |
 | `commit-name` | Git user name for commits | `github-actions[bot]` |
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
-| `config-file` | Path to TOML config file | `.github-metrics.toml` |
+| `config-file` | Path to config file | `github-insights.yml` |
 | `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `_README.md` (local) |
 | `index-only` | When `true`, embeds only the combined `index.svg` in the generated README; when `false`, embeds each section SVG as a separate image (e.g., `metrics-languages.svg`, `metrics-expertise.svg`, etc.) | `true` |
 
 ## Configuration
 
-Create `.github-metrics.toml` in your repo root:
+Create `github-insights.yml` (or `.yaml`) in your repo root:
 
-```toml
-name = "Your Name"
-pronunciation = "your-name"
-title = "Software Engineer"
-desired_title = "Senior Software Engineer"
-bio = "Building things on the internet."
-preamble = "PREAMBLE.md"  # path to custom preamble (optional)
+```yaml
+name: Your Name
+pronunciation: your-name
+title: Software Engineer
+desired_title: Senior Software Engineer
+bio: Building things on the internet.
+preamble: PREAMBLE.md  # path to custom preamble (optional)
 ```
 
 All fields are optional. The `UserConfig` type in `src/types.ts` defines the full schema.
+
+> **Note:** The legacy config filename `.github-metrics.toml` (TOML format) is still supported but deprecated. Please migrate to `github-insights.yml`.
 
 ## AI Features
 
@@ -97,7 +104,7 @@ When no custom preamble is provided, the action uses AI to generate a profile in
 
 The preamble ends with a row of shields.io social badges for any detected links — website, Twitter/X, LinkedIn, and other social accounts from your GitHub profile. A GitHub badge is not included since the README is already on GitHub.
 
-To use your own text instead, create a `PREAMBLE.md` file in the repo root, or point to a custom file via the `preamble` field in `.github-metrics.toml`.
+To use your own text instead, create a `PREAMBLE.md` file in the repo root, or point to a custom file via the `preamble` field in `github-insights.yml`.
 
 ### Token Permissions
 
@@ -120,10 +127,10 @@ Four built-in templates control the generated README layout:
 | `minimal` | First name heading, preamble, social badges, SVG metrics |
 | `ecosystem` | Wave greeting, social badges, projects by purpose (Developer Tools/SDKs/Applications/Research), GitHub Stats, expertise |
 
-Set via the `template` input (default: `classic`) or `.github-metrics.toml`:
+Set via the `template` input (default: `classic`) or `github-insights.yml`:
 
 ```yaml
-- uses: urmzd/github-metrics@v1
+- uses: urmzd/github-insights@v1
   with:
     template: ecosystem
 ```
@@ -156,12 +163,12 @@ npm run fmt:fix     # format fix
 
 | File | Description |
 |------|-------------|
-| `metrics/index.svg` | Combined visualization with all sections |
-| `metrics/metrics-pulse.svg` | Contribution activity stats |
-| `metrics/metrics-languages.svg` | Language breakdown donut chart |
-| `metrics/metrics-expertise.svg` | AI-generated expertise bars |
-| `metrics/metrics-complexity.svg` | Top projects by stars |
-| `metrics/metrics-contributions.svg` | External open source contributions |
+| `assets/insights/index.svg` | Combined visualization with all sections |
+| `assets/insights/metrics-pulse.svg` | Contribution activity stats |
+| `assets/insights/metrics-languages.svg` | Language breakdown donut chart |
+| `assets/insights/metrics-expertise.svg` | AI-generated expertise bars |
+| `assets/insights/metrics-complexity.svg` | Top projects by stars |
+| `assets/insights/metrics-contributions.svg` | External open source contributions |
 | `README.md` | Generated profile README (CI); `_README.md` locally |
 
 ## Agent Skill
@@ -171,11 +178,11 @@ This project ships an [Agent Skill](https://github.com/vercel-labs/skills) for u
 **Install:**
 
 ```sh
-npx skills add urmzd/github-metrics
+npx skills add urmzd/github-insights
 ```
 
-Once installed, use `/github-metrics` to generate and customize SVG profile metrics.
+Once installed, use `/github-insights` to generate and customize SVG profile metrics.
 
 ---
 
-<sub>Created using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>
+<sub>Created using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>

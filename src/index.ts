@@ -40,7 +40,7 @@ async function run(): Promise<void> {
       core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
     const username =
       core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
-    const outputDir = core.getInput("output-dir") || "metrics";
+    const outputDir = core.getInput("output-dir") || "assets/insights";
     const commitPush =
       (core.getInput("commit-push") || (process.env.CI ? "true" : "false")) ===
       "true";

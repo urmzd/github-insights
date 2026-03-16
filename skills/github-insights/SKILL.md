@@ -1,5 +1,5 @@
 ---
-name: github-metrics
+name: github-insights
 description: >-
   Generate and customize SVG metrics visualizations for GitHub profile READMEs.
   Handles setup, configuration, theming, section selection, template choice,
@@ -46,13 +46,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: urmzd/github-metrics@main
+      - uses: urmzd/github-insights@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-2. Optionally create `.github-metrics.toml` for customization (see Configuration below).
-3. Run the workflow — it commits SVGs to `metrics/` and generates `README.md`.
+2. Optionally create `github-insights.yml` for customization (see Configuration below).
+3. Run the workflow — it commits SVGs to `assets/insights/` and generates `README.md`.
 
 ### Local development
 
@@ -71,17 +71,23 @@ Local mode differences:
 
 ## Configuration
 
-### `.github-metrics.toml` (all fields optional)
+### `github-insights.yml` (all fields optional)
 
-```toml
-name = "Display Name"           # overrides GitHub profile name
-pronunciation = "pronunciation" # shown as subscript in heading
-title = "Software Engineer"     # blockquote under heading; guides AI expertise
-desired_title = "Senior SWE"    # AI context only — biases expertise categories
-bio = "Short bio text."         # footer text in classic template
-preamble = "PREAMBLE.md"        # path to custom preamble (bypasses AI generation)
-template = "classic"            # "classic" | "modern" | "minimal"
-sections = ["pulse", "languages", "expertise", "projects", "contributions", "calendar"]
+```yaml
+name: Display Name           # overrides GitHub profile name
+pronunciation: pronunciation # shown as subscript in heading
+title: Software Engineer     # blockquote under heading; guides AI expertise
+desired_title: Senior SWE    # AI context only — biases expertise categories
+bio: Short bio text.         # footer text in classic template
+preamble: PREAMBLE.md        # path to custom preamble (bypasses AI generation)
+template: classic            # "classic" | "modern" | "minimal"
+sections:
+  - pulse
+  - languages
+  - expertise
+  - projects
+  - contributions
+  - calendar
 ```
 
 ### Action inputs
@@ -90,10 +96,10 @@ sections = ["pulse", "languages", "expertise", "projects", "contributions", "cal
 |-------|---------|-------------|
 | `github-token` | `${{ github.token }}` | Needs `contents: write` + `models: read` |
 | `username` | `${{ github.repository_owner }}` | GitHub login to generate metrics for |
-| `output-dir` | `metrics` | Directory for SVG output files |
+| `output-dir` | `assets/insights` | Directory for SVG output files |
 | `commit-push` | `true` (CI) / `false` (local) | Whether to commit and push |
 | `commit-message` | `chore: update metrics` | Git commit message |
-| `config-file` | `.github-metrics.toml` | Path to TOML config |
+| `config-file` | `github-insights.yml` | Path to config file |
 | `readme-path` | `README.md` (CI) / `_README.md` (local) | Set to `none` to skip |
 | `index-only` | `true` | `true` = single combined SVG; `false` = individual section SVGs |
 | `template` | `classic` | README template style |

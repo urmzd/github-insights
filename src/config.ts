@@ -1,11 +1,11 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import * as toml from "smol-toml";
+import * as yaml from "yaml";
 import type { TemplateName, UserConfig } from "./types.js";
 
 const VALID_TEMPLATES = new Set<string>(["classic", "modern", "minimal"]);
 
-export function parseUserConfig(raw: string): UserConfig {
-  const parsed = toml.parse(raw);
+function extractConfig(parsed: Record<string, unknown>): UserConfig {
   const config: UserConfig = {};
 
   if (typeof parsed.title === "string" && parsed.title.trim()) {
@@ -17,7 +17,10 @@ export function parseUserConfig(raw: string): UserConfig {
   if (typeof parsed.name === "string" && parsed.name.trim()) {
     config.name = parsed.name.trim();
   }
-  if (typeof parsed.pronunciation === "string" && parsed.pronunciation.trim()) {
+  if (
+    typeof parsed.pronunciation === "string" &&
+    parsed.pronunciation.trim()
+  ) {
     config.pronunciation = parsed.pronunciation.trim();
   }
   if (typeof parsed.bio === "string" && parsed.bio.trim()) {
@@ -48,11 +51,21 @@ export function parseUserConfig(raw: string): UserConfig {
   return config;
 }
 
+export function parseUserConfig(raw: string, format: "yaml" | "toml" = "yaml"): UserConfig {
+  const parsed =
+    format === "toml"
+      ? toml.parse(raw)
+      : (yaml.parse(raw) as Record<string, unknown>) ?? {};
+  return extractConfig(parsed);
+}
+
 export function loadUserConfig(configPath?: string): UserConfig {
-  const path = configPath || ".github-metrics.toml";
+  const resolved = configPath
+    ? { path: configPath, format: detectFormat(configPath) }
+    : resolveConfigPath();
   try {
-    const raw = readFileSync(path, "utf-8");
-    return parseUserConfig(raw);
+    const raw = readFileSync(resolved.path, "utf-8");
+    return parseUserConfig(raw, resolved.format);
   } catch (err: unknown) {
     if (
       err instanceof Error &&
@@ -62,7 +75,29 @@ export function loadUserConfig(configPath?: string): UserConfig {
       return {};
     }
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`Warning: failed to parse config file "${path}": ${msg}`);
+    console.warn(
+      `Warning: failed to parse config file "${resolved.path}": ${msg}`,
+    );
     return {};
   }
+}
+
+function detectFormat(path: string): "yaml" | "toml" {
+  return path.endsWith(".toml") ? "toml" : "yaml";
+}
+
+function resolveConfigPath(): { path: string; format: "yaml" | "toml" } {
+  if (existsSync("github-insights.yml")) {
+    return { path: "github-insights.yml", format: "yaml" };
+  }
+  if (existsSync("github-insights.yaml")) {
+    return { path: "github-insights.yaml", format: "yaml" };
+  }
+  if (existsSync(".github-metrics.toml")) {
+    console.warn(
+      'Warning: ".github-metrics.toml" is deprecated. Please rename it to "github-insights.yml".',
+    );
+    return { path: ".github-metrics.toml", format: "toml" };
+  }
+  return { path: "github-insights.yml", format: "yaml" };
 }
