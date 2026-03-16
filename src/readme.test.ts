@@ -11,7 +11,7 @@ describe("generateReadme", () => {
       "# octocat\n\n![GitHub Metrics](metrics/index.svg)",
     );
     expect(result).toMatch(
-      /Last generated on \d{4}-\d{2}-\d{2} using \[@urmzd\/github-metrics\]/,
+      /Last generated on \d{4}-\d{2}-\d{2} using \[@urmzd\/github-insights\]/,
     );
   });
 

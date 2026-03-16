@@ -46,7 +46,7 @@ Go
 A Python library providing stratified K-fold cross-validation with ensemble voting for PyTorch Lightning.
 Python
 
-### [github-metrics](https://github.com/urmzd/github-metrics)
+### [github-insights](https://github.com/urmzd/github-insights)
 A GitHub Action written in TypeScript that generates SVG visualizations of GitHub profile metrics.
 TypeScript
 
@@ -108,4 +108,4 @@ A GitHub profile README repository.
 
 ![Expertise](./metrics-expertise.svg)
 
-<sub>Last generated on 2026-03-16 using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>
+<sub>Last generated on 2026-03-16 using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>
