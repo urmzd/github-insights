@@ -42175,8 +42175,7 @@ function extractConfig(parsed) {
     if (typeof parsed.name === "string" && parsed.name.trim()) {
         config.name = parsed.name.trim();
     }
-    if (typeof parsed.pronunciation === "string" &&
-        parsed.pronunciation.trim()) {
+    if (typeof parsed.pronunciation === "string" && parsed.pronunciation.trim()) {
         config.pronunciation = parsed.pronunciation.trim();
     }
     if (typeof parsed.bio === "string" && parsed.bio.trim()) {
@@ -42207,7 +42206,7 @@ function extractConfig(parsed) {
 function parseUserConfig(raw, format = "yaml") {
     const parsed = format === "toml"
         ? parse(raw)
-        : yaml_dist/* parse */.qg(raw) ?? {};
+        : (yaml_dist/* parse */.qg(raw) ?? {});
     return extractConfig(parsed);
 }
 function loadUserConfig(configPath) {

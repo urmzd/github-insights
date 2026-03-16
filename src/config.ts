@@ -17,10 +17,7 @@ function extractConfig(parsed: Record<string, unknown>): UserConfig {
   if (typeof parsed.name === "string" && parsed.name.trim()) {
     config.name = parsed.name.trim();
   }
-  if (
-    typeof parsed.pronunciation === "string" &&
-    parsed.pronunciation.trim()
-  ) {
+  if (typeof parsed.pronunciation === "string" && parsed.pronunciation.trim()) {
     config.pronunciation = parsed.pronunciation.trim();
   }
   if (typeof parsed.bio === "string" && parsed.bio.trim()) {
@@ -51,11 +48,14 @@ function extractConfig(parsed: Record<string, unknown>): UserConfig {
   return config;
 }
 
-export function parseUserConfig(raw: string, format: "yaml" | "toml" = "yaml"): UserConfig {
+export function parseUserConfig(
+  raw: string,
+  format: "yaml" | "toml" = "yaml",
+): UserConfig {
   const parsed =
     format === "toml"
       ? toml.parse(raw)
-      : (yaml.parse(raw) as Record<string, unknown>) ?? {};
+      : ((yaml.parse(raw) as Record<string, unknown>) ?? {});
   return extractConfig(parsed);
 }
 
