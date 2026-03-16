@@ -3,7 +3,7 @@ import { parseUserConfig } from "./config.js";
 
 describe("parseUserConfig", () => {
   it("parses both fields", () => {
-    const raw = `title = "Senior Backend Engineer"\ndesired_title = "Staff Engineer"`;
+    const raw = `title: "Senior Backend Engineer"\ndesired_title: "Staff Engineer"`;
     expect(parseUserConfig(raw)).toEqual({
       title: "Senior Backend Engineer",
       desired_title: "Staff Engineer",
@@ -11,7 +11,7 @@ describe("parseUserConfig", () => {
   });
 
   it("parses title only", () => {
-    const raw = `title = "Software Engineer"`;
+    const raw = `title: "Software Engineer"`;
     expect(parseUserConfig(raw)).toEqual({ title: "Software Engineer" });
   });
 
@@ -20,93 +20,93 @@ describe("parseUserConfig", () => {
   });
 
   it("trims whitespace-only values", () => {
-    const raw = `title = "  "\ndesired_title = "Staff Engineer"`;
+    const raw = `title: "  "\ndesired_title: "Staff Engineer"`;
     expect(parseUserConfig(raw)).toEqual({ desired_title: "Staff Engineer" });
   });
 
   it("trims surrounding whitespace from values", () => {
-    const raw = `title = "  Senior Engineer  "`;
+    const raw = `title: "  Senior Engineer  "`;
     expect(parseUserConfig(raw)).toEqual({ title: "Senior Engineer" });
   });
 
   it("ignores unknown fields", () => {
-    const raw = `title = "SWE"\nfoo = "bar"\nbaz = 42`;
+    const raw = `title: "SWE"\nfoo: "bar"\nbaz: 42`;
     expect(parseUserConfig(raw)).toEqual({ title: "SWE" });
   });
 
-  it("throws on invalid TOML", () => {
-    expect(() => parseUserConfig("title = ")).toThrow();
+  it("throws on invalid YAML", () => {
+    expect(() => parseUserConfig("title: [invalid")).toThrow();
   });
 
   it("parses name", () => {
-    const raw = `name = "Urmzd Maharramoff"`;
+    const raw = `name: "Urmzd Maharramoff"`;
     expect(parseUserConfig(raw)).toEqual({ name: "Urmzd Maharramoff" });
   });
 
   it("parses pronunciation", () => {
-    const raw = `pronunciation = "/ˈʊrm.zəd/"`;
+    const raw = `pronunciation: "/ˈʊrm.zəd/"`;
     expect(parseUserConfig(raw)).toEqual({ pronunciation: "/ˈʊrm.zəd/" });
   });
 
   it("parses bio", () => {
-    const raw = `bio = "Building tools for developers"`;
+    const raw = `bio: "Building tools for developers"`;
     expect(parseUserConfig(raw)).toEqual({
       bio: "Building tools for developers",
     });
   });
 
   it("parses preamble", () => {
-    const raw = `preamble = "PREAMBLE.md"`;
+    const raw = `preamble: "PREAMBLE.md"`;
     expect(parseUserConfig(raw)).toEqual({ preamble: "PREAMBLE.md" });
   });
 
   it("skips whitespace-only name", () => {
-    const raw = `name = "   "`;
+    const raw = `name: "   "`;
     expect(parseUserConfig(raw)).toEqual({});
   });
 
   it("parses template field", () => {
-    const raw = `template = "modern"`;
+    const raw = `template: "modern"`;
     expect(parseUserConfig(raw)).toEqual({ template: "modern" });
   });
 
   it("normalizes template to lowercase", () => {
-    const raw = `template = "Modern"`;
+    const raw = `template: "Modern"`;
     expect(parseUserConfig(raw)).toEqual({ template: "modern" });
   });
 
   it("ignores unknown template values", () => {
-    const raw = `template = "fancy"`;
+    const raw = `template: "fancy"`;
     expect(parseUserConfig(raw)).toEqual({});
   });
 
   it("parses sections array", () => {
-    const raw = `sections = ["pulse", "languages"]`;
+    const raw = `sections:\n  - pulse\n  - languages`;
     expect(parseUserConfig(raw)).toEqual({
       sections: ["pulse", "languages"],
     });
   });
 
   it("filters out non-string sections entries", () => {
-    const raw = `sections = ["pulse", 42, "languages"]`;
+    const raw = `sections:\n  - pulse\n  - 42\n  - languages`;
     expect(parseUserConfig(raw)).toEqual({
       sections: ["pulse", "languages"],
     });
   });
 
   it("ignores empty sections array", () => {
-    const raw = `sections = []`;
+    const raw = `sections: []`;
     expect(parseUserConfig(raw)).toEqual({});
   });
 
   it("parses all fields together", () => {
     const raw = [
-      `name = "Urmzd Maharramoff"`,
-      `pronunciation = "/ˈʊrm.zəd/"`,
-      `title = "Senior Backend Engineer"`,
-      `desired_title = "Staff Engineer"`,
-      `bio = "Building tools for developers"`,
-      `preamble = "PREAMBLE.md"`,
+      `name: "Urmzd Maharramoff"`,
+      `pronunciation: "/ˈʊrm.zəd/"`,
+      `title: "Senior Backend Engineer"`,
+      `desired_title: "Staff Engineer"`,
+      `bio: "Building tools for developers"`,
+      `preamble: "PREAMBLE.md"`,
     ].join("\n");
     expect(parseUserConfig(raw)).toEqual({
       name: "Urmzd Maharramoff",
@@ -115,6 +115,13 @@ describe("parseUserConfig", () => {
       desired_title: "Staff Engineer",
       bio: "Building tools for developers",
       preamble: "PREAMBLE.md",
+    });
+  });
+
+  it("parses TOML format when specified", () => {
+    const raw = `title = "Senior Backend Engineer"`;
+    expect(parseUserConfig(raw, "toml")).toEqual({
+      title: "Senior Backend Engineer",
     });
   });
 });

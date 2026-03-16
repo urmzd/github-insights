@@ -10,7 +10,7 @@ import type {
 
 function attribution(): string {
   const now = new Date().toISOString().split("T")[0];
-  return `<sub>Last generated on ${now} using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>`;
+  return `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>`;
 }
 
 export function extractFirstName(fullName: string): string {

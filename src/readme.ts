@@ -47,7 +47,7 @@ export function generateReadme(options: ReadmeOptions): string {
   // Attribution
   const now = new Date().toISOString().split("T")[0];
   parts.push(
-    `<sub>Last generated on ${now} using [@urmzd/github-metrics](https://github.com/urmzd/github-metrics)</sub>`,
+    `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>`,
   );
 
   return `${parts.join("\n\n")}\n`;
