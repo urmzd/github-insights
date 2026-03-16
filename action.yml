@@ -35,7 +35,7 @@ inputs:
     description: "Embed only the combined index.svg; when false, embeds each section SVG individually"
     default: "true"
   template:
-    description: "README template to use: classic, modern, or minimal"
+    description: "README template to use: classic, modern, minimal, or ecosystem"
     default: "classic"
   sections:
     description: "Comma-separated list of sections to generate (e.g. pulse,languages,expertise,projects,contributions,calendar). Empty = all."
