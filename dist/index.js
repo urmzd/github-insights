@@ -31702,6 +31702,23 @@ var exec = __nccwpck_require__(5236);
 var github = __nccwpck_require__(3228);
 ;// CONCATENATED MODULE: ./src/api.ts
 
+const MAX_RETRIES = 3;
+const fetchWithRetry = async (url, init, label) => {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const res = await fetch(url, init);
+        if (res.status !== 429)
+            return res;
+        if (attempt === MAX_RETRIES) {
+            console.warn(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`);
+            return null;
+        }
+        const retryAfter = res.headers.get("retry-after");
+        const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
+        console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((r) => setTimeout(r, waitSec * 1000));
+    }
+    return null;
+};
 const MANIFEST_FILES = [
     "package.json",
     "Cargo.toml",
@@ -31971,7 +31988,7 @@ Generate 1-2 sentences that:
 - Do NOT include a heading — the README already has one
 - Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
 - Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
-        const res = await fetch("https://models.github.ai/inference/chat/completions", {
+        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
                 Authorization: `bearer ${token}`,
@@ -32004,9 +32021,10 @@ Generate 1-2 sentences that:
                     },
                 },
             }),
-        });
-        if (!res.ok) {
-            console.warn(`GitHub Models API error (preamble): ${res.status}`);
+        }, "Preamble");
+        if (!res?.ok) {
+            if (res)
+                console.warn(`GitHub Models API error (preamble): ${res.status}`);
             return undefined;
         }
         const json = (await res.json());
@@ -32083,7 +32101,7 @@ From this data, produce a curated expertise profile:
 - Assign each category a proficiency score from 0 to 100 based on evidence strength:
   language code volume, dependency count, topic mentions, and README depth.
   Use the full range (e.g. 80-95 for primary stack, 50-70 for secondary, 30-50 for minor).`;
-        const res = await fetch("https://models.github.ai/inference/chat/completions", {
+        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
                 Authorization: `bearer ${token}`,
@@ -32121,9 +32139,10 @@ From this data, produce a curated expertise profile:
                     },
                 },
             }),
-        });
-        if (!res.ok) {
-            console.warn(`GitHub Models API error: ${res.status}`);
+        }, "Expertise");
+        if (!res?.ok) {
+            if (res)
+                console.warn(`GitHub Models API error: ${res.status}`);
             return [];
         }
         const json = (await res.json());
@@ -32143,12 +32162,20 @@ From this data, produce a curated expertise profile:
 const fetchProjectClassifications = async (token, repos) => {
     try {
         const repoData = JSON.stringify(repos, null, 2);
-        const prompt = `You are classifying GitHub repositories by their maintenance status and generating a brief summary for each.
+        const prompt = `You are classifying GitHub repositories by their maintenance status, purpose category, and generating a brief summary for each.
 
-For each repository, determine its status and write a 1-2 sentence summary:
-- "active": Actively developed — significant recent commits, ongoing feature work, or frequent iteration.
-- "maintained": Still alive but not actively developed — occasional bug fixes, dependency updates, or minor patches. The project works and is kept functional but isn't seeing new features.
-- "inactive": Dormant or abandoned — no meaningful recent activity, likely a completed project, experiment, or archived work.
+For each repository, determine its status, category, and write a 1-2 sentence summary:
+
+Status (project lifecycle — pick exactly one):
+- "active": The project is young and under active development. It was created or significantly reworked recently, AND has frequent, sustained commits indicating ongoing feature work or rapid iteration. A mature project with a recent burst of commits is NOT active — it's maintained.
+- "maintained": The project is established and functional. It may receive occasional updates — bug fixes, dependency bumps, documentation, or even periodic feature additions — but the core is stable. Most working projects fall here. An old project with recent commits is maintained, not active.
+- "inactive": The project has no meaningful recent activity. It may be a completed experiment, archived, or abandoned.
+
+Category (project purpose — pick exactly one):
+- "Developer Tools": CLIs, build tools, code generators, automation utilities, GitHub Actions
+- "SDKs": Libraries and SDKs meant to be imported by other projects
+- "Applications": End-user applications, desktop apps, web apps, APIs
+- "Research & Experiments": Academic projects, ML experiments, algorithm research, educational repos, game clones
 
 Repository data:
 ${repoData}
@@ -32156,18 +32183,21 @@ ${repoData}
 Classification guidelines:
 - commitsLastYear is the number of commits in the past 12 months
 - pushedAt is the last push date (any git push, not just commits)
-- Judge activity by commit *density* relative to the repo's age: divide commitsLastYear by the number of months since createdAt (capped at 12). A new repo (< 6 months old) with 15 commits is very active; an old repo (> 2 years) with 15 commits/year is merely maintained
+- The key distinction between active and maintained is project MATURITY, not just commit recency
+- A project created in the last ~6 months with sustained commits → active
+- A project older than ~1 year with any level of recent commits → maintained (unless it was clearly rearchitected/rewritten recently)
+- commitsLastYear alone does NOT determine active vs maintained — a 3-year-old project with 50 commits/year is maintained, not active
 - A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
-- A repo with 1-4 commits is likely maintained unless it's very old with a single recent typo fix
-- SDKs, libraries, and tools that are stable may have few commits but still be actively maintained
-- Profile READMEs (e.g. repos named after the username) should be "active" if they have any recent commits
+- Profile READMEs (e.g. repos named after the username) should be "maintained" (they get auto-generated updates but aren't actively developed)
+- SDKs and tools that are stable and working are "maintained" even with frequent commits — unless they're brand new
+- For category, judge by what the repo IS, not by its activity level. A game clone is "Research & Experiments" even if actively developed. A CLI tool is "Developer Tools" even if inactive.
 
 Summary guidelines:
 - Write 1-2 factual sentences describing what the project IS and what technologies it uses
 - Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
 - Do NOT hallucinate features or details not present in the input data
 - Base the summary only on: name, description, languages, stars, and disk usage`;
-        const res = await fetch("https://models.github.ai/inference/chat/completions", {
+        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
                 Authorization: `bearer ${token}`,
@@ -32196,8 +32226,17 @@ Summary guidelines:
                                                 enum: ["active", "maintained", "inactive"],
                                             },
                                             summary: { type: "string" },
+                                            category: {
+                                                type: "string",
+                                                enum: [
+                                                    "Developer Tools",
+                                                    "SDKs",
+                                                    "Applications",
+                                                    "Research & Experiments",
+                                                ],
+                                            },
                                         },
-                                        required: ["name", "status", "summary"],
+                                        required: ["name", "status", "summary", "category"],
                                         additionalProperties: false,
                                     },
                                 },
@@ -32208,9 +32247,10 @@ Summary guidelines:
                     },
                 },
             }),
-        });
-        if (!res.ok) {
-            console.warn(`GitHub Models API error (classifications): ${res.status}`);
+        }, "Classifications");
+        if (!res?.ok) {
+            if (res)
+                console.warn(`GitHub Models API error (classifications): ${res.status}`);
             return [];
         }
         const json = (await res.json());
@@ -34139,8 +34179,11 @@ const buildClassificationInputs = (repos, contributionData) => {
         topicCount: repo.repositoryTopics.nodes.length,
     }));
 };
-const heuristicStatus = (commits) => {
-    if (commits >= ACTIVE_COMMIT_THRESHOLD)
+const heuristicStatus = (commits, createdAt) => {
+    const isYoung = createdAt
+        ? Date.now() - new Date(createdAt).getTime() < 6 * 30 * 24 * 60 * 60 * 1000
+        : false;
+    if (isYoung && commits >= ACTIVE_COMMIT_THRESHOLD)
         return "active";
     if (commits > 0)
         return "maintained";
@@ -34163,7 +34206,7 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
     for (const repo of repos) {
         const commits = commitMap.get(repo.name) || 0;
         const aiEntry = aiMap.get(repo.name);
-        const status = aiEntry?.status || heuristicStatus(commits);
+        const status = aiEntry?.status || heuristicStatus(commits, repo.createdAt);
         const source = aiEntry ? "ai" : "heuristic";
         if (status === "active") {
             activeRepos.push(repo);
@@ -34181,6 +34224,7 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
     const toProjectItemWithSummary = (repo) => ({
         ...toProjectItem(repo),
         summary: aiMap.get(repo.name)?.summary || undefined,
+        category: aiMap.get(repo.name)?.category || undefined,
     });
     const active = activeRepos
         .sort(sortByComplexity)
@@ -34396,6 +34440,20 @@ function renderProjectSection(title, projects) {
         .join("\n\n");
     return `## ${title}\n\n${items}`;
 }
+// ── Project table helper (ecosystem template) ────────────────────────────
+function renderProjectTable(title, projects) {
+    if (projects.length === 0)
+        return "";
+    const header = `| Project | Description |\n|---------|-------------|`;
+    const rows = projects
+        .map((p) => {
+        const desc = p.summary || p.description || "No description";
+        const safeDesc = desc.replace(/\|/g, "\\|").replace(/\n/g, " ");
+        return `| [${p.name}](${p.url}) | ${safeDesc} |`;
+    })
+        .join("\n");
+    return `### ${title}\n\n${header}\n${rows}`;
+}
 // ── Classic template ───────────────────────────────────────────────────────
 function classicTemplate(ctx) {
     const parts = [];
@@ -34476,11 +34534,59 @@ function minimalTemplate(ctx) {
     parts.push(attribution());
     return `${parts.join("\n\n")}\n`;
 }
+// ── Ecosystem template ────────────────────────────────────────────────────
+const CATEGORY_ORDER = [
+    "Developer Tools",
+    "SDKs",
+    "Applications",
+    "Research & Experiments",
+];
+function ecosystemTemplate(ctx) {
+    const parts = [];
+    parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
+    if (ctx.preamble) {
+        parts.push(ctx.preamble);
+    }
+    if (ctx.socialBadges) {
+        parts.push(ctx.socialBadges);
+    }
+    // Render project tables grouped by category
+    for (const category of CATEGORY_ORDER) {
+        const projects = ctx.categorizedProjects[category];
+        if (projects && projects.length > 0) {
+            parts.push(renderProjectTable(category, projects));
+        }
+    }
+    // Render any uncategorized projects that don't match known categories
+    for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
+        if (!CATEGORY_ORDER.includes(category) && projects.length > 0) {
+            parts.push(renderProjectTable(category, projects));
+        }
+    }
+    // GitHub Stats section: pulse + calendar
+    const statsImages = [];
+    if (ctx.sectionSvgs.pulse) {
+        statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+    }
+    if (ctx.sectionSvgs.calendar) {
+        statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+    }
+    if (statsImages.length > 0) {
+        parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
+    }
+    // Other areas of interest: expertise
+    if (ctx.sectionSvgs.expertise) {
+        parts.push(`## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`);
+    }
+    parts.push(attribution());
+    return `${parts.join("\n\n")}\n`;
+}
 // ── Registry ───────────────────────────────────────────────────────────────
 const TEMPLATES = {
     classic: classicTemplate,
     modern: modernTemplate,
     minimal: minimalTemplate,
+    ecosystem: ecosystemTemplate,
 };
 function getTemplate(name) {
     return TEMPLATES[name] || TEMPLATES.classic;
@@ -34623,6 +34729,19 @@ async function run() {
             }
             const displayName = userConfig.name || userProfile.name || username;
             const socialBadges = buildSocialBadges(userProfile);
+            // Build categorized projects map for ecosystem template
+            const allProjectItems = [
+                ...activeProjects,
+                ...maintainedProjects,
+                ...inactiveProjects,
+            ];
+            const categorizedProjects = {};
+            for (const project of allProjectItems) {
+                const cat = project.category || "Other";
+                if (!categorizedProjects[cat])
+                    categorizedProjects[cat] = [];
+                categorizedProjects[cat].push(project);
+            }
             {
                 const template = getTemplate(templateName);
                 const readme = template({
@@ -34640,6 +34759,7 @@ async function run() {
                     maintainedProjects,
                     inactiveProjects,
                     allProjects: complexProjects,
+                    categorizedProjects,
                     languages,
                     techHighlights,
                     contributionData,
@@ -34655,6 +34775,7 @@ async function run() {
                     "classic",
                     "modern",
                     "minimal",
+                    "ecosystem",
                 ];
                 for (const tplName of allTemplateNames) {
                     const tplDir = `examples/${tplName}`;
@@ -34692,6 +34813,7 @@ async function run() {
                         maintainedProjects,
                         inactiveProjects,
                         allProjects: complexProjects,
+                        categorizedProjects,
                         languages,
                         techHighlights,
                         contributionData,
