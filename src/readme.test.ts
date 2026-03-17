@@ -5,10 +5,10 @@ describe("generateReadme", () => {
   it("renders minimal readme (name + single SVG)", () => {
     const result = generateReadme({
       name: "octocat",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain(
-      "# octocat\n\n![GitHub Metrics](metrics/index.svg)",
+      "# octocat\n\n![GitHub Metrics](assets/insights/index.svg)",
     );
     expect(result).toMatch(
       /Last generated on \d{4}-\d{2}-\d{2} using \[@urmzd\/github-insights\]/,
@@ -19,7 +19,7 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       pronunciation: "/ˈʊrm.zəd/",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain("# Urmzd <sub><i>(/ˈʊrm.zəd/)</i></sub>");
   });
@@ -27,7 +27,7 @@ describe("generateReadme", () => {
   it("omits pronunciation when not set", () => {
     const result = generateReadme({
       name: "Urmzd",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).not.toContain("<sub><i>");
     expect(result).toContain("# Urmzd\n");
@@ -37,7 +37,7 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       title: "Senior Backend Engineer",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain("> Senior Backend Engineer");
   });
@@ -45,7 +45,7 @@ describe("generateReadme", () => {
   it("omits title when not set", () => {
     const result = generateReadme({
       name: "Urmzd",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).not.toContain("> ");
   });
@@ -54,7 +54,7 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       preamble: "Hello, I build things.",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain("Hello, I build things.");
   });
@@ -62,19 +62,19 @@ describe("generateReadme", () => {
   it("omits preamble when not set", () => {
     const result = generateReadme({
       name: "Urmzd",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     // Only heading + SVG + attribution + trailing newline
     expect(result).not.toContain("Hello");
     expect(result).toContain("# Urmzd");
-    expect(result).toContain("![GitHub Metrics](metrics/index.svg)");
+    expect(result).toContain("![GitHub Metrics](assets/insights/index.svg)");
   });
 
   it("preamble is not wrapped in code fences", () => {
     const result = generateReadme({
       name: "Urmzd",
       preamble: "Hello, I build things.",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain("Hello, I build things.");
     expect(result).not.toContain("```");
@@ -86,7 +86,7 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       preamble: preamble,
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain(preamble);
     expect(result).toContain(`# Urmzd\n\n${preamble}\n\n![GitHub Metrics]`);
@@ -98,7 +98,7 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       preamble: preamble,
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain("**bold**");
     expect(result).toContain(
@@ -114,14 +114,14 @@ describe("generateReadme", () => {
       pronunciation: "/ˈʊrm.zəd/",
       title: "Senior Backend Engineer",
       preamble: "Welcome to my profile!",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
       bio: "Building tools for developers",
     });
     expect(result).toContain(
       "> Senior Backend Engineer\n\nWelcome to my profile!",
     );
     expect(result).toContain(
-      "Welcome to my profile!\n\n![GitHub Metrics](metrics/index.svg)",
+      "Welcome to my profile!\n\n![GitHub Metrics](assets/insights/index.svg)",
     );
   });
 
@@ -129,7 +129,7 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       bio: "Building tools for developers",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).toContain("---\n\n<sub>Building tools for developers</sub>");
   });
@@ -137,7 +137,7 @@ describe("generateReadme", () => {
   it("omits bio when not set", () => {
     const result = generateReadme({
       name: "Urmzd",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result).not.toContain("---");
     // Should only have the attribution <sub>, not a bio <sub>
@@ -150,14 +150,14 @@ describe("generateReadme", () => {
     const result = generateReadme({
       name: "Urmzd",
       svgs: [
-        { label: "Languages", path: "metrics/metrics-languages.svg" },
-        { label: "Projects", path: "metrics/metrics-projects.svg" },
-        { label: "Expertise", path: "metrics/metrics-expertise.svg" },
+        { label: "Languages", path: "assets/insights/metrics-languages.svg" },
+        { label: "Projects", path: "assets/insights/metrics-projects.svg" },
+        { label: "Expertise", path: "assets/insights/metrics-expertise.svg" },
       ],
     });
-    expect(result).toContain("![Languages](metrics/metrics-languages.svg)");
-    expect(result).toContain("![Projects](metrics/metrics-projects.svg)");
-    expect(result).toContain("![Expertise](metrics/metrics-expertise.svg)");
+    expect(result).toContain("![Languages](assets/insights/metrics-languages.svg)");
+    expect(result).toContain("![Projects](assets/insights/metrics-projects.svg)");
+    expect(result).toContain("![Expertise](assets/insights/metrics-expertise.svg)");
   });
 
   it("renders all sections combined", () => {
@@ -166,7 +166,7 @@ describe("generateReadme", () => {
       pronunciation: "/ˈʊrm.zəd/",
       title: "Senior Backend Engineer",
       preamble: "Welcome to my profile!",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
       bio: "Building tools for developers",
     });
     expect(result).toContain(
@@ -174,14 +174,14 @@ describe("generateReadme", () => {
     );
     expect(result).toContain("> Senior Backend Engineer");
     expect(result).toContain("Welcome to my profile!");
-    expect(result).toContain("![GitHub Metrics](metrics/index.svg)");
+    expect(result).toContain("![GitHub Metrics](assets/insights/index.svg)");
     expect(result).toContain("---\n\n<sub>Building tools for developers</sub>");
   });
 
   it("ends with a trailing newline", () => {
     const result = generateReadme({
       name: "octocat",
-      svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+      svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
     });
     expect(result.endsWith("\n")).toBe(true);
     expect(result.endsWith("\n\n")).toBe(false);
