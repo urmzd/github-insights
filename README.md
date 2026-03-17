@@ -90,8 +90,6 @@ preamble: PREAMBLE.md  # path to custom preamble (optional)
 
 All fields are optional. The `UserConfig` type in `src/types.ts` defines the full schema.
 
-> **Note:** The legacy config filename `.github-metrics.toml` (TOML format) is still supported but deprecated. Please migrate to `github-insights.yml`.
-
 ## AI Features
 
 ### Expertise Analysis
