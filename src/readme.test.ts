@@ -155,9 +155,15 @@ describe("generateReadme", () => {
         { label: "Expertise", path: "assets/insights/metrics-expertise.svg" },
       ],
     });
-    expect(result).toContain("![Languages](assets/insights/metrics-languages.svg)");
-    expect(result).toContain("![Projects](assets/insights/metrics-projects.svg)");
-    expect(result).toContain("![Expertise](assets/insights/metrics-expertise.svg)");
+    expect(result).toContain(
+      "![Languages](assets/insights/metrics-languages.svg)",
+    );
+    expect(result).toContain(
+      "![Projects](assets/insights/metrics-projects.svg)",
+    );
+    expect(result).toContain(
+      "![Expertise](assets/insights/metrics-expertise.svg)",
+    );
   });
 
   it("renders all sections combined", () => {
