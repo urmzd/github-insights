@@ -42238,10 +42238,6 @@ function resolveConfigPath() {
     if ((0,external_node_fs_namespaceObject.existsSync)("github-insights.yaml")) {
         return { path: "github-insights.yaml", format: "yaml" };
     }
-    if ((0,external_node_fs_namespaceObject.existsSync)(".github-metrics.toml")) {
-        console.warn('Warning: ".github-metrics.toml" is deprecated. Please rename it to "github-insights.yml".');
-        return { path: ".github-metrics.toml", format: "toml" };
-    }
     return { path: "github-insights.yml", format: "yaml" };
 }
 
