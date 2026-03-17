@@ -93,11 +93,5 @@ function resolveConfigPath(): { path: string; format: "yaml" | "toml" } {
   if (existsSync("github-insights.yaml")) {
     return { path: "github-insights.yaml", format: "yaml" };
   }
-  if (existsSync(".github-metrics.toml")) {
-    console.warn(
-      'Warning: ".github-metrics.toml" is deprecated. Please rename it to "github-insights.yml".',
-    );
-    return { path: ".github-metrics.toml", format: "toml" };
-  }
   return { path: "github-insights.yml", format: "yaml" };
 }

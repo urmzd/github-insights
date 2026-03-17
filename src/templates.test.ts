@@ -18,11 +18,11 @@ const makeContext = (
   title: "Software Engineer",
   bio: "Building tools",
   preamble: "A software developer in Austin, TX.",
-  svgs: [{ label: "GitHub Metrics", path: "metrics/index.svg" }],
+  svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
   sectionSvgs: {
-    pulse: "metrics/metrics-pulse.svg",
-    calendar: "metrics/metrics-calendar.svg",
-    expertise: "metrics/metrics-expertise.svg",
+    pulse: "assets/insights/metrics-pulse.svg",
+    calendar: "assets/insights/metrics-calendar.svg",
+    expertise: "assets/insights/metrics-expertise.svg",
   },
   profile: makeUserProfile(),
   activeProjects: [
@@ -73,7 +73,7 @@ const makeContext = (
   contributionData: makeContributionData(),
   socialBadges:
     "[![urmzd.dev](https://img.shields.io/badge/urmzd.dev-4285F4?style=flat&logo=google-chrome&logoColor=white)](https://urmzd.dev)",
-  svgDir: "metrics",
+  svgDir: "assets/insights",
   ...overrides,
 });
 
@@ -216,7 +216,7 @@ describe("classicTemplate", () => {
 
   it("includes SVG embeds", () => {
     const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("![GitHub Metrics](metrics/index.svg)");
+    expect(output).toContain("![GitHub Metrics](assets/insights/index.svg)");
   });
 
   it("includes social badges", () => {
@@ -297,14 +297,14 @@ describe("modernTemplate", () => {
   it("includes GitHub Stats section with pulse and calendar", () => {
     const output = getTemplate("modern")(makeContext());
     expect(output).toContain("## GitHub Stats");
-    expect(output).toContain("metrics/metrics-pulse.svg");
-    expect(output).toContain("metrics/metrics-calendar.svg");
+    expect(output).toContain("assets/insights/metrics-pulse.svg");
+    expect(output).toContain("assets/insights/metrics-calendar.svg");
   });
 
   it("includes expertise section", () => {
     const output = getTemplate("modern")(makeContext());
     expect(output).toContain("## Other Areas of Interest");
-    expect(output).toContain("metrics/metrics-expertise.svg");
+    expect(output).toContain("assets/insights/metrics-expertise.svg");
   });
 
   it("includes social badges", () => {
@@ -333,7 +333,7 @@ describe("minimalTemplate", () => {
 
   it("includes SVG embeds", () => {
     const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("![GitHub Metrics](metrics/index.svg)");
+    expect(output).toContain("![GitHub Metrics](assets/insights/index.svg)");
   });
 
   it("includes social badges", () => {
@@ -385,14 +385,14 @@ describe("ecosystemTemplate", () => {
   it("includes GitHub Stats section", () => {
     const output = getTemplate("ecosystem")(makeContext());
     expect(output).toContain("## GitHub Stats");
-    expect(output).toContain("metrics/metrics-pulse.svg");
-    expect(output).toContain("metrics/metrics-calendar.svg");
+    expect(output).toContain("assets/insights/metrics-pulse.svg");
+    expect(output).toContain("assets/insights/metrics-calendar.svg");
   });
 
   it("includes expertise section", () => {
     const output = getTemplate("ecosystem")(makeContext());
     expect(output).toContain("## Other Areas of Interest");
-    expect(output).toContain("metrics/metrics-expertise.svg");
+    expect(output).toContain("assets/insights/metrics-expertise.svg");
   });
 
   it("includes social badges", () => {
