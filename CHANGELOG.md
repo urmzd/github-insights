@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1 (2026-03-17)
+
+### Bug Fixes
+
+- **ci**: apply biome formatting to readme test assertions ([1b69cc1](https://github.com/urmzd/github-insights/commit/1b69cc1eb806f17e44d8ca04c11cc48afb19d1da))
+
+### Refactoring
+
+- remove legacy metrics/ path references and migrate to assets/insights ([cd2c961](https://github.com/urmzd/github-insights/commit/cd2c961f5ea3032e5676ad070d4960c0a4232b54))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v2.0.0...v2.0.1)
+
+
 ## 2.0.0 (2026-03-16)
 
 ### Breaking Changes
