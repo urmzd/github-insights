@@ -22,6 +22,7 @@ export interface ProjectItem {
     languages?: string[];
     summary?: string;
     category?: string;
+    isArchived?: boolean;
 }
 export interface BarItem {
     name: string;
@@ -189,12 +190,14 @@ export interface TemplateContext {
     title?: string;
     bio?: string;
     preamble?: string;
+    templateName: TemplateName;
     svgs: SvgEmbed[];
     sectionSvgs: Record<string, string>;
     profile: UserProfile;
     activeProjects: ProjectItem[];
     maintainedProjects: ProjectItem[];
     inactiveProjects: ProjectItem[];
+    archivedProjects: ProjectItem[];
     allProjects: ProjectItem[];
     categorizedProjects: Record<string, ProjectItem[]>;
     languages: LanguageItem[];

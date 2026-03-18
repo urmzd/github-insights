@@ -11,6 +11,7 @@ export declare const splitProjectsByRecency: (repos: RepoNode[], contributionDat
     active: ProjectItem[];
     maintained: ProjectItem[];
     inactive: ProjectItem[];
+    archived: ProjectItem[];
 };
 export declare const buildSections: ({ languages, techHighlights, projects, contributionData, }: {
     languages: LanguageItem[];
