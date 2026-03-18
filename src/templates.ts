@@ -8,9 +8,9 @@ import type {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function attribution(): string {
+function attribution(templateName: string): string {
   const now = new Date().toISOString().split("T")[0];
-  return `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>`;
+  return `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: \`${templateName}\`</sub>`;
 }
 
 export function extractFirstName(fullName: string): string {
@@ -131,11 +131,15 @@ function classicTemplate(ctx: TemplateContext): string {
     parts.push(`![${svg.label}](${svg.path})`);
   }
 
+  if (ctx.archivedProjects.length > 0) {
+    parts.push(renderProjectSection("Archived", ctx.archivedProjects));
+  }
+
   if (ctx.bio) {
     parts.push(`---\n\n<sub>${ctx.bio}</sub>`);
   }
 
-  parts.push(attribution());
+  parts.push(attribution(ctx.templateName));
 
   return `${parts.join("\n\n")}\n`;
 }
@@ -173,6 +177,12 @@ function modernTemplate(ctx: TemplateContext): string {
   );
   if (inactiveSection) parts.push(inactiveSection);
 
+  const archivedSection = renderProjectSection(
+    "Archived",
+    ctx.archivedProjects,
+  );
+  if (archivedSection) parts.push(archivedSection);
+
   // GitHub Stats section: pulse + calendar
   const statsImages: string[] = [];
   if (ctx.sectionSvgs.pulse) {
@@ -192,7 +202,7 @@ function modernTemplate(ctx: TemplateContext): string {
     );
   }
 
-  parts.push(attribution());
+  parts.push(attribution(ctx.templateName));
 
   return `${parts.join("\n\n")}\n`;
 }
@@ -216,7 +226,11 @@ function minimalTemplate(ctx: TemplateContext): string {
     parts.push(`![${svg.label}](${svg.path})`);
   }
 
-  parts.push(attribution());
+  if (ctx.archivedProjects.length > 0) {
+    parts.push(renderProjectSection("Archived", ctx.archivedProjects));
+  }
+
+  parts.push(attribution(ctx.templateName));
 
   return `${parts.join("\n\n")}\n`;
 }
@@ -243,19 +257,32 @@ function ecosystemTemplate(ctx: TemplateContext): string {
     parts.push(ctx.socialBadges);
   }
 
-  // Render project tables grouped by category
+  // Build a set of archived project names to filter them out of category tables
+  const archivedNames = new Set(ctx.archivedProjects.map((p) => p.name));
+
+  // Render project tables grouped by category (excluding archived)
   for (const category of CATEGORY_ORDER) {
-    const projects = ctx.categorizedProjects[category];
+    const projects = ctx.categorizedProjects[category]?.filter(
+      (p) => !archivedNames.has(p.name),
+    );
     if (projects && projects.length > 0) {
       parts.push(renderProjectTable(category, projects));
     }
   }
 
-  // Render any uncategorized projects that don't match known categories
+  // Render any uncategorized projects that don't match known categories (excluding archived)
   for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
-    if (!CATEGORY_ORDER.includes(category) && projects.length > 0) {
-      parts.push(renderProjectTable(category, projects));
+    if (!CATEGORY_ORDER.includes(category)) {
+      const nonArchived = projects.filter((p) => !archivedNames.has(p.name));
+      if (nonArchived.length > 0) {
+        parts.push(renderProjectTable(category, nonArchived));
+      }
     }
+  }
+
+  // Render all archived projects in one consolidated section
+  if (ctx.archivedProjects.length > 0) {
+    parts.push(renderProjectTable("Archived", ctx.archivedProjects));
   }
 
   // GitHub Stats section: pulse + calendar
@@ -277,7 +304,7 @@ function ecosystemTemplate(ctx: TemplateContext): string {
     );
   }
 
-  parts.push(attribution());
+  parts.push(attribution(ctx.templateName));
 
   return `${parts.join("\n\n")}\n`;
 }

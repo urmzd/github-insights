@@ -117,6 +117,7 @@ const toProjectItem = (repo: RepoNode): ProjectItem => ({
   languageCount: repo.languages.edges.length,
   codeSize: repo.diskUsage,
   languages: repoLanguages(repo),
+  isArchived: repo.isArchived || undefined,
 });
 
 // ── Top Projects by Stars ───────────────────────────────────────────────────
@@ -190,6 +191,7 @@ export const splitProjectsByRecency = (
   active: ProjectItem[];
   maintained: ProjectItem[];
   inactive: ProjectItem[];
+  archived: ProjectItem[];
 } => {
   const commitMap = new Map<string, number>();
   for (const entry of contributionData.commitContributionsByRepository || []) {
@@ -206,8 +208,17 @@ export const splitProjectsByRecency = (
   const activeRepos: RepoNode[] = [];
   const maintainedRepos: RepoNode[] = [];
   const inactiveRepos: RepoNode[] = [];
+  const archivedRepos: RepoNode[] = [];
 
   for (const repo of repos) {
+    if (repo.isArchived) {
+      archivedRepos.push(repo);
+      console.info(
+        `[archived  ] ${repo.name} (complexity=${complexityScore(repo).toFixed(1)})`,
+      );
+      continue;
+    }
+
     const commits = commitMap.get(repo.name) || 0;
     const aiEntry = aiMap.get(repo.name);
     const status = aiEntry?.status || heuristicStatus(commits, repo.createdAt);
@@ -227,7 +238,7 @@ export const splitProjectsByRecency = (
   }
 
   console.info(
-    `Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive`,
+    `Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive, ${archivedRepos.length} archived`,
   );
 
   const sortByComplexity = (a: RepoNode, b: RepoNode) =>
@@ -248,8 +259,11 @@ export const splitProjectsByRecency = (
   const inactive: ProjectItem[] = inactiveRepos
     .sort(sortByComplexity)
     .map(toProjectItemWithSummary);
+  const archived: ProjectItem[] = archivedRepos
+    .sort(sortByComplexity)
+    .map(toProjectItemWithSummary);
 
-  return { active, maintained, inactive };
+  return { active, maintained, inactive, archived };
 };
 
 // ── Section definitions ─────────────────────────────────────────────────────

@@ -44,7 +44,9 @@ const makeContext = (
     },
   ],
   inactiveProjects: [],
+  archivedProjects: [],
   allProjects: [],
+  templateName: "classic",
   categorizedProjects: {
     Applications: [
       {
@@ -241,6 +243,28 @@ describe("classicTemplate", () => {
     expect(output).toContain("/ˈʊrm.zəd/");
   });
 
+  it("includes archived section for archived projects", () => {
+    const output = getTemplate("classic")(
+      makeContext({
+        archivedProjects: [
+          {
+            name: "old-project",
+            url: "https://github.com/urmzd/old-project",
+            description: "An archived project",
+            stars: 2,
+          },
+        ],
+      }),
+    );
+    expect(output).toContain("## Archived");
+    expect(output).toContain("[old-project]");
+  });
+
+  it("omits archived section when no archived projects", () => {
+    const output = getTemplate("classic")(makeContext());
+    expect(output).not.toContain("## Archived");
+  });
+
   it("ends with trailing newline", () => {
     const output = getTemplate("classic")(makeContext());
     expect(output.endsWith("\n")).toBe(true);
@@ -307,6 +331,23 @@ describe("modernTemplate", () => {
     expect(output).toContain("assets/insights/metrics-expertise.svg");
   });
 
+  it("includes archived section separate from active/maintained", () => {
+    const output = getTemplate("modern")(
+      makeContext({
+        archivedProjects: [
+          {
+            name: "legacy-lib",
+            url: "https://github.com/urmzd/legacy-lib",
+            description: "A legacy library",
+            stars: 1,
+          },
+        ],
+      }),
+    );
+    expect(output).toContain("## Archived");
+    expect(output).toContain("[legacy-lib]");
+  });
+
   it("includes social badges", () => {
     const output = getTemplate("modern")(makeContext());
     expect(output).toContain("img.shields.io");
@@ -344,6 +385,23 @@ describe("minimalTemplate", () => {
   it("includes attribution", () => {
     const output = getTemplate("minimal")(makeContext());
     expect(output).toContain("@urmzd/github-insights");
+  });
+
+  it("includes archived section for archived projects", () => {
+    const output = getTemplate("minimal")(
+      makeContext({
+        archivedProjects: [
+          {
+            name: "old-util",
+            url: "https://github.com/urmzd/old-util",
+            description: "A retired utility",
+            stars: 0,
+          },
+        ],
+      }),
+    );
+    expect(output).toContain("## Archived");
+    expect(output).toContain("[old-util]");
   });
 
   it("ends with trailing newline", () => {
@@ -403,6 +461,45 @@ describe("ecosystemTemplate", () => {
   it("includes attribution", () => {
     const output = getTemplate("ecosystem")(makeContext());
     expect(output).toContain("@urmzd/github-insights");
+  });
+
+  it("separates archived projects from category tables", () => {
+    const output = getTemplate("ecosystem")(
+      makeContext({
+        archivedProjects: [
+          {
+            name: "old-app",
+            url: "https://github.com/urmzd/old-app",
+            description: "A retired application",
+            stars: 3,
+            category: "Applications",
+          },
+        ],
+        categorizedProjects: {
+          Applications: [
+            {
+              name: "resume-generator",
+              url: "https://github.com/urmzd/resume-generator",
+              description: "CLI tool for professional resumes",
+              stars: 42,
+              category: "Applications",
+            },
+            {
+              name: "old-app",
+              url: "https://github.com/urmzd/old-app",
+              description: "A retired application",
+              stars: 3,
+              category: "Applications",
+            },
+          ],
+        },
+      }),
+    );
+    expect(output).toContain("### Archived");
+    expect(output).toContain("[old-app]");
+    // old-app should NOT appear in the Applications table
+    const appSection = output.split("### Applications")[1].split("###")[0];
+    expect(appSection).not.toContain("old-app");
   });
 
   it("ends with trailing newline", () => {
