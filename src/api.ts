@@ -86,7 +86,7 @@ export const fetchAllRepoData = async (
     { username },
   );
 
-  return data.user.repositories.nodes.filter((r) => !r.isArchived && !r.isFork);
+  return data.user.repositories.nodes.filter((r) => !r.isFork);
 };
 
 export const fetchManifestsForRepos = async (
