@@ -142,6 +142,7 @@ async function run(): Promise<void> {
       active: activeProjects,
       maintained: maintainedProjects,
       inactive: inactiveProjects,
+      archived: archivedProjects,
     } = splitProjectsByRecency(repos, contributionData, aiClassifications);
 
     const sectionDefs = buildSections({
@@ -227,6 +228,7 @@ async function run(): Promise<void> {
         ...activeProjects,
         ...maintainedProjects,
         ...inactiveProjects,
+        ...archivedProjects,
       ];
       const categorizedProjects: Record<string, typeof allProjectItems> = {};
       for (const project of allProjectItems) {
@@ -245,12 +247,14 @@ async function run(): Promise<void> {
           title: userConfig.title,
           bio: userConfig.bio,
           preamble,
+          templateName,
           svgs,
           sectionSvgs,
           profile: userProfile,
           activeProjects,
           maintainedProjects,
           inactiveProjects,
+          archivedProjects,
           allProjects: complexProjects,
           categorizedProjects,
           languages,
@@ -308,12 +312,14 @@ async function run(): Promise<void> {
             title: userConfig.title,
             bio: userConfig.bio,
             preamble,
+            templateName: tplName,
             svgs: previewSvgs,
             sectionSvgs: previewSectionSvgs,
             profile: userProfile,
             activeProjects,
             maintainedProjects,
             inactiveProjects,
+            archivedProjects,
             allProjects: complexProjects,
             categorizedProjects,
             languages,
