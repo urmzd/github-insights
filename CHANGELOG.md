@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0 (2026-03-18)
+
+### Features
+
+- separate archived/legacy projects into dedicated sections across all templates ([6327c64](https://github.com/urmzd/github-insights/commit/6327c64e568b5f25affc7a2f2a90a01c49c37ee6))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v2.0.1...v2.1.0)
+
+
 ## 2.0.1 (2026-03-17)
 
 ### Bug Fixes

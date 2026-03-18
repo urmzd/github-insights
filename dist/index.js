@@ -40284,7 +40284,7 @@ const fetchAllRepoData = async (graphql, username) => {
       }
     }
   }`, { username });
-    return data.user.repositories.nodes.filter((r) => !r.isArchived && !r.isFork);
+    return data.user.repositories.nodes.filter((r) => !r.isFork);
 };
 const fetchManifestsForRepos = async (graphql, username, repos) => {
     const manifests = new Map();
@@ -42699,6 +42699,7 @@ const toProjectItem = (repo) => ({
     languageCount: repo.languages.edges.length,
     codeSize: repo.diskUsage,
     languages: repoLanguages(repo),
+    isArchived: repo.isArchived || undefined,
 });
 // ── Top Projects by Stars ───────────────────────────────────────────────────
 const getTopProjectsByStars = (repos) => [...repos]
@@ -42756,7 +42757,13 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
     const activeRepos = [];
     const maintainedRepos = [];
     const inactiveRepos = [];
+    const archivedRepos = [];
     for (const repo of repos) {
+        if (repo.isArchived) {
+            archivedRepos.push(repo);
+            console.info(`[archived  ] ${repo.name} (complexity=${complexityScore(repo).toFixed(1)})`);
+            continue;
+        }
         const commits = commitMap.get(repo.name) || 0;
         const aiEntry = aiMap.get(repo.name);
         const status = aiEntry?.status || heuristicStatus(commits, repo.createdAt);
@@ -42772,7 +42779,7 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
         }
         console.info(`[${status.padEnd(10)}] ${repo.name} (${commits} commits, complexity=${complexityScore(repo).toFixed(1)}, source=${source})`);
     }
-    console.info(`Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive`);
+    console.info(`Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive, ${archivedRepos.length} archived`);
     const sortByComplexity = (a, b) => complexityScore(b) - complexityScore(a);
     const toProjectItemWithSummary = (repo) => ({
         ...toProjectItem(repo),
@@ -42788,7 +42795,10 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
     const inactive = inactiveRepos
         .sort(sortByComplexity)
         .map(toProjectItemWithSummary);
-    return { active, maintained, inactive };
+    const archived = archivedRepos
+        .sort(sortByComplexity)
+        .map(toProjectItemWithSummary);
+    return { active, maintained, inactive, archived };
 };
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
@@ -42928,9 +42938,9 @@ function loadPreamble(path) {
 
 ;// CONCATENATED MODULE: ./src/templates.ts
 // ── Helpers ────────────────────────────────────────────────────────────────
-function attribution() {
+function attribution(templateName) {
     const now = new Date().toISOString().split("T")[0];
-    return `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>`;
+    return `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: \`${templateName}\`</sub>`;
 }
 function extractFirstName(fullName) {
     return fullName.trim().split(/\s+/)[0] || fullName;
@@ -43028,10 +43038,13 @@ function classicTemplate(ctx) {
     for (const svg of ctx.svgs) {
         parts.push(`![${svg.label}](${svg.path})`);
     }
+    if (ctx.archivedProjects.length > 0) {
+        parts.push(renderProjectSection("Archived", ctx.archivedProjects));
+    }
     if (ctx.bio) {
         parts.push(`---\n\n<sub>${ctx.bio}</sub>`);
     }
-    parts.push(attribution());
+    parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
 }
 // ── Modern template ────────────────────────────────────────────────────────
@@ -43053,6 +43066,9 @@ function modernTemplate(ctx) {
     const inactiveSection = renderProjectSection("Inactive Projects", ctx.inactiveProjects);
     if (inactiveSection)
         parts.push(inactiveSection);
+    const archivedSection = renderProjectSection("Archived", ctx.archivedProjects);
+    if (archivedSection)
+        parts.push(archivedSection);
     // GitHub Stats section: pulse + calendar
     const statsImages = [];
     if (ctx.sectionSvgs.pulse) {
@@ -43068,7 +43084,7 @@ function modernTemplate(ctx) {
     if (ctx.sectionSvgs.expertise) {
         parts.push(`## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`);
     }
-    parts.push(attribution());
+    parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
 }
 // ── Minimal template ───────────────────────────────────────────────────────
@@ -43084,7 +43100,10 @@ function minimalTemplate(ctx) {
     for (const svg of ctx.svgs) {
         parts.push(`![${svg.label}](${svg.path})`);
     }
-    parts.push(attribution());
+    if (ctx.archivedProjects.length > 0) {
+        parts.push(renderProjectSection("Archived", ctx.archivedProjects));
+    }
+    parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
 }
 // ── Ecosystem template ────────────────────────────────────────────────────
@@ -43103,18 +43122,27 @@ function ecosystemTemplate(ctx) {
     if (ctx.socialBadges) {
         parts.push(ctx.socialBadges);
     }
-    // Render project tables grouped by category
+    // Build a set of archived project names to filter them out of category tables
+    const archivedNames = new Set(ctx.archivedProjects.map((p) => p.name));
+    // Render project tables grouped by category (excluding archived)
     for (const category of CATEGORY_ORDER) {
-        const projects = ctx.categorizedProjects[category];
+        const projects = ctx.categorizedProjects[category]?.filter((p) => !archivedNames.has(p.name));
         if (projects && projects.length > 0) {
             parts.push(renderProjectTable(category, projects));
         }
     }
-    // Render any uncategorized projects that don't match known categories
+    // Render any uncategorized projects that don't match known categories (excluding archived)
     for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
-        if (!CATEGORY_ORDER.includes(category) && projects.length > 0) {
-            parts.push(renderProjectTable(category, projects));
+        if (!CATEGORY_ORDER.includes(category)) {
+            const nonArchived = projects.filter((p) => !archivedNames.has(p.name));
+            if (nonArchived.length > 0) {
+                parts.push(renderProjectTable(category, nonArchived));
+            }
         }
+    }
+    // Render all archived projects in one consolidated section
+    if (ctx.archivedProjects.length > 0) {
+        parts.push(renderProjectTable("Archived", ctx.archivedProjects));
     }
     // GitHub Stats section: pulse + calendar
     const statsImages = [];
@@ -43131,7 +43159,7 @@ function ecosystemTemplate(ctx) {
     if (ctx.sectionSvgs.expertise) {
         parts.push(`## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`);
     }
-    parts.push(attribution());
+    parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
 }
 // ── Registry ───────────────────────────────────────────────────────────────
@@ -43228,7 +43256,7 @@ async function run() {
         ]);
         core.info(`Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`);
         core.info(`Expertise analysis: ${techHighlights.length} categories`);
-        const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+        const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
         const sectionDefs = buildSections({
             languages,
             techHighlights,
@@ -43287,6 +43315,7 @@ async function run() {
                 ...activeProjects,
                 ...maintainedProjects,
                 ...inactiveProjects,
+                ...archivedProjects,
             ];
             const categorizedProjects = {};
             for (const project of allProjectItems) {
@@ -43305,12 +43334,14 @@ async function run() {
                     title: userConfig.title,
                     bio: userConfig.bio,
                     preamble,
+                    templateName,
                     svgs,
                     sectionSvgs,
                     profile: userProfile,
                     activeProjects,
                     maintainedProjects,
                     inactiveProjects,
+                    archivedProjects,
                     allProjects: complexProjects,
                     categorizedProjects,
                     languages,
@@ -43359,12 +43390,14 @@ async function run() {
                         title: userConfig.title,
                         bio: userConfig.bio,
                         preamble,
+                        templateName: tplName,
                         svgs: previewSvgs,
                         sectionSvgs: previewSectionSvgs,
                         profile: userProfile,
                         activeProjects,
                         maintainedProjects,
                         inactiveProjects,
+                        archivedProjects,
                         allProjects: complexProjects,
                         categorizedProjects,
                         languages,
