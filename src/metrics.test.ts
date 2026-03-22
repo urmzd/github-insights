@@ -582,14 +582,6 @@ describe("buildSections", () => {
         connections: [],
       },
     ],
-    projects: [
-      {
-        name: "big-project",
-        url: "https://github.com/user/big-project",
-        description: "A complex project",
-        stars: 85,
-      },
-    ],
     contributionData: makeContributionData(),
   });
 

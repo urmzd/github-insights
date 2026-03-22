@@ -99,7 +99,6 @@ async function run(): Promise<void> {
     // ── Transform ─────────────────────────────────────────────────────────
     const languages = aggregateLanguages(repos);
     const complexProjects = getTopProjectsByComplexity(repos);
-    const projects = complexProjects.slice(0, 5);
 
     core.info("Fetching project classifications from GitHub Models...");
     const classificationInputs = buildClassificationInputs(
@@ -130,7 +129,6 @@ async function run(): Promise<void> {
       velocity,
       rhythm,
       constellation,
-      projects,
       contributionData,
     });
 
