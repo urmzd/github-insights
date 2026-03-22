@@ -81,22 +81,6 @@ export function renderProjectConstellation(
     );
   });
 
-  // Group labels at the bottom showing language ecosystem clusters
-  const langGroups = new Map<
-    string,
-    { color: string; minX: number; maxX: number }
-  >();
-  for (const node of nodes) {
-    const lang = node.color; // Use color as key since we don't have lang name in ConstellationNode
-    if (!langGroups.has(lang)) {
-      langGroups.set(lang, { color: lang, minX: node.x, maxX: node.x });
-    } else {
-      const group = langGroups.get(lang)!;
-      group.minX = Math.min(group.minX, node.x);
-      group.maxX = Math.max(group.maxX, node.x);
-    }
-  }
-
   const svg = (
     <>
       {/* Connection lines */}
