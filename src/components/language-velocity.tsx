@@ -112,7 +112,7 @@ export function renderLanguageVelocity(
   // Month labels
   const monthLabels = velocity
     .filter((_, i) => i % Math.max(1, Math.floor(velocity.length / 6)) === 0)
-    .map((bucket, i, filtered) => {
+    .map((bucket) => {
       const originalIndex = velocity.indexOf(bucket);
       const x = padX + originalIndex * stepX;
       const monthName = new Date(`${bucket.month}-01`).toLocaleDateString(
@@ -137,7 +137,7 @@ export function renderLanguageVelocity(
       {/* Language legend (inline, below chart) */}
       {(() => {
         let legendX = padX;
-        return topLangs.map((name, i) => {
+        return topLangs.map((name) => {
           const color = langSet.get(name) || "#8b949e";
           const x = legendX;
           legendX += name.length * 7 + 28;
