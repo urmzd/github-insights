@@ -24,13 +24,15 @@
 
 ## Features
 
-- **Language breakdown** — donut chart of languages by bytes across all public repos
-- **AI expertise analysis** — categorized skill bars with proficiency scores, powered by GitHub Models
+- **Language Velocity** — streamgraph showing how your language usage has evolved over the past year
+- **Contribution Rhythm** — radar chart revealing day-of-week commit patterns, plus stats (commits, PRs, reviews, streak)
+- **Project Constellation** — visual map of projects positioned by language ecosystem and complexity, with connections between related repos
+- **Open Source Impact** — external contributions sorted by repo star count with logarithmic impact bars
 - **AI preamble generation** — auto-generated profile introduction (or supply your own `PREAMBLE.md`)
+- **AI project classification** — repos classified by status (active/maintained/inactive) and purpose (Developer Tools/SDKs/Applications/Research)
 - **Social badges** — auto-detected from your GitHub profile (website, Twitter, LinkedIn, etc.)
-- **Contribution pulse** — commits, PRs, reviews, and active repos at a glance
-- **Signature projects** — top repos by stars with descriptions
-- **Open source contributions** — external repos you've contributed to
+- **Dual theme** — SVGs automatically adapt to GitHub's light and dark mode via `prefers-color-scheme`
+- **CSS animations** — subtle fade-in and scale animations on load
 - **Configuration** — customize name, title, bio, and more via `github-insights.yml`
 
 ## Quick Start
@@ -73,7 +75,7 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
 | `config-file` | Path to config file | `github-insights.yml` |
 | `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `_README.md` (local) |
-| `index-only` | When `true`, embeds only the combined `index.svg` in the generated README; when `false`, embeds each section SVG as a separate image (e.g., `metrics-languages.svg`, `metrics-expertise.svg`, etc.) | `true` |
+| `index-only` | When `true`, embeds only the combined `index.svg` in the generated README; when `false`, embeds each section SVG as a separate image | `true` |
 
 ## Configuration
 
@@ -92,17 +94,15 @@ All fields are optional. The `UserConfig` type in `src/types.ts` defines the ful
 
 ## AI Features
 
-### Expertise Analysis
-
-The action uses GitHub Models to analyze your languages, dependencies, topics, and repo READMEs, then produces categorized skill bars with proficiency scores. Requires the `models:read` permission on your token.
-
 ### Preamble Generation
 
-When no custom preamble is provided, the action uses AI to generate a profile introduction. The generated preamble consists of 2-4 short paragraphs drawn from your profile bio, title, expertise areas, top languages, and notable projects. It uses a professional but friendly tone and does not include a heading.
-
-The preamble ends with a row of shields.io social badges for any detected links — website, Twitter/X, LinkedIn, and other social accounts from your GitHub profile. A GitHub badge is not included since the README is already on GitHub.
+When no custom preamble is provided, the action uses AI to generate a profile introduction. The generated preamble consists of 1-2 sentences drawn from your profile bio, title, top languages, and notable projects. It uses a professional but friendly tone.
 
 To use your own text instead, create a `PREAMBLE.md` file in the repo root, or point to a custom file via the `preamble` field in `github-insights.yml`.
+
+### Project Classification
+
+The action uses GitHub Models to classify repositories by maintenance status (active/maintained/inactive) and purpose category (Developer Tools, SDKs, Applications, Research & Experiments), with AI-generated summaries for each project.
 
 ### Token Permissions
 
@@ -111,7 +111,7 @@ For AI features, your workflow needs:
 ```yaml
 permissions:
   contents: write  # to commit generated files
-  models: read     # for AI expertise analysis and preamble generation
+  models: read     # for AI project classification and preamble generation
 ```
 
 ## Templates
@@ -121,19 +121,17 @@ Four built-in templates control the generated README layout:
 | Template | Description |
 |----------|-------------|
 | `classic` | Name heading, title blockquote, preamble, SVG metrics, bio footer |
-| `modern` | Wave greeting, social badges, projects by activity (Active/Maintained/Inactive), GitHub Stats, expertise |
+| `modern` | Wave greeting, projects by activity (Active/Maintained/Inactive), Project Map, GitHub Stats, Impact |
 | `minimal` | First name heading, preamble, social badges, SVG metrics |
-| `ecosystem` | Wave greeting, social badges, projects by purpose (Developer Tools/SDKs/Applications/Research), GitHub Stats, expertise |
+| `ecosystem` | Wave greeting, projects by purpose (Developer Tools/SDKs/Applications/Research), Project Map, GitHub Stats, Impact |
 
 Set via the `template` input (default: `classic`) or `github-insights.yml`:
 
 ```yaml
-- uses: urmzd/github-insights@v1
+- uses: urmzd/github-insights@main
   with:
     template: ecosystem
 ```
-
-The **ecosystem** template groups projects into purpose-based tables using AI classification, matching the layout used by [urmzd's profile README](https://github.com/urmzd).
 
 ## Local Development
 
@@ -162,11 +160,10 @@ npm run fmt:fix     # format fix
 | File | Description |
 |------|-------------|
 | `assets/insights/index.svg` | Combined visualization with all sections |
-| `assets/insights/metrics-pulse.svg` | Contribution activity stats |
-| `assets/insights/metrics-languages.svg` | Language breakdown donut chart |
-| `assets/insights/metrics-expertise.svg` | AI-generated expertise bars |
-| `assets/insights/metrics-complexity.svg` | Top projects by stars |
-| `assets/insights/metrics-contributions.svg` | External open source contributions |
+| `assets/insights/metrics-velocity.svg` | Language Velocity streamgraph |
+| `assets/insights/metrics-rhythm.svg` | Contribution Rhythm radar + stats |
+| `assets/insights/metrics-constellation.svg` | Project Constellation map |
+| `assets/insights/metrics-impact.svg` | Open Source Impact trail |
 | `README.md` | Generated profile README (CI); `_README.md` locally |
 
 ## Agent Skill
