@@ -7,7 +7,6 @@ import type {
   RepoClassificationInput,
   RepoClassificationOutput,
   RepoNode,
-  TechHighlight,
   UserConfig,
   UserProfile,
 } from "./types.js";
@@ -320,7 +319,6 @@ export interface PreambleContext {
   profile: UserProfile;
   userConfig: UserConfig;
   languages: { name: string; percent: string }[];
-  techHighlights: TechHighlight[];
   activeProjects: ProjectItem[];
   complexProjects: ProjectItem[];
 }
@@ -330,20 +328,11 @@ export const fetchAIPreamble = async (
   context: PreambleContext,
 ): Promise<string | undefined> => {
   try {
-    const {
-      profile,
-      userConfig,
-      languages,
-      techHighlights,
-      activeProjects,
-      complexProjects,
-    } = context;
+    const { profile, userConfig, languages, activeProjects, complexProjects } =
+      context;
 
     const langLines = languages
       .map((l) => `- ${l.name}: ${l.percent}%`)
-      .join("\n");
-    const techLines = techHighlights
-      .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
       .join("\n");
 
     const formatProject = (p: ProjectItem): string => {
@@ -372,9 +361,6 @@ ${profileLines}
 
 Languages (by code volume):
 ${langLines}
-
-Expertise areas:
-${techLines}
 
 Most technically complex projects (by language diversity, codebase size, and depth):
 ${complexProjectLines || "None"}
@@ -471,130 +457,6 @@ Generate 1-2 sentences that:
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
     return undefined;
-  }
-};
-
-export const fetchExpertiseAnalysis = async (
-  token: string,
-  languages: { name: string; percent: string }[],
-  allDeps: string[],
-  allTopics: string[],
-  repos: RepoNode[],
-  readmeMap: ReadmeMap,
-  userConfig: UserConfig = {},
-): Promise<TechHighlight[]> => {
-  try {
-    const langLines = languages
-      .map((l) => `- ${l.name}: ${l.percent}%`)
-      .join("\n");
-
-    const repoSummaries = repos
-      .slice(0, 20)
-      .map((r) => {
-        const readme = readmeMap.get(r.name) || "";
-        const snippet = readme.slice(0, 500).replace(/\n/g, " ");
-        const desc = r.description || "";
-        return `- ${r.name}: ${desc} | ${snippet}`;
-      })
-      .join("\n");
-
-    const desiredTitle = userConfig.desired_title || userConfig.title;
-    let titleContext = "";
-    if (userConfig.title) {
-      titleContext = `\nDeveloper context:\n- Current title: ${userConfig.title}`;
-      if (desiredTitle && desiredTitle !== userConfig.title) {
-        titleContext += `\n- Desired title: ${desiredTitle}`;
-      }
-      titleContext += `\n- Tailor the expertise categories to highlight skills most relevant to ${desiredTitle}. Prioritize domains and technologies that align with this role.\n`;
-    }
-
-    const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
-${titleContext}
-Languages (by code volume):
-${langLines}
-
-Dependencies found across repositories:
-${allDeps.join(", ")}
-
-Repository topics:
-${allTopics.join(", ")}
-
-Repository descriptions and README excerpts:
-${repoSummaries}
-
-From this data, produce a curated expertise profile:
-- Group the most notable technologies into 3-6 expertise categories
-- Use domain-oriented category names (e.g., "Machine Learning", "Web Development", "DevOps", "Backend & APIs", "Data Science", "Systems Programming")
-- Include 3-6 of the most relevant technologies/tools per category
-- Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
-- Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
-- Only include categories where there's meaningful evidence of usage
-- Assign each category a proficiency score from 0 to 100 based on evidence strength:
-  language code volume, dependency count, topic mentions, and README depth.
-  Use the full range (e.g. 80-95 for primary stack, 50-70 for secondary, 30-50 for minor).`;
-
-    const res = await fetchWithRetry(
-      "https://models.github.ai/inference/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4.1",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "tech_highlights",
-              strict: true,
-              schema: {
-                type: "object",
-                properties: {
-                  highlights: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        category: { type: "string" },
-                        items: { type: "array", items: { type: "string" } },
-                        score: { type: "number" },
-                      },
-                      required: ["category", "items", "score"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["highlights"],
-                additionalProperties: false,
-              },
-            },
-          },
-        }),
-      },
-      "Expertise",
-    );
-
-    if (!res?.ok) {
-      if (res) console.warn(`GitHub Models API error: ${res.status}`);
-      return [];
-    }
-
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content) as { highlights?: TechHighlight[] };
-    return (parsed.highlights || [])
-      .filter((h) => h.category && Array.isArray(h.items) && h.items.length > 0)
-      .map((h) => ({ ...h, score: Math.max(0, Math.min(100, h.score || 0)) }))
-      .sort((a, b) => b.score - a.score);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
-    return [];
   }
 };
 
