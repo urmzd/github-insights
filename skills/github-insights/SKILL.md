@@ -8,9 +8,9 @@ description: >-
 argument-hint: [setup | customize | generate | debug | extend]
 ---
 
-# GitHub Metrics — Agent Skill
+# GitHub Insights — Agent Skill
 
-Generate beautiful dark-themed SVG metrics for GitHub profile READMEs. Sections include language breakdowns (donut chart), AI expertise analysis (proficiency bars), contribution pulse (stat cards), contribution calendar (heatmap), signature projects (by stars), and open source contributions.
+Generate beautiful SVG metrics for GitHub profile READMEs. Sections include language velocity streamgraph, contribution rhythm radar chart, project constellation map, and open source impact trail. SVGs support light/dark theme switching and CSS animations.
 
 ## Quick Reference
 
@@ -18,7 +18,7 @@ Generate beautiful dark-themed SVG metrics for GitHub profile READMEs. Sections 
 |------|---------|
 | Generate locally | `npm run generate` (requires `gh auth login`) |
 | Full CI check | `npm run ci` (fmt + lint + typecheck + test + build) |
-| Build bundle | `npm run build` (ncc → `dist/`) |
+| Build bundle | `npm run build` (ncc -> `dist/`) |
 | Run tests | `npm test` (vitest) |
 | Type-check | `npm run typecheck` |
 | Lint | `npm run lint` (biome) |
@@ -66,8 +66,7 @@ npm run generate
 Local mode differences:
 - `commit-push` defaults to `false` (no git operations)
 - README writes to `_README.md` (not `README.md`)
-- All three template previews are generated in `examples/{classic,modern,minimal}/`
-- Both preamble variants (full + short) are generated for preview
+- All four template previews are generated in `examples/{classic,modern,minimal,ecosystem}/`
 
 ## Configuration
 
@@ -76,18 +75,16 @@ Local mode differences:
 ```yaml
 name: Display Name           # overrides GitHub profile name
 pronunciation: pronunciation # shown as subscript in heading
-title: Software Engineer     # blockquote under heading; guides AI expertise
-desired_title: Senior SWE    # AI context only — biases expertise categories
+title: Software Engineer     # blockquote under heading
+desired_title: Senior SWE    # AI context only
 bio: Short bio text.         # footer text in classic template
 preamble: PREAMBLE.md        # path to custom preamble (bypasses AI generation)
-template: classic            # "classic" | "modern" | "minimal"
+template: classic            # "classic" | "modern" | "minimal" | "ecosystem"
 sections:
-  - pulse
-  - languages
-  - expertise
-  - projects
-  - contributions
-  - calendar
+  - velocity
+  - rhythm
+  - constellation
+  - impact
 ```
 
 ### Action inputs
@@ -109,41 +106,38 @@ sections:
 
 | Key | SVG filename | What it renders |
 |-----|-------------|-----------------|
-| `pulse` | `metrics-pulse.svg` | 4 stat cards: commits, PRs, reviews, active repos |
-| `languages` | `metrics-languages.svg` | Donut chart of top 10 languages by bytes |
-| `expertise` | `metrics-expertise.svg` | AI-generated proficiency bars by category |
-| `projects` | `metrics-complexity.svg` | Top 5 repos by stars with descriptions |
-| `calendar` | `metrics-calendar.svg` | GitHub contribution heatmap (1 year) |
-| `contributions` | `metrics-contributions.svg` | External repos contributed to |
+| `velocity` | `metrics-velocity.svg` | Streamgraph of language usage over 12 months |
+| `rhythm` | `metrics-rhythm.svg` | 7-spoke radar chart + contribution stats |
+| `constellation` | `metrics-constellation.svg` | Project map by language and complexity |
+| `impact` | `metrics-impact.svg` | External contributions with impact bars |
 
 ### Templates
 
-- **`classic`** (default): Formal layout — `# Name`, blockquote title, full AI preamble (2–4 paragraphs), social badges, SVG metrics, bio footer, attribution.
-- **`modern`**: Friendly — `# Hi, I'm {firstName} 👋`, short preamble, active/maintained/inactive project lists in markdown, selective SVG sections.
-- **`minimal`**: Clean — `# {firstName}`, short preamble, social badges, SVG metrics, attribution.
+- **`classic`** (default): Formal layout — `# Name`, blockquote title, preamble, social badges, SVG metrics, bio footer.
+- **`modern`**: Friendly — `# Hi, I'm {firstName}`, projects by activity, Project Map, GitHub Stats, Impact.
+- **`minimal`**: Clean — `# {firstName}`, preamble, social badges, SVG metrics.
+- **`ecosystem`**: Categorized — projects by purpose (Developer Tools/SDKs/Applications/Research), Project Map, GitHub Stats, Impact.
 
 ## Architecture
 
 ### Execution flow
 
 ```
-Inputs → Fetch (parallel) → AI calls (sequential) → Transform → Render sections → Write SVGs → Generate README → Commit
+Inputs -> Fetch (parallel) -> AI calls -> Transform -> Compute velocity/rhythm/constellation -> Render sections -> Write SVGs -> Generate README -> Commit
 ```
 
 ### Key source files
 
 | File | Role |
 |------|------|
-| `src/index.ts` | Orchestration: fetch → transform → render → write → commit |
+| `src/index.ts` | Orchestration: fetch -> transform -> render -> write -> commit |
 | `src/api.ts` | GitHub GraphQL queries + GitHub Models AI calls |
-| `src/metrics.ts` | Data aggregation, complexity scoring, section building |
-| `src/config.ts` | TOML config loading |
-| `src/types.ts` | All TypeScript interfaces (`UserConfig`, `SectionDef`, `TemplateContext`, etc.) |
-| `src/templates.ts` | Three README template functions + social badge builder |
-| `src/theme.ts` | `THEME` colors, `LAYOUT` dimensions, `BAR_COLORS` palette |
-| `src/parsers.ts` | Dependency manifest parsers (package.json, Cargo.toml, go.mod, etc.) |
-| `src/components/` | SVG rendering components (custom JSX → SVG strings) |
-| `src/jsx-factory.ts` | Custom `h()` / `Fragment()` JSX runtime (no React) |
+| `src/metrics.ts` | Data aggregation, velocity/rhythm/constellation computation, section building |
+| `src/config.ts` | YAML/TOML config loading |
+| `src/types.ts` | All TypeScript interfaces |
+| `src/templates.ts` | Four README template functions + social badge builder |
+| `src/theme.ts` | `THEME`/`THEME_LIGHT` colors, `LAYOUT` dimensions, `BAR_COLORS` palette |
+| `src/components/` | SVG rendering components (custom JSX -> SVG strings) |
 
 ### Component rendering pattern
 
@@ -155,25 +149,6 @@ function renderXxx(data: ..., y: number): { svg: string; height: number }
 
 Components return SVG string fragments and their rendered height. The `y` parameter is the vertical cursor; heights are accumulated to stack sections vertically.
 
-### Theme constants (hardcoded in `src/theme.ts`)
-
-```
-THEME.bg       = "#0d1117"   (dark background)
-THEME.cardBg   = "#161b22"   (card backgrounds)
-THEME.border   = "#30363d"   (card borders)
-THEME.link     = "#58a6ff"   (card titles - blue)
-THEME.text     = "#c9d1d9"   (primary text)
-THEME.secondary= "#8b949e"   (labels)
-THEME.muted    = "#6e7681"   (values)
-
-LAYOUT.width   = 808         (fixed SVG canvas width)
-LAYOUT.padX    = 24
-LAYOUT.padY    = 24
-LAYOUT.sectionGap = 30
-```
-
-These are not configurable via inputs or TOML — changing them requires editing source.
-
 ## Extending
 
 ### Add a new section
@@ -183,16 +158,7 @@ These are not configurable via inputs or TOML — changing them requires editing
 3. Add the section key to `SECTION_KEYS` map in `src/metrics.ts`
 4. Add a `SectionDef` entry in the `buildSections()` function in `src/metrics.ts`
 5. Fetch any new data needed in `src/index.ts`
-6. Add a `*.test.ts` file alongside the component
-7. Update `action.yml` if new inputs are needed
-
-### Add a new dependency parser
-
-1. Implement `PackageParser` interface in `src/parsers.ts`:
-   ```ts
-   { filenames: string[]; parseDependencies(text: string): string[] }
-   ```
-2. Add it to the `PARSERS` array — it auto-registers in `PARSER_MAP`
+6. Add a `*.test.tsx` file alongside the component
 
 ### Add a new README template
 
@@ -202,36 +168,24 @@ These are not configurable via inputs or TOML — changing them requires editing
 
 ## Troubleshooting
 
-### "Expertise section missing"
-The expertise section only appears when the AI call succeeds. Check:
-- Token has `models: read` permission
-- The workflow has `permissions: models: read`
-- GitHub Models endpoint is reachable
+### "Velocity section is flat"
+The streamgraph distributes per-repo commits using the contribution calendar's monthly activity weights. If there's no calendar data, velocity will be empty.
 
-### "Calendar section missing"
-Only rendered when contribution calendar data exists. The user must have public contributions.
+### "Constellation section missing"
+Only rendered when there are projects with language data. Ensure repos have detectable languages.
 
-### "Contributions section missing"
-Only rendered when the user has contributed to external (non-owned) repositories in the past year.
+### "Impact section missing"
+Only rendered when the user has contributed to external (non-owned) repositories.
 
 ### AI preamble is empty or generic
 - The AI call uses `gpt-4.1` via GitHub Models — it needs diverse profile data to generate good output
-- Provide `title` and `desired_title` in TOML config for better results
+- Provide `title` in config for better results
 - Create a custom `PREAMBLE.md` to bypass AI entirely
 
 ### Local generation fails
 - Ensure `gh auth login` is done and `gh auth token` returns a valid token
 - Ensure Node.js 22+ (`node --version`)
-- The `GITHUB_TOKEN` and `GITHUB_REPOSITORY_OWNER` env vars are set automatically by `npm run generate` via `gh`
 
 ### SVG looks wrong after changes
 - Run `npm run build` to rebuild the `dist/` bundle — the action runs `dist/index.js`, not source directly
 - SVG width is fixed at 808px; all layout math depends on this
-
-## Code Style Rules
-
-- TypeScript strict mode, ES modules
-- Biome for formatting and linting (not ESLint/Prettier)
-- Tests colocated as `*.test.ts` / `*.test.tsx` alongside source
-- Custom JSX factory (`h`, `Fragment`) — NOT React
-- All AI calls and contribution fetches are non-fatal (catch → return empty)
