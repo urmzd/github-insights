@@ -161,9 +161,7 @@ describe("generateReadme", () => {
     expect(result).toContain(
       "![Projects](assets/insights/metrics-projects.svg)",
     );
-    expect(result).toContain(
-      "![Rhythm](assets/insights/metrics-rhythm.svg)",
-    );
+    expect(result).toContain("![Rhythm](assets/insights/metrics-rhythm.svg)");
   });
 
   it("renders all sections combined", () => {
