@@ -61,9 +61,11 @@ describe("renderSection", () => {
     expect(result.height).toBeGreaterThan(0);
   });
 
-  it("returns { svg, height } with items array", () => {
-    const items = [{ name: "Go", value: 10 }];
-    const result = renderSection("Tech", "Detected", items);
+  it("returns { svg, height } with another render function", () => {
+    const result = renderSection("Tech", "Detected", (y) => ({
+      svg: `<text y="${y}">Go</text>`,
+      height: 30,
+    }));
     expect(result.svg).toContain("Go");
   });
 });

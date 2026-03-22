@@ -13,7 +13,11 @@ import {
   SECTION_KEYS,
   splitProjectsByRecency,
 } from "./metrics.js";
-import type { ManifestMap, TechHighlight } from "./types.js";
+import type {
+  ContributionRhythm,
+  ManifestMap,
+  MonthlyLanguageBucket,
+} from "./types.js";
 
 // ── aggregateLanguages ──────────────────────────────────────────────────────
 
@@ -534,31 +538,50 @@ describe("splitProjectsByRecency", () => {
 
 describe("SECTION_KEYS", () => {
   it("maps all known section names to filenames", () => {
-    expect(SECTION_KEYS.pulse).toBe("metrics-pulse.svg");
-    expect(SECTION_KEYS.languages).toBe("metrics-languages.svg");
-    expect(SECTION_KEYS.expertise).toBe("metrics-expertise.svg");
-    expect(SECTION_KEYS.projects).toBe("metrics-complexity.svg");
-    expect(SECTION_KEYS.contributions).toBe("metrics-contributions.svg");
-    expect(SECTION_KEYS.calendar).toBe("metrics-calendar.svg");
+    expect(SECTION_KEYS.velocity).toBe("metrics-velocity.svg");
+    expect(SECTION_KEYS.rhythm).toBe("metrics-rhythm.svg");
+    expect(SECTION_KEYS.constellation).toBe("metrics-constellation.svg");
+    expect(SECTION_KEYS.impact).toBe("metrics-impact.svg");
   });
 });
 
 // ── buildSections ───────────────────────────────────────────────────────────
 
 describe("buildSections", () => {
-  const baseSectionsInput = () => ({
-    languages: [
-      { name: "TypeScript", value: 100, percent: "80.0", color: "#3178c6" },
-      { name: "JavaScript", value: 25, percent: "20.0", color: "#f1e05a" },
+  const makeRhythm = (): ContributionRhythm => ({
+    dayTotals: [10, 20, 15, 25, 18, 12, 5],
+    longestStreak: 7,
+    stats: [
+      { label: "COMMITS", value: "100" },
+      { label: "PRS", value: "10" },
     ],
-    techHighlights: [
+  });
+
+  const makeVelocity = (): MonthlyLanguageBucket[] => [
+    {
+      month: "2025-01",
+      languages: [{ name: "TypeScript", commits: 50, color: "#3178c6" }],
+    },
+    {
+      month: "2025-02",
+      languages: [{ name: "TypeScript", commits: 60, color: "#3178c6" }],
+    },
+  ];
+
+  const baseSectionsInput = () => ({
+    velocity: makeVelocity(),
+    rhythm: makeRhythm(),
+    constellation: [
       {
-        category: "Frontend",
-        items: ["React", "TypeScript", "Next.js"],
-        score: 90,
+        name: "big-project",
+        url: "https://github.com/user/big-project",
+        x: 100,
+        y: 100,
+        radius: 10,
+        color: "#3178c6",
+        connections: [],
       },
-      { category: "Backend", items: ["Express", "PostgreSQL"], score: 75 },
-    ] as TechHighlight[],
+    ],
     projects: [
       {
         name: "big-project",
@@ -573,22 +596,21 @@ describe("buildSections", () => {
   it("returns correct filenames", () => {
     const sections = buildSections(baseSectionsInput());
     const filenames = sections.map((s) => s.filename);
-    expect(filenames).toContain("metrics-languages.svg");
-    expect(filenames).toContain("metrics-expertise.svg");
-    expect(filenames).toContain("metrics-complexity.svg");
-    expect(filenames).toContain("metrics-pulse.svg");
+    expect(filenames).toContain("metrics-velocity.svg");
+    expect(filenames).toContain("metrics-rhythm.svg");
+    expect(filenames).toContain("metrics-constellation.svg");
   });
 
-  it("expertise section is conditional on non-empty techHighlights", () => {
+  it("velocity section is conditional on non-empty velocity data", () => {
     const input = baseSectionsInput();
-    input.techHighlights = [];
+    input.velocity = [];
     const sections = buildSections(input);
     expect(sections.map((s) => s.filename)).not.toContain(
-      "metrics-expertise.svg",
+      "metrics-velocity.svg",
     );
   });
 
-  it("contributions section conditional on externalRepos", () => {
+  it("impact section conditional on externalRepos", () => {
     const input = baseSectionsInput();
     input.contributionData = makeContributionData({
       externalRepos: {
@@ -605,41 +627,20 @@ describe("buildSections", () => {
       },
     });
     const sections = buildSections(input);
-    expect(sections.map((s) => s.filename)).toContain(
-      "metrics-contributions.svg",
-    );
+    expect(sections.map((s) => s.filename)).toContain("metrics-impact.svg");
   });
 
-  it("contributions section omitted when no external repos", () => {
+  it("impact section omitted when no external repos", () => {
     const sections = buildSections(baseSectionsInput());
-    expect(sections.map((s) => s.filename)).not.toContain(
-      "metrics-contributions.svg",
-    );
+    expect(sections.map((s) => s.filename)).not.toContain("metrics-impact.svg");
   });
 
-  it("calendar section included when contributionCalendar exists", () => {
+  it("constellation section conditional on non-empty nodes", () => {
     const input = baseSectionsInput();
-    input.contributionData = makeContributionData({
-      contributionCalendar: makeContributionCalendar(),
-    });
+    input.constellation = [];
     const sections = buildSections(input);
-    expect(sections.map((s) => s.filename)).toContain("metrics-calendar.svg");
-  });
-
-  it("calendar section omitted when no contributionCalendar", () => {
-    const sections = buildSections(baseSectionsInput());
     expect(sections.map((s) => s.filename)).not.toContain(
-      "metrics-calendar.svg",
-    );
-  });
-
-  it("uses complexity-based subtitle for signature projects", () => {
-    const sections = buildSections(baseSectionsInput());
-    const projectSection = sections.find(
-      (s) => s.filename === "metrics-complexity.svg",
-    );
-    expect(projectSection?.subtitle).toBe(
-      "Top projects by technical complexity",
+      "metrics-constellation.svg",
     );
   });
 

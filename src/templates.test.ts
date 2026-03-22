@@ -20,9 +20,10 @@ const makeContext = (
   preamble: "A software developer in Austin, TX.",
   svgs: [{ label: "GitHub Metrics", path: "assets/insights/index.svg" }],
   sectionSvgs: {
-    pulse: "assets/insights/metrics-pulse.svg",
-    calendar: "assets/insights/metrics-calendar.svg",
-    expertise: "assets/insights/metrics-expertise.svg",
+    velocity: "assets/insights/metrics-velocity.svg",
+    rhythm: "assets/insights/metrics-rhythm.svg",
+    constellation: "assets/insights/metrics-constellation.svg",
+    impact: "assets/insights/metrics-impact.svg",
   },
   profile: makeUserProfile(),
   activeProjects: [
@@ -71,7 +72,9 @@ const makeContext = (
     { name: "TypeScript", value: 100, percent: "60.0", color: "#3178c6" },
     { name: "Rust", value: 50, percent: "30.0", color: "#dea584" },
   ],
-  techHighlights: [],
+  velocity: [],
+  rhythm: { dayTotals: [0, 0, 0, 0, 0, 0, 0], longestStreak: 0, stats: [] },
+  constellation: [],
   contributionData: makeContributionData(),
   socialBadges:
     "[![urmzd.dev](https://img.shields.io/badge/urmzd.dev-4285F4?style=flat&logo=google-chrome&logoColor=white)](https://urmzd.dev)",
@@ -318,17 +321,17 @@ describe("modernTemplate", () => {
     expect(output).toContain("AI-generated summary of the project.");
   });
 
-  it("includes GitHub Stats section with pulse and calendar", () => {
+  it("includes GitHub Stats section with velocity and rhythm", () => {
     const output = getTemplate("modern")(makeContext());
     expect(output).toContain("## GitHub Stats");
-    expect(output).toContain("assets/insights/metrics-pulse.svg");
-    expect(output).toContain("assets/insights/metrics-calendar.svg");
+    expect(output).toContain("assets/insights/metrics-velocity.svg");
+    expect(output).toContain("assets/insights/metrics-rhythm.svg");
   });
 
-  it("includes expertise section", () => {
+  it("includes constellation section", () => {
     const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("## Other Areas of Interest");
-    expect(output).toContain("assets/insights/metrics-expertise.svg");
+    expect(output).toContain("## Project Map");
+    expect(output).toContain("assets/insights/metrics-constellation.svg");
   });
 
   it("includes archived section separate from active/maintained", () => {
@@ -440,17 +443,17 @@ describe("ecosystemTemplate", () => {
     );
   });
 
-  it("includes GitHub Stats section", () => {
+  it("includes GitHub Stats section with velocity and rhythm", () => {
     const output = getTemplate("ecosystem")(makeContext());
     expect(output).toContain("## GitHub Stats");
-    expect(output).toContain("assets/insights/metrics-pulse.svg");
-    expect(output).toContain("assets/insights/metrics-calendar.svg");
+    expect(output).toContain("assets/insights/metrics-velocity.svg");
+    expect(output).toContain("assets/insights/metrics-rhythm.svg");
   });
 
-  it("includes expertise section", () => {
+  it("includes constellation section", () => {
     const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("## Other Areas of Interest");
-    expect(output).toContain("assets/insights/metrics-expertise.svg");
+    expect(output).toContain("## Project Map");
+    expect(output).toContain("assets/insights/metrics-constellation.svg");
   });
 
   it("includes social badges", () => {
