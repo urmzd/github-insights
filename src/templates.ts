@@ -183,22 +183,29 @@ function modernTemplate(ctx: TemplateContext): string {
   );
   if (archivedSection) parts.push(archivedSection);
 
-  // GitHub Stats section: pulse + calendar
-  const statsImages: string[] = [];
-  if (ctx.sectionSvgs.pulse) {
-    statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+  // Constellation
+  if (ctx.sectionSvgs.constellation) {
+    parts.push(
+      `## Project Map\n\n![Project Constellation](${ctx.sectionSvgs.constellation})`,
+    );
   }
-  if (ctx.sectionSvgs.calendar) {
-    statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+
+  // GitHub Stats section: rhythm + velocity
+  const statsImages: string[] = [];
+  if (ctx.sectionSvgs.velocity) {
+    statsImages.push(`![Language Velocity](${ctx.sectionSvgs.velocity})`);
+  }
+  if (ctx.sectionSvgs.rhythm) {
+    statsImages.push(`![Contribution Rhythm](${ctx.sectionSvgs.rhythm})`);
   }
   if (statsImages.length > 0) {
     parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
   }
 
-  // Other areas of interest: expertise
-  if (ctx.sectionSvgs.expertise) {
+  // Impact
+  if (ctx.sectionSvgs.impact) {
     parts.push(
-      `## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`,
+      `## Open Source Impact\n\n![Impact Trail](${ctx.sectionSvgs.impact})`,
     );
   }
 
@@ -285,22 +292,29 @@ function ecosystemTemplate(ctx: TemplateContext): string {
     parts.push(renderProjectTable("Archived", ctx.archivedProjects));
   }
 
-  // GitHub Stats section: pulse + calendar
-  const statsImages: string[] = [];
-  if (ctx.sectionSvgs.pulse) {
-    statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+  // Constellation
+  if (ctx.sectionSvgs.constellation) {
+    parts.push(
+      `## Project Map\n\n![Project Constellation](${ctx.sectionSvgs.constellation})`,
+    );
   }
-  if (ctx.sectionSvgs.calendar) {
-    statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+
+  // GitHub Stats section: velocity + rhythm
+  const statsImages: string[] = [];
+  if (ctx.sectionSvgs.velocity) {
+    statsImages.push(`![Language Velocity](${ctx.sectionSvgs.velocity})`);
+  }
+  if (ctx.sectionSvgs.rhythm) {
+    statsImages.push(`![Contribution Rhythm](${ctx.sectionSvgs.rhythm})`);
   }
   if (statsImages.length > 0) {
     parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
   }
 
-  // Other areas of interest: expertise
-  if (ctx.sectionSvgs.expertise) {
+  // Impact
+  if (ctx.sectionSvgs.impact) {
     parts.push(
-      `## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`,
+      `## Open Source Impact\n\n![Impact Trail](${ctx.sectionSvgs.impact})`,
     );
   }
 
