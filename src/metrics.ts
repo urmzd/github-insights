@@ -317,7 +317,8 @@ export const computeLanguageVelocity = (
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     monthWeights.set(key, (monthWeights.get(key) || 0) + day.contributionCount);
   }
-  const totalWeight = [...monthWeights.values()].reduce((a, b) => a + b, 0) || 1;
+  const totalWeight =
+    [...monthWeights.values()].reduce((a, b) => a + b, 0) || 1;
 
   // Distribute per-repo commits using monthly weights from the calendar
   for (const entry of contributionData.commitContributionsByRepository || []) {
