@@ -1,5 +1,50 @@
 # Changelog
 
+## 2.2.0 (2026-03-22)
+
+### Features
+
+- **components**: add new metrics visualization components ([ffd507f](https://github.com/urmzd/github-insights/commit/ffd507f323026bc7221f87be717dc25512e7a0b7))
+- **theme**: add light mode support and update layout metrics ([6f3d029](https://github.com/urmzd/github-insights/commit/6f3d0291e21596268e3cb99e206838b17cd7f0b4))
+
+### Documentation
+
+- **skill**: update GitHub Insights branding and section definitions ([e4d16aa](https://github.com/urmzd/github-insights/commit/e4d16aab59906e8a49d1ba2cf11a90dbf9d4528b))
+- **contributing**: clarify file descriptions and remove brittle line references ([acf814b](https://github.com/urmzd/github-insights/commit/acf814b8a3b1fa9e9755037bc67c67e43be9e7e1))
+- update documentation for new metrics visualization system ([ae4bd64](https://github.com/urmzd/github-insights/commit/ae4bd6470ce53105a857da612b891d14026e0f2f))
+- **examples**: update example outputs with new metrics visualizations ([e20b83e](https://github.com/urmzd/github-insights/commit/e20b83eed00cc828fda4ca39dff68103df8bdf53))
+
+### Refactoring
+
+- **components**: remove language group labels from constellation ([fdc10e5](https://github.com/urmzd/github-insights/commit/fdc10e507cf4be3576eb76e45c542a58b59172c3))
+- **components**: remove unused parameter from map function in language-velocity ([7c0e10f](https://github.com/urmzd/github-insights/commit/7c0e10f0931499c9416e785d25a5c99b252ab1df))
+- **metrics**: remove unused projects parameter from buildSections ([c377064](https://github.com/urmzd/github-insights/commit/c377064e830e6daf0d6975f6860f74f6cb6b4f79))
+- **contribution-rhythm**: remove most active day display ([bca985a](https://github.com/urmzd/github-insights/commit/bca985ab0281646f1c2451eda7417888cad42935))
+- **core**: migrate to new metrics and visualization pipeline ([dd8e668](https://github.com/urmzd/github-insights/commit/dd8e668c4e42477bd655dd17eeeacdbf80d59003))
+- **templates**: update readme generation for new metrics ([4dbc556](https://github.com/urmzd/github-insights/commit/4dbc5562f385fe9626796b04926400a796763265))
+- **rendering**: simplify section rendering with new component system ([719e884](https://github.com/urmzd/github-insights/commit/719e884f26fb13b29f8202a9065b06271c409259))
+- **api**: remove deprecated expertise analysis fetching ([9d98640](https://github.com/urmzd/github-insights/commit/9d98640d72877284ded5c9d9498f1c9ac8f824c3))
+- **metrics**: implement new metric computation functions ([5026fa8](https://github.com/urmzd/github-insights/commit/5026fa8c19ca8b08dc1b6f35cc0749843d68086a))
+- **types**: update types for new metrics visualization system ([6f195bb](https://github.com/urmzd/github-insights/commit/6f195bbf5aa165b4c26b07fb732beab4bb98a87c))
+
+### Miscellaneous
+
+- regenerate compiled artifacts ([c3222b2](https://github.com/urmzd/github-insights/commit/c3222b2433ba2122517ac2696eb37c7187759abe))
+- **contribution-rhythm**: remove trailing whitespace ([c8c53f9](https://github.com/urmzd/github-insights/commit/c8c53f9c9b4f5de360e7e7186152281f692ebf7f))
+- **hooks**: configure git hooks for code validation ([ed97a29](https://github.com/urmzd/github-insights/commit/ed97a29c56e9f7f0d8018c66e804cc70ab5e266d))
+- rebuild distribution with calendar-weighted monthly distributions ([2334ed1](https://github.com/urmzd/github-insights/commit/2334ed1fb9f58c8bfaf2222ed1c8e8e80f623df7))
+- **test**: consolidate test assertion to single line ([75b18a5](https://github.com/urmzd/github-insights/commit/75b18a5e1e7199e3692963e448fa7f537673f39c))
+- **metrics**: reformat totalWeight calculation for readability ([13547a3](https://github.com/urmzd/github-insights/commit/13547a3447ea1589859390d001751be2f310963f))
+- remove outdated metrics example files ([f5bf142](https://github.com/urmzd/github-insights/commit/f5bf14238372750eb712bcc9144c0a20cdfbef42))
+- **full-svg**: update test expectations for new rendering pattern ([a692e6c](https://github.com/urmzd/github-insights/commit/a692e6c33c3a68ef6d8491d87ba9a070455a355e))
+- remove teasr demo configuration ([6c64e56](https://github.com/urmzd/github-insights/commit/6c64e56cada6ca59e98a1963e6c799ebdaa600c3))
+- rebuild distribution for new visualization system ([a543b8f](https://github.com/urmzd/github-insights/commit/a543b8f7386c49552f840d1b5d4129a87ffdced4))
+- update test expectations for new metrics system ([b421284](https://github.com/urmzd/github-insights/commit/b4212845cce3e2e3f8791c43c22af9f5e212ec41))
+- **components**: remove deprecated visualization components ([1a8c9b4](https://github.com/urmzd/github-insights/commit/1a8c9b46c275cc96552efdf818e69657bc6c6c0d))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v2.1.0...v2.2.0)
+
+
 ## 2.1.0 (2026-03-18)
 
 ### Features
