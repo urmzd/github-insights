@@ -143,7 +143,6 @@ export function renderContributionRhythm(
 
       {/* Stats */}
       {statsSvg.join("")}
-
     </>
   );
 
