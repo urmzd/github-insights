@@ -14,3 +14,12 @@ commit_types:
 
 artifacts:
   - dist.tar.gz
+
+hooks:
+  commit-msg:
+    - sr hook commit-msg
+  pre-commit:
+    - npm run fmt
+    - npm run lint
+    - npm run typecheck
+    - npm run test
