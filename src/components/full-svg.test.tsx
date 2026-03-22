@@ -35,7 +35,10 @@ describe("generateFullSvg", () => {
         filename: "b.svg",
         title: "Section B",
         subtitle: "Subtitle B",
-        items: [{ name: "Go", value: 10 }],
+        renderBody: (y) => ({
+          svg: `<text y="${y}">Go</text>`,
+          height: 30,
+        }),
       },
     ];
     const result = generateFullSvg(sections);
