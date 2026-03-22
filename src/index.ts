@@ -6,10 +6,7 @@ import {
   fetchAIPreamble,
   fetchAllRepoData,
   fetchContributionData,
-  fetchExpertiseAnalysis,
-  fetchManifestsForRepos,
   fetchProjectClassifications,
-  fetchReadmeForRepos,
   fetchUserProfile,
   makeGraphql,
 } from "./api.js";
@@ -20,8 +17,9 @@ import {
   aggregateLanguages,
   buildClassificationInputs,
   buildSections,
-  collectAllDependencies,
-  collectAllTopics,
+  computeConstellationLayout,
+  computeContributionRhythm,
+  computeLanguageVelocity,
   getTopProjectsByComplexity,
   SECTION_KEYS,
   splitProjectsByRecency,
@@ -87,22 +85,15 @@ async function run(): Promise<void> {
     const repos = await fetchAllRepoData(graphql, username);
     core.info(`Found ${repos.length} public repos`);
 
-    core.info("Fetching dependency manifests...");
     core.info("Fetching contribution data...");
-    core.info("Fetching READMEs...");
     core.info("Fetching user profile...");
-    const [manifests, contributionData, readmeMap, userProfile] =
-      await Promise.all([
-        fetchManifestsForRepos(graphql, username, repos),
-        fetchContributionData(graphql, username),
-        fetchReadmeForRepos(graphql, username, repos),
-        fetchUserProfile(graphql, username),
-      ]);
-    core.info(`Fetched manifests for ${manifests.size} repos`);
+    const [contributionData, userProfile] = await Promise.all([
+      fetchContributionData(graphql, username),
+      fetchUserProfile(graphql, username),
+    ]);
     core.info(
       `Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`,
     );
-    core.info(`Fetched READMEs for ${readmeMap.size} repos`);
     core.info(`User profile: ${userProfile.name || username}`);
 
     // ── Transform ─────────────────────────────────────────────────────────
@@ -110,33 +101,18 @@ async function run(): Promise<void> {
     const complexProjects = getTopProjectsByComplexity(repos);
     const projects = complexProjects.slice(0, 5);
 
-    const allDeps = collectAllDependencies(repos, manifests);
-    const allTopics = collectAllTopics(repos);
-
     core.info("Fetching project classifications from GitHub Models...");
     const classificationInputs = buildClassificationInputs(
       repos,
       contributionData,
     );
-    const [aiClassifications, techHighlights] = await Promise.all([
-      fetchProjectClassifications(token, classificationInputs),
-      (async () => {
-        core.info("Fetching expertise analysis from GitHub Models...");
-        return fetchExpertiseAnalysis(
-          token,
-          languages,
-          allDeps,
-          allTopics,
-          repos,
-          readmeMap,
-          userConfig,
-        );
-      })(),
-    ]);
+    const aiClassifications = await fetchProjectClassifications(
+      token,
+      classificationInputs,
+    );
     core.info(
       `Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`,
     );
-    core.info(`Expertise analysis: ${techHighlights.length} categories`);
 
     const {
       active: activeProjects,
@@ -145,17 +121,21 @@ async function run(): Promise<void> {
       archived: archivedProjects,
     } = splitProjectsByRecency(repos, contributionData, aiClassifications);
 
+    // ── Compute new visualization data ───────────────────────────────────
+    const velocity = computeLanguageVelocity(contributionData, repos);
+    const rhythm = computeContributionRhythm(contributionData);
+    const constellation = computeConstellationLayout(complexProjects, repos);
+
     const sectionDefs = buildSections({
-      languages,
-      techHighlights,
+      velocity,
+      rhythm,
+      constellation,
       projects,
       contributionData,
     });
 
     // Filter sections by requested keys if specified
-    let activeSections = sectionDefs.filter(
-      (s) => s.renderBody || (s.items && s.items.length > 0),
-    );
+    let activeSections = sectionDefs.filter((s) => s.renderBody);
     if (requestedSections.length > 0) {
       const allowedFilenames = new Set(
         requestedSections.map((key) => SECTION_KEYS[key]).filter(Boolean),
@@ -169,11 +149,11 @@ async function run(): Promise<void> {
     mkdirSync(outputDir, { recursive: true });
 
     for (const section of activeSections) {
+      if (!section.renderBody) continue;
       const { svg, height } = renderSection(
         section.title,
         section.subtitle,
-        section.renderBody || section.items || [],
-        section.options || {},
+        section.renderBody,
       );
       writeFileSync(
         `${outputDir}/${section.filename}`,
@@ -199,7 +179,6 @@ async function run(): Promise<void> {
           profile: userProfile,
           userConfig,
           languages,
-          techHighlights,
           activeProjects,
           complexProjects,
         });
@@ -258,7 +237,9 @@ async function run(): Promise<void> {
           allProjects: complexProjects,
           categorizedProjects,
           languages,
-          techHighlights,
+          velocity,
+          rhythm,
+          constellation,
           contributionData,
           socialBadges,
           svgDir,
@@ -323,7 +304,9 @@ async function run(): Promise<void> {
             allProjects: complexProjects,
             categorizedProjects,
             languages,
-            techHighlights,
+            velocity,
+            rhythm,
+            constellation,
             contributionData,
             socialBadges,
             svgDir: ".",
