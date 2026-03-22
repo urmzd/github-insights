@@ -4,15 +4,6 @@ import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
 import type { ContributionRhythm, RenderResult } from "../types.js";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_FULL_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
 
 export function renderContributionRhythm(
   rhythm: ContributionRhythm,
@@ -82,10 +73,6 @@ export function renderContributionRhythm(
     })
     .join(" ");
 
-  // Find most active day
-  const maxDayIndex = rhythm.dayTotals.indexOf(Math.max(...rhythm.dayTotals));
-  const mostActiveDay = DAY_FULL_NAMES[maxDayIndex];
-
   // Stats section (right side)
   const statsX = padX + 300;
   const statsStartY = y + 30;
@@ -111,9 +98,6 @@ export function renderContributionRhythm(
       </>
     );
   });
-
-  // Most active day callout
-  const calloutY = statsStartY + rhythm.stats.length * 42 + 10;
 
   const height = 250;
 
@@ -160,10 +144,6 @@ export function renderContributionRhythm(
       {/* Stats */}
       {statsSvg.join("")}
 
-      {/* Most active day */}
-      <text x={statsX} y={calloutY} className="t t-sub">
-        {`Most active: ${escapeXml(mostActiveDay)}s`}
-      </text>
     </>
   );
 
