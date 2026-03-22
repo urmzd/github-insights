@@ -1,8 +1,7 @@
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
 import { LAYOUT, THEME } from "../theme.js";
-import type { BarItem, RenderResult } from "../types.js";
-import { renderBarChart } from "./bar-chart.js";
+import type { RenderResult } from "../types.js";
 
 export function renderSectionHeader(
   title: string,
@@ -53,8 +52,7 @@ export function renderDivider(y: number): RenderResult {
 export function renderSection(
   title: string,
   subtitle: string,
-  itemsOrRenderBody: ((y: number) => RenderResult) | BarItem[],
-  options: Record<string, unknown> = {},
+  renderBody: (y: number) => RenderResult,
 ): RenderResult {
   let y = LAYOUT.padY;
   let svg = "";
@@ -63,15 +61,9 @@ export function renderSection(
   svg += header.svg;
   y += header.height;
 
-  if (typeof itemsOrRenderBody === "function") {
-    const body = itemsOrRenderBody(y);
-    svg += body.svg;
-    y += body.height + LAYOUT.padY;
-  } else {
-    const bars = renderBarChart(itemsOrRenderBody, y, options);
-    svg += bars.svg;
-    y += bars.height + LAYOUT.padY;
-  }
+  const body = renderBody(y);
+  svg += body.svg;
+  y += body.height + LAYOUT.padY;
 
   return { svg, height: y };
 }
