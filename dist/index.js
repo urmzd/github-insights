@@ -42143,6 +42143,15 @@ function resolveConfigPath() {
 
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_FULL_NAMES = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+];
 function renderContributionRhythm(rhythm, y) {
     const { padX } = theme_LAYOUT;
     // Radar chart dimensions
@@ -42180,7 +42189,7 @@ function renderContributionRhythm(rhythm, y) {
         .join(" ");
     // Find most active day
     const maxDayIndex = rhythm.dayTotals.indexOf(Math.max(...rhythm.dayTotals));
-    const mostActiveDay = DAY_NAMES[maxDayIndex];
+    const mostActiveDay = DAY_FULL_NAMES[maxDayIndex];
     // Stats section (right side)
     const statsX = padX + 300;
     const statsStartY = y + 30;
@@ -42781,9 +42790,16 @@ const computeLanguageVelocity = (contributionData, repos) => {
         monthlyMap.set(key, new Map());
         d.setMonth(d.getMonth() + 1);
     }
-    // Distribute commit contributions across months proportionally
-    // Since we only have yearly totals per repo, distribute evenly across months
-    // where the repo had activity (based on pushedAt date)
+    // Compute monthly contribution weights from the calendar
+    // This gives us the actual activity shape across months
+    const monthWeights = new Map();
+    for (const day of allDays) {
+        const date = new Date(day.date);
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        monthWeights.set(key, (monthWeights.get(key) || 0) + day.contributionCount);
+    }
+    const totalWeight = [...monthWeights.values()].reduce((a, b) => a + b, 0) || 1;
+    // Distribute per-repo commits using monthly weights from the calendar
     for (const entry of contributionData.commitContributionsByRepository || []) {
         const repoName = entry.repository.name;
         const lang = repoLangMap.get(repoName);
@@ -42792,22 +42808,21 @@ const computeLanguageVelocity = (contributionData, repos) => {
         const totalCommits = entry.contributions.totalCount;
         if (totalCommits === 0)
             continue;
-        // Find the repo to get its pushed date for activity approximation
-        const repo = repos.find((r) => r.name === repoName);
-        if (!repo)
-            continue;
-        // Distribute commits across all months (simple even distribution)
-        const commitsPerMonth = totalCommits / months.length;
         for (const monthKey of months) {
+            const weight = monthWeights.get(monthKey) || 0;
+            const monthCommits = totalCommits * (weight / totalWeight);
             const langMap = monthlyMap.get(monthKey);
             if (!langMap)
                 continue;
             const existing = langMap.get(lang.name);
             if (existing) {
-                existing.commits += commitsPerMonth;
+                existing.commits += monthCommits;
             }
             else {
-                langMap.set(lang.name, { commits: commitsPerMonth, color: lang.color });
+                langMap.set(lang.name, {
+                    commits: monthCommits,
+                    color: lang.color,
+                });
             }
         }
     }
