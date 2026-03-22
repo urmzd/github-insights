@@ -38,7 +38,7 @@ inputs:
     description: "README template to use: classic, modern, minimal, or ecosystem"
     default: "classic"
   sections:
-    description: "Comma-separated list of sections to generate (e.g. pulse,languages,expertise,projects,contributions,calendar). Empty = all."
+    description: "Comma-separated list of sections to generate (e.g. velocity,rhythm,constellation,impact). Empty = all."
     default: ""
 runs:
   using: "node24"

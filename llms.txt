@@ -1,6 +1,6 @@
-# GitHub Metrics
+# GitHub Insights
 
-> A GitHub Action that generates beautiful SVG metrics visualizations for GitHub profile READMEs. Produces language breakdowns (donut chart), AI-powered expertise analysis with proficiency scores, contribution pulse, signature projects, external open source contributions, social badges, and an auto-generated profile introduction. Built with TypeScript/Node.js using React JSX for SVG rendering.
+> A GitHub Action that generates beautiful SVG metrics visualizations for GitHub profile READMEs. Produces language velocity streamgraphs, contribution rhythm radar charts, project constellation maps, open source impact trails, AI-powered project classification, social badges, and an auto-generated profile introduction. SVGs support light/dark theme switching and CSS animations. Built with TypeScript/Node.js using JSX for SVG string rendering.
 
 ## Docs
 
@@ -13,9 +13,9 @@
 
 - [src/index.ts](https://github.com/urmzd/github-insights/blob/main/src/index.ts): Main action entry point
 - [src/api.ts](https://github.com/urmzd/github-insights/blob/main/src/api.ts): GitHub GraphQL/REST API calls + AI model calls
-- [src/metrics.ts](https://github.com/urmzd/github-insights/blob/main/src/metrics.ts): Data aggregation and section definitions
+- [src/metrics.ts](https://github.com/urmzd/github-insights/blob/main/src/metrics.ts): Data aggregation, velocity/rhythm/constellation computation, section definitions
 - [src/types.ts](https://github.com/urmzd/github-insights/blob/main/src/types.ts): Shared type definitions (UserConfig, SectionDef, etc.)
-- [src/components/](https://github.com/urmzd/github-insights/blob/main/src/components/): SVG rendering components (donut chart, bar chart, stat cards)
+- [src/components/](https://github.com/urmzd/github-insights/blob/main/src/components/): SVG rendering components (streamgraph, radar chart, constellation, impact trail)
 - [action.yml](https://github.com/urmzd/github-insights/blob/main/action.yml): GitHub Action definition
 
 ## Optional
