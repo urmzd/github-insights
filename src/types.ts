@@ -62,8 +62,6 @@ export interface SectionDef {
   title: string;
   subtitle: string;
   renderBody?: (y: number) => RenderResult;
-  items?: BarItem[];
-  options?: Record<string, unknown>;
 }
 
 // ── GitHub API types ────────────────────────────────────────────────────────
@@ -151,10 +149,31 @@ export interface PackageParser {
   parseDependencies(text: string): string[];
 }
 
-export interface TechHighlight {
-  category: string;
-  items: string[];
-  score: number; // 0-100 proficiency level
+// ── Language velocity ──────────────────────────────────────────────────────
+
+export interface MonthlyLanguageBucket {
+  month: string; // "2025-04"
+  languages: { name: string; commits: number; color: string }[];
+}
+
+// ── Contribution rhythm ───────────────────────────────────────────────────
+
+export interface ContributionRhythm {
+  dayTotals: [number, number, number, number, number, number, number];
+  longestStreak: number;
+  stats: StatItem[];
+}
+
+// ── Project constellation ─────────────────────────────────────────────────
+
+export interface ConstellationNode {
+  name: string;
+  url: string;
+  x: number;
+  y: number;
+  radius: number;
+  color: string;
+  connections: number[]; // indices of connected nodes
 }
 
 export interface UserConfig {
@@ -229,7 +248,9 @@ export interface TemplateContext {
   allProjects: ProjectItem[];
   categorizedProjects: Record<string, ProjectItem[]>;
   languages: LanguageItem[];
-  techHighlights: TechHighlight[];
+  velocity: MonthlyLanguageBucket[];
+  rhythm: ContributionRhythm;
+  constellation: ConstellationNode[];
   contributionData: ContributionData;
   socialBadges: string;
   svgDir: string;
