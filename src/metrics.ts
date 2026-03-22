@@ -1,21 +1,21 @@
-import { renderContributionCalendar } from "./components/contribution-calendar.js";
-import { renderContributionCards } from "./components/contribution-cards.js";
-import { renderDonutChart } from "./components/donut-chart.js";
-import { renderProjectCards } from "./components/project-cards.js";
-import { renderStatCards } from "./components/stat-cards.js";
-import { renderTechHighlights } from "./components/tech-highlights.js";
+import { renderContributionRhythm } from "./components/contribution-rhythm.js";
+import { renderImpactTrail } from "./components/impact-trail.js";
+import { renderLanguageVelocity } from "./components/language-velocity.js";
+import { renderProjectConstellation } from "./components/project-constellation.js";
 import { parseManifest } from "./parsers.js";
 import type {
+  ConstellationNode,
   ContributionData,
+  ContributionRhythm,
   LanguageItem,
   ManifestMap,
+  MonthlyLanguageBucket,
   ProjectItem,
   ProjectStatus,
   RepoClassificationInput,
   RepoClassificationOutput,
   RepoNode,
   SectionDef,
-  TechHighlight,
 } from "./types.js";
 
 // ── Category Sets ───────────────────────────────────────────────────────────
@@ -25,12 +25,10 @@ const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
 // ── Section keys ────────────────────────────────────────────────────────────
 
 export const SECTION_KEYS: Record<string, string> = {
-  pulse: "metrics-pulse.svg",
-  languages: "metrics-languages.svg",
-  expertise: "metrics-expertise.svg",
-  projects: "metrics-complexity.svg",
-  contributions: "metrics-contributions.svg",
-  calendar: "metrics-calendar.svg",
+  velocity: "metrics-velocity.svg",
+  rhythm: "metrics-rhythm.svg",
+  constellation: "metrics-constellation.svg",
+  impact: "metrics-impact.svg",
 };
 
 // ── Aggregation ─────────────────────────────────────────────────────────────
@@ -266,111 +264,296 @@ export const splitProjectsByRecency = (
   return { active, maintained, inactive, archived };
 };
 
+// ── Language Velocity ────────────────────────────────────────────────────────
+
+export const computeLanguageVelocity = (
+  contributionData: ContributionData,
+  repos: RepoNode[],
+): MonthlyLanguageBucket[] => {
+  // Build a map of repo name → primary language + color
+  const repoLangMap = new Map<string, { name: string; color: string }>();
+  for (const repo of repos) {
+    if (repo.primaryLanguage) {
+      repoLangMap.set(repo.name, {
+        name: repo.primaryLanguage.name,
+        color: repo.primaryLanguage.color,
+      });
+    }
+  }
+
+  // Build monthly commit counts per language from commitContributionsByRepository
+  const monthlyMap = new Map<
+    string,
+    Map<string, { commits: number; color: string }>
+  >();
+
+  // Use contribution calendar to get month boundaries
+  const calendar = contributionData.contributionCalendar;
+  if (!calendar) return [];
+
+  // Get the date range from the calendar
+  const allDays = calendar.weeks.flatMap((w) => w.contributionDays);
+  if (allDays.length === 0) return [];
+
+  // Create 12 monthly buckets from the calendar date range
+  const firstDate = new Date(allDays[0].date);
+  const lastDate = new Date(allDays[allDays.length - 1].date);
+
+  // Initialize month keys
+  const months: string[] = [];
+  const d = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+  while (d <= lastDate) {
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    months.push(key);
+    monthlyMap.set(key, new Map());
+    d.setMonth(d.getMonth() + 1);
+  }
+
+  // Compute monthly contribution weights from the calendar
+  // This gives us the actual activity shape across months
+  const monthWeights = new Map<string, number>();
+  for (const day of allDays) {
+    const date = new Date(day.date);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthWeights.set(key, (monthWeights.get(key) || 0) + day.contributionCount);
+  }
+  const totalWeight = [...monthWeights.values()].reduce((a, b) => a + b, 0) || 1;
+
+  // Distribute per-repo commits using monthly weights from the calendar
+  for (const entry of contributionData.commitContributionsByRepository || []) {
+    const repoName = entry.repository.name;
+    const lang = repoLangMap.get(repoName);
+    if (!lang) continue;
+
+    const totalCommits = entry.contributions.totalCount;
+    if (totalCommits === 0) continue;
+
+    for (const monthKey of months) {
+      const weight = monthWeights.get(monthKey) || 0;
+      const monthCommits = totalCommits * (weight / totalWeight);
+
+      const langMap = monthlyMap.get(monthKey);
+      if (!langMap) continue;
+      const existing = langMap.get(lang.name);
+      if (existing) {
+        existing.commits += monthCommits;
+      } else {
+        langMap.set(lang.name, {
+          commits: monthCommits,
+          color: lang.color,
+        });
+      }
+    }
+  }
+
+  // Convert to output format
+  return months.map((month) => {
+    const langMap = monthlyMap.get(month) || new Map();
+    const languages = [...langMap.entries()]
+      .map(([name, data]) => ({
+        name,
+        commits: Math.round(data.commits),
+        color: data.color,
+      }))
+      .sort((a, b) => b.commits - a.commits);
+    return { month, languages };
+  });
+};
+
+// ── Contribution Rhythm ─────────────────────────────────────────────────────
+
+export const computeContributionRhythm = (
+  contributionData: ContributionData,
+): ContributionRhythm => {
+  const dayTotals: [number, number, number, number, number, number, number] = [
+    0, 0, 0, 0, 0, 0, 0,
+  ];
+
+  const calendar = contributionData.contributionCalendar;
+  let longestStreak = 0;
+  let currentStreak = 0;
+
+  if (calendar) {
+    for (const week of calendar.weeks) {
+      for (const day of week.contributionDays) {
+        const dayOfWeek = new Date(day.date).getDay();
+        dayTotals[dayOfWeek] += day.contributionCount;
+
+        if (day.contributionCount > 0) {
+          currentStreak++;
+          longestStreak = Math.max(longestStreak, currentStreak);
+        } else {
+          currentStreak = 0;
+        }
+      }
+    }
+  }
+
+  const { contributions } = contributionData;
+  const stats = [
+    {
+      label: "COMMITS",
+      value: contributions.totalCommitContributions.toLocaleString(),
+    },
+    {
+      label: "PRS",
+      value: contributions.totalPullRequestContributions.toLocaleString(),
+    },
+    {
+      label: "REVIEWS",
+      value: contributions.totalPullRequestReviewContributions.toLocaleString(),
+    },
+    {
+      label: "REPOS",
+      value:
+        contributions.totalRepositoriesWithContributedCommits.toLocaleString(),
+    },
+    { label: "STREAK", value: `${longestStreak}d` },
+  ];
+
+  return { dayTotals, longestStreak, stats };
+};
+
+// ── Project Constellation ───────────────────────────────────────────────────
+
+export const computeConstellationLayout = (
+  projects: ProjectItem[],
+  repos: RepoNode[],
+): ConstellationNode[] => {
+  if (projects.length === 0) return [];
+
+  const chartWidth = 760;
+  const chartHeight = 340;
+  const padX = 40;
+  const padY = 30;
+
+  // Build repo lookup for disk usage
+  const repoMap = new Map<string, RepoNode>();
+  for (const repo of repos) {
+    repoMap.set(repo.name, repo);
+  }
+
+  // Group projects by primary language
+  const langGroups = new Map<string, number[]>();
+  for (let i = 0; i < projects.length; i++) {
+    const p = projects[i];
+    const lang = p.languages?.[0] || "Other";
+    if (!langGroups.has(lang)) langGroups.set(lang, []);
+    langGroups.get(lang)!.push(i);
+  }
+
+  const langKeys = [...langGroups.keys()].sort();
+  const bandWidth = (chartWidth - 2 * padX) / Math.max(langKeys.length, 1);
+
+  // Compute complexity range for y-axis normalization
+  const complexities = projects.map((p) => {
+    const repo = repoMap.get(p.name);
+    return repo ? complexityScore(repo) : 0;
+  });
+  const minC = Math.min(...complexities);
+  const maxC = Math.max(...complexities);
+  const rangeC = maxC - minC || 1;
+
+  const nodes: ConstellationNode[] = projects.map((p, i) => {
+    const lang = p.languages?.[0] || "Other";
+    const bandIndex = langKeys.indexOf(lang);
+    const groupIndices = langGroups.get(lang) || [];
+    const indexInGroup = groupIndices.indexOf(i);
+
+    // X: center of language band with jitter
+    const bandCenter = padX + bandIndex * bandWidth + bandWidth / 2;
+    const jitter =
+      groupIndices.length > 1
+        ? ((indexInGroup - (groupIndices.length - 1) / 2) * bandWidth * 0.4) /
+          Math.max(groupIndices.length - 1, 1)
+        : 0;
+    const x = Math.max(padX, Math.min(chartWidth - padX, bandCenter + jitter));
+
+    // Y: complexity score (inverted so higher complexity = higher on chart)
+    const normC = (complexities[i] - minC) / rangeC;
+    const y = padY + (1 - normC) * (chartHeight - 2 * padY);
+
+    // Radius: based on disk usage
+    const repo = repoMap.get(p.name);
+    const diskKb = repo?.diskUsage || 100;
+    const radius = Math.max(6, Math.min(22, 3 + Math.log2(diskKb / 100) * 3));
+
+    // Color: primary language color
+    const color = repo?.primaryLanguage?.color || "#8b949e";
+
+    return { name: p.name, url: p.url, x, y, radius, color, connections: [] };
+  });
+
+  // Connect projects that share 2+ languages
+  for (let i = 0; i < projects.length; i++) {
+    for (let j = i + 1; j < projects.length; j++) {
+      const langsA = new Set(projects[i].languages || []);
+      const langsB = projects[j].languages || [];
+      const shared = langsB.filter((l) => langsA.has(l)).length;
+      if (shared >= 2) {
+        nodes[i].connections.push(j);
+        nodes[j].connections.push(i);
+      }
+    }
+  }
+
+  return nodes;
+};
+
 // ── Section definitions ─────────────────────────────────────────────────────
 
 export const buildSections = ({
-  languages,
-  techHighlights,
+  velocity,
+  rhythm,
+  constellation,
   projects,
   contributionData,
 }: {
-  languages: LanguageItem[];
-  techHighlights: TechHighlight[];
+  velocity: MonthlyLanguageBucket[];
+  rhythm: ContributionRhythm;
+  constellation: ConstellationNode[];
   projects: ProjectItem[];
   contributionData: ContributionData;
 }): SectionDef[] => {
   const sections: SectionDef[] = [];
 
-  // 1. At a Glance
-  sections.push({
-    filename: "metrics-pulse.svg",
-    title: "At a Glance",
-    subtitle: "Contribution activity over the past year",
-    renderBody: (y: number) => {
-      const stats = [
-        {
-          label: "COMMITS",
-          value:
-            contributionData.contributions.totalCommitContributions.toLocaleString(),
-        },
-        {
-          label: "PRS",
-          value:
-            contributionData.contributions.totalPullRequestContributions.toLocaleString(),
-        },
-        {
-          label: "REVIEWS",
-          value:
-            contributionData.contributions.totalPullRequestReviewContributions.toLocaleString(),
-        },
-        {
-          label: "REPOS",
-          value:
-            contributionData.contributions.totalRepositoriesWithContributedCommits.toLocaleString(),
-        },
-      ];
-      return renderStatCards(stats, y);
-    },
-  });
-
-  // 2. Languages
-  sections.push({
-    filename: "metrics-languages.svg",
-    title: "Languages",
-    subtitle: "By bytes of code across all public repos",
-    renderBody: (y: number) => renderDonutChart(languages, y),
-  });
-
-  // 3. Expertise
-  if (techHighlights.length > 0) {
+  // 1. Language Velocity
+  if (velocity.length > 0) {
     sections.push({
-      filename: "metrics-expertise.svg",
-      title: "Expertise",
-      subtitle:
-        "Curated from dependencies, topics, and languages via AI analysis",
-      renderBody: (y: number) => renderTechHighlights(techHighlights, y),
+      filename: "metrics-velocity.svg",
+      title: "Language Velocity",
+      subtitle: "How language usage has evolved over the past year",
+      renderBody: (y: number) => renderLanguageVelocity(velocity, y),
     });
   }
 
-  // 4. Signature Projects
+  // 2. Contribution Rhythm
   sections.push({
-    filename: "metrics-complexity.svg",
-    title: "Signature Projects",
-    subtitle: "Top projects by technical complexity",
-    renderBody: (y: number) => renderProjectCards(projects, y),
+    filename: "metrics-rhythm.svg",
+    title: "Contribution Rhythm",
+    subtitle: "Activity patterns and statistics over the past year",
+    renderBody: (y: number) => renderContributionRhythm(rhythm, y),
   });
 
-  // 5. Contribution Calendar
-  if (contributionData.contributionCalendar) {
-    const calendarData = contributionData.contributionCalendar;
+  // 3. Project Constellation
+  if (constellation.length > 0) {
     sections.push({
-      filename: "metrics-calendar.svg",
-      title: "Contribution Calendar",
-      subtitle: `${calendarData.totalContributions.toLocaleString()} contributions in the last year`,
-      renderBody: (y: number) => renderContributionCalendar(calendarData, y),
+      filename: "metrics-constellation.svg",
+      title: "Project Constellation",
+      subtitle: "Projects mapped by language ecosystem and complexity",
+      renderBody: (y: number) => renderProjectConstellation(constellation, y),
     });
   }
 
-  // 6. Open Source Contributions
+  // 4. Impact Trail
   if (contributionData.externalRepos.nodes.length > 0) {
     sections.push({
-      filename: "metrics-contributions.svg",
-      title: "Open Source Contributions",
-      subtitle: "External repositories contributed to (all time)",
+      filename: "metrics-impact.svg",
+      title: "Open Source Impact",
+      subtitle: "External repositories contributed to",
       renderBody: (y: number) => {
-        const repos = contributionData.externalRepos.nodes.slice(0, 5);
-        const highlights = repos.map((r) => ({
-          project: r.nameWithOwner,
-          detail: [
-            r.stargazerCount > 0
-              ? `\u2605 ${r.stargazerCount.toLocaleString()}`
-              : null,
-            r.primaryLanguage?.name,
-          ]
-            .filter(Boolean)
-            .join(" \u00b7 "),
-        }));
-        return renderContributionCards(highlights, y);
+        const repos = contributionData.externalRepos.nodes.slice(0, 8);
+        return renderImpactTrail(repos, y);
       },
     });
   }
