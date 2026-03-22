@@ -1,4 +1,4 @@
-import type { ContributionData, LanguageItem, ManifestMap, ProjectItem, RepoClassificationInput, RepoClassificationOutput, RepoNode, SectionDef, TechHighlight } from "./types.js";
+import type { ConstellationNode, ContributionData, ContributionRhythm, LanguageItem, ManifestMap, MonthlyLanguageBucket, ProjectItem, RepoClassificationInput, RepoClassificationOutput, RepoNode, SectionDef } from "./types.js";
 export declare const SECTION_KEYS: Record<string, string>;
 export declare const aggregateLanguages: (repos: RepoNode[]) => LanguageItem[];
 export declare const collectAllDependencies: (repos: RepoNode[], manifests: ManifestMap) => string[];
@@ -13,9 +13,13 @@ export declare const splitProjectsByRecency: (repos: RepoNode[], contributionDat
     inactive: ProjectItem[];
     archived: ProjectItem[];
 };
-export declare const buildSections: ({ languages, techHighlights, projects, contributionData, }: {
-    languages: LanguageItem[];
-    techHighlights: TechHighlight[];
+export declare const computeLanguageVelocity: (contributionData: ContributionData, repos: RepoNode[]) => MonthlyLanguageBucket[];
+export declare const computeContributionRhythm: (contributionData: ContributionData) => ContributionRhythm;
+export declare const computeConstellationLayout: (projects: ProjectItem[], repos: RepoNode[]) => ConstellationNode[];
+export declare const buildSections: ({ velocity, rhythm, constellation, projects, contributionData, }: {
+    velocity: MonthlyLanguageBucket[];
+    rhythm: ContributionRhythm;
+    constellation: ConstellationNode[];
     projects: ProjectItem[];
     contributionData: ContributionData;
 }) => SectionDef[];
