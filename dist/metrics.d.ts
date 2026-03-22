@@ -16,10 +16,9 @@ export declare const splitProjectsByRecency: (repos: RepoNode[], contributionDat
 export declare const computeLanguageVelocity: (contributionData: ContributionData, repos: RepoNode[]) => MonthlyLanguageBucket[];
 export declare const computeContributionRhythm: (contributionData: ContributionData) => ContributionRhythm;
 export declare const computeConstellationLayout: (projects: ProjectItem[], repos: RepoNode[]) => ConstellationNode[];
-export declare const buildSections: ({ velocity, rhythm, constellation, projects, contributionData, }: {
+export declare const buildSections: ({ velocity, rhythm, constellation, contributionData, }: {
     velocity: MonthlyLanguageBucket[];
     rhythm: ContributionRhythm;
     constellation: ConstellationNode[];
-    projects: ProjectItem[];
     contributionData: ContributionData;
 }) => SectionDef[];

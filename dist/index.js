@@ -42143,15 +42143,6 @@ function resolveConfigPath() {
 
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_FULL_NAMES = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-];
 function renderContributionRhythm(rhythm, y) {
     const { padX } = theme_LAYOUT;
     // Radar chart dimensions
@@ -42187,9 +42178,6 @@ function renderContributionRhythm(rhythm, y) {
         return `${px},${py}`;
     })
         .join(" ");
-    // Find most active day
-    const maxDayIndex = rhythm.dayTotals.indexOf(Math.max(...rhythm.dayTotals));
-    const mostActiveDay = DAY_FULL_NAMES[maxDayIndex];
     // Stats section (right side)
     const statsX = padX + 300;
     const statsStartY = y + 30;
@@ -42207,8 +42195,6 @@ function renderContributionRhythm(rhythm, y) {
             jsx_factory_h("text", { x: statsX, y: sy, className: "t t-stat-label" }, svg_utils_escapeXml(stat.label)),
             jsx_factory_h("text", { x: statsX, y: sy + 22, fill: color, className: "t t-stat-value" }, svg_utils_escapeXml(stat.value))));
     });
-    // Most active day callout
-    const calloutY = statsStartY + rhythm.stats.length * 42 + 10;
     const height = 250;
     const svg = (jsx_factory_h(Fragment, null,
         guidesSvg.join(""),
@@ -42222,8 +42208,7 @@ function renderContributionRhythm(rhythm, y) {
             return (jsx_factory_h("circle", { cx: px, cy: py, r: "3", fill: BAR_COLORS[0], className: `fade-${Math.min(i + 1, 6)}` }));
         }),
         labelsSvg.join(""),
-        statsSvg.join(""),
-        jsx_factory_h("text", { x: statsX, y: calloutY, className: "t t-sub" }, `Most active: ${svg_utils_escapeXml(mostActiveDay)}s`)));
+        statsSvg.join("")));
     return { svg, height };
 }
 void Fragment;
@@ -42356,7 +42341,7 @@ function renderLanguageVelocity(velocity, y) {
     // Month labels
     const monthLabels = velocity
         .filter((_, i) => i % Math.max(1, Math.floor(velocity.length / 6)) === 0)
-        .map((bucket, i, filtered) => {
+        .map((bucket) => {
         const originalIndex = velocity.indexOf(bucket);
         const x = padX + originalIndex * stepX;
         const monthName = new Date(`${bucket.month}-01`).toLocaleDateString("en", { month: "short" });
@@ -42366,7 +42351,7 @@ function renderLanguageVelocity(velocity, y) {
         paths.map((p, i) => (jsx_factory_h("path", { d: p.path, fill: p.color, "fill-opacity": "0.75", className: `fade-${Math.min(i + 1, 6)}` }))),
         (() => {
             let legendX = padX;
-            return topLangs.map((name, i) => {
+            return topLangs.map((name) => {
                 const color = langSet.get(name) || "#8b949e";
                 const x = legendX;
                 legendX += name.length * 7 + 28;
@@ -42413,19 +42398,6 @@ function renderProjectConstellation(nodes, y) {
             jsx_factory_h("circle", { cx: cx, cy: cy, r: node.radius, fill: node.color, "fill-opacity": "0.7", stroke: node.color, "stroke-width": "1.5", "stroke-opacity": "0.9", className: `fade-${delay}` }),
             jsx_factory_h("text", { x: cx, y: cy + node.radius + 14, className: `t t-value fade-${delay}`, "text-anchor": "middle" }, svg_utils_escapeXml(truncate(node.name, 18)))));
     });
-    // Group labels at the bottom showing language ecosystem clusters
-    const langGroups = new Map();
-    for (const node of nodes) {
-        const lang = node.color; // Use color as key since we don't have lang name in ConstellationNode
-        if (!langGroups.has(lang)) {
-            langGroups.set(lang, { color: lang, minX: node.x, maxX: node.x });
-        }
-        else {
-            const group = langGroups.get(lang);
-            group.minX = Math.min(group.minX, node.x);
-            group.maxX = Math.max(group.maxX, node.x);
-        }
-    }
     const svg = (jsx_factory_h(Fragment, null,
         connectionsSvg.join(""),
         nodesSvg.join("")));
@@ -42904,7 +42876,7 @@ const computeConstellationLayout = (projects, repos) => {
         const lang = p.languages?.[0] || "Other";
         if (!langGroups.has(lang))
             langGroups.set(lang, []);
-        langGroups.get(lang).push(i);
+        langGroups.get(lang)?.push(i);
     }
     const langKeys = [...langGroups.keys()].sort();
     const bandWidth = (chartWidth - 2 * padX) / Math.max(langKeys.length, 1);
@@ -42954,7 +42926,7 @@ const computeConstellationLayout = (projects, repos) => {
     return nodes;
 };
 // ── Section definitions ─────────────────────────────────────────────────────
-const buildSections = ({ velocity, rhythm, constellation, projects, contributionData, }) => {
+const buildSections = ({ velocity, rhythm, constellation, contributionData, }) => {
     const sections = [];
     // 1. Language Velocity
     if (velocity.length > 0) {
@@ -43351,7 +43323,6 @@ async function run() {
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
         const complexProjects = getTopProjectsByComplexity(repos);
-        const projects = complexProjects.slice(0, 5);
         core.info("Fetching project classifications from GitHub Models...");
         const classificationInputs = buildClassificationInputs(repos, contributionData);
         const aiClassifications = await fetchProjectClassifications(token, classificationInputs);
@@ -43365,7 +43336,6 @@ async function run() {
             velocity,
             rhythm,
             constellation,
-            projects,
             contributionData,
         });
         // Filter sections by requested keys if specified
