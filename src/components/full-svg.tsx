@@ -1,7 +1,6 @@
 import { Fragment, h } from "../jsx-factory.js";
 import { LAYOUT, THEME } from "../theme.js";
 import type { SectionDef } from "../types.js";
-import { renderBarChart } from "./bar-chart.js";
 import { renderSectionHeader } from "./section.js";
 import { StyleDefs } from "./style-defs.js";
 
@@ -15,7 +14,13 @@ export function wrapSectionSvg(bodySvg: string, height: number): string {
       viewBox={`0 0 ${width} ${height}`}
     >
       <StyleDefs />
-      <rect width={width} height={height} rx="12" fill={THEME.bg} />
+      <rect
+        width={width}
+        height={height}
+        rx="12"
+        className="bg-fill"
+        fill={THEME.bg}
+      />
       {bodySvg}
     </svg>
   );
@@ -35,10 +40,6 @@ export function generateFullSvg(sections: SectionDef[]): string {
       const body = section.renderBody(y);
       bodySvg += body.svg;
       y += body.height + sectionGap;
-    } else if (section.items) {
-      const bars = renderBarChart(section.items, y, section.options || {});
-      bodySvg += bars.svg;
-      y += bars.height + sectionGap;
     }
   }
 
@@ -52,7 +53,13 @@ export function generateFullSvg(sections: SectionDef[]): string {
       viewBox={`0 0 ${width} ${totalHeight}`}
     >
       <StyleDefs />
-      <rect width={width} height={totalHeight} rx="12" fill={THEME.bg} />
+      <rect
+        width={width}
+        height={totalHeight}
+        rx="12"
+        className="bg-fill"
+        fill={THEME.bg}
+      />
       {bodySvg}
     </svg>
   );
