@@ -152,7 +152,7 @@ describe("generateReadme", () => {
       svgs: [
         { label: "Languages", path: "assets/insights/metrics-languages.svg" },
         { label: "Projects", path: "assets/insights/metrics-projects.svg" },
-        { label: "Expertise", path: "assets/insights/metrics-expertise.svg" },
+        { label: "Rhythm", path: "assets/insights/metrics-rhythm.svg" },
       ],
     });
     expect(result).toContain(
@@ -162,7 +162,7 @@ describe("generateReadme", () => {
       "![Projects](assets/insights/metrics-projects.svg)",
     );
     expect(result).toContain(
-      "![Expertise](assets/insights/metrics-expertise.svg)",
+      "![Rhythm](assets/insights/metrics-rhythm.svg)",
     );
   });
 
