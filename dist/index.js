@@ -40250,13 +40250,13 @@ const fetchWithRetry = async (url, init, label) => {
     }
     return null;
 };
-const MANIFEST_FILES = [
+const MANIFEST_FILES = (/* unused pure expression or super */ null && ([
     "package.json",
     "Cargo.toml",
     "go.mod",
     "pyproject.toml",
     "requirements.txt",
-];
+]));
 const makeGraphql = (token) => github.getOctokit(token).graphql;
 const fetchAllRepoData = async (graphql, username) => {
     const data = await graphql(`query($username: String!) {
@@ -40470,12 +40470,9 @@ const fetchUserProfile = async (graphql, username) => {
 };
 const fetchAIPreamble = async (token, context) => {
     try {
-        const { profile, userConfig, languages, techHighlights, activeProjects, complexProjects, } = context;
+        const { profile, userConfig, languages, activeProjects, complexProjects } = context;
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
-            .join("\n");
-        const techLines = techHighlights
-            .map((h) => `- ${h.category}: ${h.items.join(", ")} (score: ${h.score})`)
             .join("\n");
         const formatProject = (p) => {
             const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
@@ -40500,9 +40497,6 @@ ${profileLines}
 
 Languages (by code volume):
 ${langLines}
-
-Expertise areas:
-${techLines}
 
 Most technically complex projects (by language diversity, codebase size, and depth):
 ${complexProjectLines || "None"}
@@ -40583,111 +40577,6 @@ Generate 1-2 sentences that:
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
         return undefined;
-    }
-};
-const fetchExpertiseAnalysis = async (token, languages, allDeps, allTopics, repos, readmeMap, userConfig = {}) => {
-    try {
-        const langLines = languages
-            .map((l) => `- ${l.name}: ${l.percent}%`)
-            .join("\n");
-        const repoSummaries = repos
-            .slice(0, 20)
-            .map((r) => {
-            const readme = readmeMap.get(r.name) || "";
-            const snippet = readme.slice(0, 500).replace(/\n/g, " ");
-            const desc = r.description || "";
-            return `- ${r.name}: ${desc} | ${snippet}`;
-        })
-            .join("\n");
-        const desiredTitle = userConfig.desired_title || userConfig.title;
-        let titleContext = "";
-        if (userConfig.title) {
-            titleContext = `\nDeveloper context:\n- Current title: ${userConfig.title}`;
-            if (desiredTitle && desiredTitle !== userConfig.title) {
-                titleContext += `\n- Desired title: ${desiredTitle}`;
-            }
-            titleContext += `\n- Tailor the expertise categories to highlight skills most relevant to ${desiredTitle}. Prioritize domains and technologies that align with this role.\n`;
-        }
-        const prompt = `You are analyzing a developer's GitHub profile to create a curated expertise showcase.
-${titleContext}
-Languages (by code volume):
-${langLines}
-
-Dependencies found across repositories:
-${allDeps.join(", ")}
-
-Repository topics:
-${allTopics.join(", ")}
-
-Repository descriptions and README excerpts:
-${repoSummaries}
-
-From this data, produce a curated expertise profile:
-- Group the most notable technologies into 3-6 expertise categories
-- Use domain-oriented category names (e.g., "Machine Learning", "Web Development", "DevOps", "Backend & APIs", "Data Science", "Systems Programming")
-- Include 3-6 of the most relevant technologies/tools per category
-- Normalize names to their common display form (e.g., "pg" → "PostgreSQL", "torch" → "PyTorch", "boto3" → "AWS SDK")
-- Skip trivial utility libraries (lodash, uuid, etc.) that don't showcase meaningful expertise
-- Only include categories where there's meaningful evidence of usage
-- Assign each category a proficiency score from 0 to 100 based on evidence strength:
-  language code volume, dependency count, topic mentions, and README depth.
-  Use the full range (e.g. 80-95 for primary stack, 50-70 for secondary, 30-50 for minor).`;
-        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: "gpt-4.1",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.1,
-                response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                        name: "tech_highlights",
-                        strict: true,
-                        schema: {
-                            type: "object",
-                            properties: {
-                                highlights: {
-                                    type: "array",
-                                    items: {
-                                        type: "object",
-                                        properties: {
-                                            category: { type: "string" },
-                                            items: { type: "array", items: { type: "string" } },
-                                            score: { type: "number" },
-                                        },
-                                        required: ["category", "items", "score"],
-                                        additionalProperties: false,
-                                    },
-                                },
-                            },
-                            required: ["highlights"],
-                            additionalProperties: false,
-                        },
-                    },
-                },
-            }),
-        }, "Expertise");
-        if (!res?.ok) {
-            if (res)
-                console.warn(`GitHub Models API error: ${res.status}`);
-            return [];
-        }
-        const json = (await res.json());
-        const content = json.choices?.[0]?.message?.content || "{}";
-        const parsed = JSON.parse(content);
-        return (parsed.highlights || [])
-            .filter((h) => h.category && Array.isArray(h.items) && h.items.length > 0)
-            .map((h) => ({ ...h, score: Math.max(0, Math.min(100, h.score || 0)) }))
-            .sort((a, b) => b.score - a.score);
-    }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`Expertise analysis failed (non-fatal): ${msg}`);
-        return [];
     }
 };
 const fetchProjectClassifications = async (token, repos) => {
@@ -40849,12 +40738,21 @@ const theme_THEME = {
     secondary: "#8b949e",
     muted: "#6e7681",
 };
+const THEME_LIGHT = {
+    bg: "#ffffff",
+    cardBg: "#f6f8fa",
+    border: "#d0d7de",
+    link: "#0969da",
+    text: "#1f2328",
+    secondary: "#656d76",
+    muted: "#656d76",
+};
 const FONT = "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif";
 const theme_LAYOUT = {
     width: 808,
     padX: 24,
     padY: 24,
-    sectionGap: 30,
+    sectionGap: 40,
     barHeight: 18,
     barRowHeight: 48,
     barMaxWidth: 700,
@@ -40904,36 +40802,7 @@ const wrapText = (text, maxChars) => {
     return lines;
 };
 
-;// CONCATENATED MODULE: ./src/components/bar-chart.tsx
-
-
-
-function renderBarChart(items, y, options = {}) {
-    if (items.length === 0)
-        return { svg: "", height: 0 };
-    const { barHeight, barRowHeight, barMaxWidth, padX } = theme_LAYOUT;
-    const useItemColors = options.useItemColors === true;
-    const maxValue = Math.max(...items.map((d) => d.value));
-    const svg = (jsx_factory_h(Fragment, null, items.map((item, i) => {
-        const ry = y + i * barRowHeight;
-        const barWidth = Math.max((item.value / maxValue) * barMaxWidth, 4);
-        const color = useItemColors
-            ? item.color || BAR_COLORS[i % BAR_COLORS.length]
-            : BAR_COLORS[i % BAR_COLORS.length];
-        const label = svg_utils_escapeXml(truncate(item.name, 40));
-        const valueLabel = item.percent
-            ? `${item.percent}%`
-            : String(item.value);
-        return (jsx_factory_h(Fragment, null,
-            jsx_factory_h("text", { x: padX, y: ry + 14, className: "t t-label" }, label),
-            jsx_factory_h("rect", { x: padX, y: ry + 26, width: barWidth, height: barHeight, rx: "3", fill: color, opacity: "0.85" }),
-            jsx_factory_h("text", { x: padX + barWidth + 8, y: ry + 40, className: "t t-value" }, valueLabel)));
-    })));
-    return { svg, height: items.length * barRowHeight };
-}
-
 ;// CONCATENATED MODULE: ./src/components/section.tsx
-
 
 
 
@@ -40951,22 +40820,15 @@ function renderDivider(y) {
     const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
     return { svg, height: 1 };
 }
-function renderSection(title, subtitle, itemsOrRenderBody, options = {}) {
+function renderSection(title, subtitle, renderBody) {
     let y = theme_LAYOUT.padY;
     let svg = "";
     const header = renderSectionHeader(title, subtitle, y);
     svg += header.svg;
     y += header.height;
-    if (typeof itemsOrRenderBody === "function") {
-        const body = itemsOrRenderBody(y);
-        svg += body.svg;
-        y += body.height + theme_LAYOUT.padY;
-    }
-    else {
-        const bars = renderBarChart(itemsOrRenderBody, y, options);
-        svg += bars.svg;
-        y += bars.height + theme_LAYOUT.padY;
-    }
+    const body = renderBody(y);
+    svg += body.svg;
+    y += body.height + theme_LAYOUT.padY;
     return { svg, height: y };
 }
 void Fragment;
@@ -40977,8 +40839,8 @@ void Fragment;
 function StyleDefs() {
     return (jsx_factory_h("defs", null,
         jsx_factory_h("style", null, `
-  .t { font-family: ${FONT}; }
-  .t-h { font-size: 13px; fill: ${theme_THEME.text}; letter-spacing: 1.5px; font-weight: 600; }
+  .t { font-family: ${FONT}; font-variant-numeric: tabular-lining; }
+  .t-h { font-size: 14px; fill: ${theme_THEME.text}; letter-spacing: 2px; font-weight: 600; }
   .t-sub { font-size: 11px; fill: ${theme_THEME.muted}; }
   .t-label { font-size: 12px; fill: ${theme_THEME.secondary}; }
   .t-value { font-size: 11px; fill: ${theme_THEME.muted}; }
@@ -40989,6 +40851,47 @@ function StyleDefs() {
   .t-card-detail { font-size: 11px; fill: ${theme_THEME.secondary}; }
   .t-pill { font-size: 11px; font-weight: 600; }
   .t-bullet { font-size: 12px; fill: ${theme_THEME.text}; }
+  .bg-fill { fill: ${theme_THEME.bg}; }
+  .card-fill { fill: ${theme_THEME.cardBg}; }
+  .border-stroke { stroke: ${theme_THEME.border}; }
+
+  @media (prefers-color-scheme: light) {
+    .bg-fill { fill: ${THEME_LIGHT.bg}; }
+    .card-fill { fill: ${THEME_LIGHT.cardBg}; }
+    .border-stroke { stroke: ${THEME_LIGHT.border}; }
+    .t-h { fill: ${THEME_LIGHT.text}; }
+    .t-sub { fill: ${THEME_LIGHT.muted}; }
+    .t-label { fill: ${THEME_LIGHT.secondary}; }
+    .t-value { fill: ${THEME_LIGHT.muted}; }
+    .t-subhdr { fill: ${THEME_LIGHT.secondary}; }
+    .t-stat-label { fill: ${THEME_LIGHT.secondary}; }
+    .t-card-title { fill: ${THEME_LIGHT.link}; }
+    .t-card-detail { fill: ${THEME_LIGHT.secondary}; }
+    .t-bullet { fill: ${THEME_LIGHT.text}; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  @keyframes drawPath {
+    from { stroke-dashoffset: var(--path-length); }
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes radarReveal {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 0.6; }
+  }
+  .fade-1 { animation: fadeIn 0.6s ease-out 0.1s both; }
+  .fade-2 { animation: fadeIn 0.6s ease-out 0.25s both; }
+  .fade-3 { animation: fadeIn 0.6s ease-out 0.4s both; }
+  .fade-4 { animation: fadeIn 0.6s ease-out 0.55s both; }
+  .fade-5 { animation: fadeIn 0.6s ease-out 0.7s both; }
+  .fade-6 { animation: fadeIn 0.6s ease-out 0.85s both; }
 `)));
 }
 void Fragment;
@@ -40998,12 +40901,11 @@ void Fragment;
 
 
 
-
 function wrapSectionSvg(bodySvg, height) {
     const { width } = theme_LAYOUT;
     return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
         jsx_factory_h(StyleDefs, null),
-        jsx_factory_h("rect", { width: width, height: height, rx: "12", fill: theme_THEME.bg }),
+        jsx_factory_h("rect", { width: width, height: height, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
         bodySvg));
 }
 function generateFullSvg(sections) {
@@ -41019,16 +40921,11 @@ function generateFullSvg(sections) {
             bodySvg += body.svg;
             y += body.height + sectionGap;
         }
-        else if (section.items) {
-            const bars = renderBarChart(section.items, y, section.options || {});
-            bodySvg += bars.svg;
-            y += bars.height + sectionGap;
-        }
     }
     const totalHeight = y + padY;
     return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
         jsx_factory_h(StyleDefs, null),
-        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", fill: theme_THEME.bg }),
+        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
         bodySvg));
 }
 
@@ -42241,234 +42138,288 @@ function resolveConfigPath() {
     return { path: "github-insights.yml", format: "yaml" };
 }
 
-;// CONCATENATED MODULE: ./src/components/contribution-calendar.tsx
+;// CONCATENATED MODULE: ./src/components/contribution-rhythm.tsx
 
 
 
-const CELL_SIZE = 11;
-const CELL_GAP = 2;
-const STEP = CELL_SIZE + CELL_GAP;
-const DAY_LABEL_WIDTH = 30;
-const MONTH_LABEL_HEIGHT = 16;
-const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
-const MONTH_NAMES = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-];
-function renderContributionCalendar(calendar, y) {
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function renderContributionRhythm(rhythm, y) {
     const { padX } = theme_LAYOUT;
-    const weeks = calendar.weeks;
-    const gridX = padX + DAY_LABEL_WIDTH;
-    const gridY = y + MONTH_LABEL_HEIGHT;
-    // Build month labels from the first day of each week
-    const monthLabels = [];
-    let lastMonth = -1;
-    for (let w = 0; w < weeks.length; w++) {
-        const days = weeks[w].contributionDays;
-        if (days.length === 0)
-            continue;
-        const month = new Date(days[0].date).getMonth();
-        if (month !== lastMonth) {
-            monthLabels.push({
-                label: MONTH_NAMES[month],
-                x: gridX + w * STEP,
-            });
-            lastMonth = month;
-        }
-    }
-    const svg = (jsx_factory_h(Fragment, null,
-        monthLabels.map((m) => (jsx_factory_h("text", { x: m.x, y: y + 11, className: "t t-value" }, svg_utils_escapeXml(m.label)))),
-        DAY_LABELS.map((label, d) => label ? (jsx_factory_h("text", { x: padX, y: gridY + d * STEP + CELL_SIZE - 1, className: "t t-value" }, svg_utils_escapeXml(label))) : ("")),
-        weeks.map((week, w) => week.contributionDays.map((day, d) => (jsx_factory_h("rect", { x: gridX + w * STEP, y: gridY + d * STEP, width: CELL_SIZE, height: CELL_SIZE, rx: "2", fill: day.color || theme_THEME.cardBg }))))));
-    const height = MONTH_LABEL_HEIGHT + 7 * STEP;
-    return { svg, height };
-}
-void Fragment;
-
-;// CONCATENATED MODULE: ./src/components/contribution-cards.tsx
-
-
-
-function renderContributionCards(highlights, y) {
-    const { padX } = theme_LAYOUT;
-    const cardW = 760;
-    const cardH = 44;
-    const gap = 8;
-    const svg = (jsx_factory_h(Fragment, null, highlights.map((hl, i) => {
-        const cy = y + i * (cardH + gap);
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        return (jsx_factory_h(Fragment, null,
-            jsx_factory_h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: theme_THEME.cardBg, stroke: theme_THEME.border, "stroke-width": "1" }),
-            jsx_factory_h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
-            jsx_factory_h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, svg_utils_escapeXml(truncate(hl.project, 40))),
-            jsx_factory_h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, svg_utils_escapeXml(truncate(hl.detail, 80)))));
-    })));
-    return {
-        svg,
-        height: highlights.length * (cardH + gap) - (highlights.length > 0 ? gap : 0),
-    };
-}
-
-;// CONCATENATED MODULE: ./src/components/donut-chart.tsx
-
-
-
-function renderDonutChart(items, y) {
-    const { padX } = theme_LAYOUT;
-    const cx = padX + 90;
-    const cy = y + 90;
-    const r = 70;
-    const strokeW = 28;
-    const circumference = 2 * Math.PI * r;
-    let offset = 0;
-    const segments = items.map((item, i) => {
-        const pct = parseFloat(item.percent) / 100;
-        const dash = pct * circumference;
-        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        const seg = (jsx_factory_h("circle", { cx: cx, cy: cy, r: r, fill: "none", stroke: color, "stroke-width": strokeW, "stroke-dasharray": `${dash} ${circumference - dash}`, "stroke-dashoffset": -offset, transform: `rotate(-90 ${cx} ${cy})`, opacity: "0.85" }));
-        offset += dash;
-        return seg;
+    // Radar chart dimensions
+    const radarCx = padX + 120;
+    const radarCy = y + 120;
+    const radarR = 90;
+    const maxVal = Math.max(...rhythm.dayTotals, 1);
+    // Guide circles
+    const guides = [0.25, 0.5, 0.75, 1.0];
+    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" })));
+    // Spoke lines
+    const spokesSvg = DAY_NAMES.map((_, i) => {
+        const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
+        const x2 = radarCx + radarR * Math.cos(angle);
+        const y2 = radarCy + radarR * Math.sin(angle);
+        return (jsx_factory_h("line", { x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }));
     });
-    const legendX = padX + 220;
-    const legendItemH = 24;
-    const legend = items.map((item, i) => {
-        const ly = y + 10 + i * legendItemH;
-        const color = item.color || BAR_COLORS[i % BAR_COLORS.length];
-        return (jsx_factory_h(Fragment, null,
-            jsx_factory_h("rect", { x: legendX, y: ly, width: "12", height: "12", rx: "2", fill: color, opacity: "0.85" }),
-            jsx_factory_h("text", { x: legendX + 20, y: ly + 10, className: "t t-label" }, svg_utils_escapeXml(item.name)),
-            jsx_factory_h("text", { x: legendX + 200, y: ly + 10, className: "t t-value", "text-anchor": "end" },
-                item.percent,
-                "%")));
+    // Day labels
+    const labelsSvg = DAY_NAMES.map((name, i) => {
+        const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
+        const labelR = radarR + 16;
+        const lx = radarCx + labelR * Math.cos(angle);
+        const ly = radarCy + labelR * Math.sin(angle) + 4;
+        return (jsx_factory_h("text", { x: lx, y: ly, className: "t t-value", "text-anchor": "middle" }, svg_utils_escapeXml(name)));
     });
-    const height = Math.max(180, items.length * legendItemH + 20);
-    const svg = (jsx_factory_h(Fragment, null,
-        segments.join(""),
-        jsx_factory_h("text", { x: cx, y: cy + 5, className: "t", fill: theme_THEME.text, "font-size": "14", "font-weight": "700", "text-anchor": "middle" }, String(items.length)),
-        jsx_factory_h("text", { x: cx, y: cy + 20, className: "t", fill: theme_THEME.muted, "font-size": "10", "text-anchor": "middle" }, "languages"),
-        legend.join("")));
-    return { svg, height };
-}
-
-;// CONCATENATED MODULE: ./src/components/project-cards.tsx
-
-
-
-function renderProjectCards(projects, y) {
-    const { padX } = theme_LAYOUT;
-    const cardW = 760;
-    const gap = 10;
-    let svg = "";
-    let totalHeight = 0;
-    for (let i = 0; i < projects.length; i++) {
-        const cy = y + totalHeight;
-        const color = BAR_COLORS[i % BAR_COLORS.length];
-        const p = projects[i];
-        const desc = truncate(p.description, 90);
-        let innerH = 20;
-        if (desc)
-            innerH += 16;
-        const cardH = Math.max(innerH + 16, 44);
-        // Card background + accent bar
-        svg += (jsx_factory_h(Fragment, null,
-            jsx_factory_h("rect", { x: padX, y: cy, width: cardW, height: cardH, rx: "6", fill: theme_THEME.cardBg, stroke: theme_THEME.border, "stroke-width": "1" }),
-            jsx_factory_h("rect", { x: padX, y: cy, width: "4", height: cardH, rx: "2", fill: color }),
-            jsx_factory_h("text", { x: padX + 16, y: cy + 18, className: "t t-card-title" }, svg_utils_escapeXml(truncate(p.name, 40))),
-            jsx_factory_h("text", { x: padX + cardW - 16, y: cy + 18, className: "t t-value", "text-anchor": "end" }, `\u2605 ${p.stars.toLocaleString()}`)));
-        if (desc) {
-            svg += (jsx_factory_h("text", { x: padX + 16, y: cy + 34, className: "t t-card-detail" }, svg_utils_escapeXml(desc)));
-        }
-        totalHeight += cardH + gap;
-    }
-    return { svg, height: totalHeight > 0 ? totalHeight - gap : 0 };
-}
-
-;// CONCATENATED MODULE: ./src/components/stat-cards.tsx
-
-
-
-function renderStatCards(stats, y) {
-    const { padX } = theme_LAYOUT;
-    const cardW = 140;
-    const cardH = 72;
-    const gap = 15;
-    const colors = [
+    // Data polygon
+    const points = rhythm.dayTotals
+        .map((val, i) => {
+        const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
+        const r = (val / maxVal) * radarR;
+        const px = radarCx + r * Math.cos(angle);
+        const py = radarCy + r * Math.sin(angle);
+        return `${px},${py}`;
+    })
+        .join(" ");
+    // Find most active day
+    const maxDayIndex = rhythm.dayTotals.indexOf(Math.max(...rhythm.dayTotals));
+    const mostActiveDay = DAY_NAMES[maxDayIndex];
+    // Stats section (right side)
+    const statsX = padX + 300;
+    const statsStartY = y + 30;
+    const statColors = [
         BAR_COLORS[0],
         BAR_COLORS[1],
         BAR_COLORS[2],
         BAR_COLORS[4],
         BAR_COLORS[5],
     ];
-    const svg = (jsx_factory_h(Fragment, null, stats.map((stat, i) => {
-        const cx = padX + i * (cardW + gap);
-        const color = colors[i % colors.length];
+    const statsSvg = rhythm.stats.map((stat, i) => {
+        const sy = statsStartY + i * 42;
+        const color = statColors[i % statColors.length];
         return (jsx_factory_h(Fragment, null,
-            jsx_factory_h("rect", { x: cx, y: y, width: cardW, height: cardH, rx: "8", fill: theme_THEME.cardBg, stroke: theme_THEME.border, "stroke-width": "1" }),
-            jsx_factory_h("circle", { cx: cx + 14, cy: y + 16, r: "4", fill: color }),
-            jsx_factory_h("text", { x: cx + 24, y: y + 20, className: "t t-stat-label" }, svg_utils_escapeXml(stat.label)),
-            jsx_factory_h("text", { x: cx + cardW / 2, y: y + 52, fill: color, className: "t t-stat-value", "text-anchor": "middle" }, svg_utils_escapeXml(String(stat.value)))));
-    })));
-    return { svg, height: cardH };
+            jsx_factory_h("text", { x: statsX, y: sy, className: "t t-stat-label" }, svg_utils_escapeXml(stat.label)),
+            jsx_factory_h("text", { x: statsX, y: sy + 22, fill: color, className: "t t-stat-value" }, svg_utils_escapeXml(stat.value))));
+    });
+    // Most active day callout
+    const calloutY = statsStartY + rhythm.stats.length * 42 + 10;
+    const height = 250;
+    const svg = (jsx_factory_h(Fragment, null,
+        guidesSvg.join(""),
+        spokesSvg.join(""),
+        jsx_factory_h("polygon", { points: points, fill: BAR_COLORS[0], "fill-opacity": "0.2", stroke: BAR_COLORS[0], "stroke-width": "2", "stroke-opacity": "0.8", className: "fade-2", style: `transform-origin: ${radarCx}px ${radarCy}px` }),
+        rhythm.dayTotals.map((val, i) => {
+            const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
+            const r = (val / maxVal) * radarR;
+            const px = radarCx + r * Math.cos(angle);
+            const py = radarCy + r * Math.sin(angle);
+            return (jsx_factory_h("circle", { cx: px, cy: py, r: "3", fill: BAR_COLORS[0], className: `fade-${Math.min(i + 1, 6)}` }));
+        }),
+        labelsSvg.join(""),
+        statsSvg.join(""),
+        jsx_factory_h("text", { x: statsX, y: calloutY, className: "t t-sub" }, `Most active: ${svg_utils_escapeXml(mostActiveDay)}s`)));
+    return { svg, height };
 }
+void Fragment;
 
-;// CONCATENATED MODULE: ./src/components/tech-highlights.tsx
+;// CONCATENATED MODULE: ./src/components/impact-trail.tsx
 
 
 
-function renderTechHighlights(highlights, y) {
-    if (highlights.length === 0)
+function renderImpactTrail(repos, y) {
+    if (repos.length === 0)
         return { svg: "", height: 0 };
-    const { padX, barHeight, barMaxWidth } = theme_LAYOUT;
-    const labelMaxChars = 60;
-    const skillMaxChars = 120;
-    const skillLineHeight = 16;
-    const labelLineHeight = 26;
-    const scoreX = padX + barMaxWidth + 10;
-    const skillY = 16;
-    const rowGap = 14;
+    const { padX } = theme_LAYOUT;
+    const rowHeight = 36;
+    const nameWidth = 280;
+    const barMaxWidth = 400;
+    const gap = 6;
+    // Sort by stars (impact proxy)
+    const sorted = [...repos].sort((a, b) => b.stargazerCount - a.stargazerCount);
+    const maxStars = Math.max(sorted[0]?.stargazerCount || 1, 1);
+    const maxLog = Math.log2(maxStars + 1);
     let svg = "";
-    let height = 0;
-    for (let hi = 0; hi < highlights.length; hi++) {
-        const group = highlights[hi];
-        const color = BAR_COLORS[hi % BAR_COLORS.length];
-        const score = Math.max(0, Math.min(100, group.score));
-        const fillWidth = (score / 100) * barMaxWidth;
-        const baseY = y + height;
-        // Category label (uppercase, left-aligned, on its own line)
-        svg += (jsx_factory_h("text", { x: padX, y: baseY + 14, className: "t t-subhdr" }, svg_utils_escapeXml(truncate(group.category.toUpperCase(), labelMaxChars))));
-        // Bar track (full width, low opacity)
-        svg += (jsx_factory_h("rect", { x: padX, y: baseY + labelLineHeight, width: barMaxWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.15" }));
-        // Bar fill (proportional to score)
-        if (fillWidth > 0) {
-            svg += (jsx_factory_h("rect", { x: padX, y: baseY + labelLineHeight, width: fillWidth, height: barHeight, rx: 4, fill: color, "fill-opacity": "0.85" }));
-        }
-        // Score label (right of bar)
-        svg += (jsx_factory_h("text", { x: scoreX, y: baseY + labelLineHeight + barHeight / 2 + 4, className: "t t-value" }, `${score}%`));
-        // Skill items text (below bar, muted, wrapped to avoid overflow)
-        const skillText = group.items
-            .map((item) => truncate(item, 30))
-            .join(" \u00B7 ");
-        const skillLines = wrapText(skillText, skillMaxChars);
-        for (let li = 0; li < skillLines.length; li++) {
-            svg += (jsx_factory_h("text", { x: padX, y: baseY + labelLineHeight + barHeight + skillY + li * skillLineHeight, className: "t t-card-detail" }, svg_utils_escapeXml(skillLines[li])));
-        }
-        height +=
-            labelLineHeight +
-                barHeight +
-                skillY +
-                (skillLines.length - 1) * skillLineHeight +
-                rowGap;
+    for (let i = 0; i < sorted.length; i++) {
+        const repo = sorted[i];
+        const ry = y + i * (rowHeight + gap);
+        const color = BAR_COLORS[i % BAR_COLORS.length];
+        const delay = Math.min(i + 1, 6);
+        // Bar width proportional to log(stars)
+        const logStars = Math.log2(repo.stargazerCount + 1);
+        const barWidth = Math.max(4, (logStars / maxLog) * barMaxWidth);
+        // Language dot
+        const langName = repo.primaryLanguage?.name || "";
+        svg += (jsx_factory_h(Fragment, null,
+            jsx_factory_h("text", { x: padX, y: ry + rowHeight / 2 + 4, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(repo.nameWithOwner, 38))),
+            jsx_factory_h("rect", { x: padX + nameWidth, y: ry + rowHeight / 2 - 6, width: barWidth, height: "12", rx: "3", fill: color, "fill-opacity": "0.7", className: `fade-${delay}` }),
+            jsx_factory_h("text", { x: padX + nameWidth + barMaxWidth + 16, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, `\u2605 ${repo.stargazerCount.toLocaleString()}`),
+            langName ? (jsx_factory_h("text", { x: padX + nameWidth + barMaxWidth + 80, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, svg_utils_escapeXml(langName))) : ("")));
     }
+    const totalHeight = sorted.length * (rowHeight + gap) - gap;
+    return { svg, height: totalHeight };
+}
+void Fragment;
+
+;// CONCATENATED MODULE: ./src/components/language-velocity.tsx
+
+
+
+function renderLanguageVelocity(velocity, y) {
+    if (velocity.length === 0)
+        return { svg: "", height: 0 };
+    const { padX } = theme_LAYOUT;
+    const chartWidth = 760;
+    const chartHeight = 140;
+    const labelHeight = 20;
+    const totalHeight = chartHeight + labelHeight;
+    // Collect all unique languages across all months
+    const langSet = new Map();
+    for (const bucket of velocity) {
+        for (const lang of bucket.languages) {
+            if (!langSet.has(lang.name)) {
+                langSet.set(lang.name, lang.color);
+            }
+        }
+    }
+    // Get top languages by total commits
+    const langTotals = new Map();
+    for (const bucket of velocity) {
+        for (const lang of bucket.languages) {
+            langTotals.set(lang.name, (langTotals.get(lang.name) || 0) + lang.commits);
+        }
+    }
+    const topLangs = [...langTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([name]) => name);
+    // Compute max total per month for scaling
+    const monthTotals = velocity.map((bucket) => bucket.languages
+        .filter((l) => topLangs.includes(l.name))
+        .reduce((sum, l) => sum + l.commits, 0));
+    const maxTotal = Math.max(...monthTotals, 1);
+    // Build stacked area data
+    const stepX = chartWidth / Math.max(velocity.length - 1, 1);
+    const paths = [];
+    // For each language, build a path from bottom of its stack to top
+    for (let li = topLangs.length - 1; li >= 0; li--) {
+        const langName = topLangs[li];
+        const color = langSet.get(langName) || "#8b949e";
+        // Compute cumulative values for this language
+        const upperPoints = [];
+        const lowerPoints = [];
+        for (let mi = 0; mi < velocity.length; mi++) {
+            const bucket = velocity[mi];
+            const x = padX + mi * stepX;
+            // Sum commits for all languages below this one (for stacking)
+            let below = 0;
+            let current = 0;
+            for (let k = 0; k < topLangs.length; k++) {
+                const langCommits = bucket.languages.find((l) => l.name === topLangs[k])?.commits || 0;
+                if (k < li)
+                    below += langCommits;
+                if (k === li)
+                    current = langCommits;
+            }
+            const bottomY = y + chartHeight - (below / maxTotal) * chartHeight;
+            const topY = y + chartHeight - ((below + current) / maxTotal) * chartHeight;
+            lowerPoints.push({ x, y: bottomY });
+            upperPoints.push({ x, y: topY });
+        }
+        // Build smooth path using the points
+        if (upperPoints.length < 2)
+            continue;
+        let d = `M ${upperPoints[0].x},${upperPoints[0].y}`;
+        // Upper edge (left to right) with smooth curves
+        for (let i = 1; i < upperPoints.length; i++) {
+            const prev = upperPoints[i - 1];
+            const curr = upperPoints[i];
+            const cpx = (prev.x + curr.x) / 2;
+            d += ` C ${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`;
+        }
+        // Lower edge (right to left) with smooth curves
+        d += ` L ${lowerPoints[lowerPoints.length - 1].x},${lowerPoints[lowerPoints.length - 1].y}`;
+        for (let i = lowerPoints.length - 2; i >= 0; i--) {
+            const prev = lowerPoints[i + 1];
+            const curr = lowerPoints[i];
+            const cpx = (prev.x + curr.x) / 2;
+            d += ` C ${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`;
+        }
+        d += " Z";
+        paths.push({ path: d, color, name: langName });
+    }
+    // Month labels
+    const monthLabels = velocity
+        .filter((_, i) => i % Math.max(1, Math.floor(velocity.length / 6)) === 0)
+        .map((bucket, i, filtered) => {
+        const originalIndex = velocity.indexOf(bucket);
+        const x = padX + originalIndex * stepX;
+        const monthName = new Date(`${bucket.month}-01`).toLocaleDateString("en", { month: "short" });
+        return { x, label: monthName };
+    });
+    const svg = (jsx_factory_h(Fragment, null,
+        paths.map((p, i) => (jsx_factory_h("path", { d: p.path, fill: p.color, "fill-opacity": "0.75", className: `fade-${Math.min(i + 1, 6)}` }))),
+        (() => {
+            let legendX = padX;
+            return topLangs.map((name, i) => {
+                const color = langSet.get(name) || "#8b949e";
+                const x = legendX;
+                legendX += name.length * 7 + 28;
+                return (jsx_factory_h(Fragment, null,
+                    jsx_factory_h("rect", { x: x, y: y + chartHeight + 6, width: "8", height: "8", rx: "2", fill: color, opacity: "0.85" }),
+                    jsx_factory_h("text", { x: x + 12, y: y + chartHeight + 14, className: "t t-value" }, svg_utils_escapeXml(name))));
+            });
+        })(),
+        monthLabels.map((m) => (jsx_factory_h("text", { x: m.x, y: y + chartHeight + 14, className: "t t-value", "text-anchor": "start", opacity: "0" }, svg_utils_escapeXml(m.label))))));
+    return { svg, height: totalHeight };
+}
+void Fragment;
+
+;// CONCATENATED MODULE: ./src/components/project-constellation.tsx
+
+
+
+function renderProjectConstellation(nodes, y) {
+    if (nodes.length === 0)
+        return { svg: "", height: 0 };
+    const { padX } = theme_LAYOUT;
+    const height = 380;
+    // Draw connection lines first (behind nodes)
+    const drawnConnections = new Set();
+    const connectionsSvg = nodes.flatMap((node, i) => node.connections
+        .filter((j) => {
+        const key = [Math.min(i, j), Math.max(i, j)].join("-");
+        if (drawnConnections.has(key))
+            return false;
+        drawnConnections.add(key);
+        return true;
+    })
+        .map((j) => {
+        const other = nodes[j];
+        return (jsx_factory_h("line", { x1: padX + node.x, y1: y + node.y, x2: padX + other.x, y2: y + other.y, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.15", "stroke-dasharray": "4 4" }));
+    }));
+    // Draw nodes
+    const nodesSvg = nodes.map((node, i) => {
+        const cx = padX + node.x;
+        const cy = y + node.y;
+        const delay = Math.min(i + 1, 6);
+        return (jsx_factory_h(Fragment, null,
+            jsx_factory_h("circle", { cx: cx, cy: cy, r: node.radius + 4, fill: node.color, "fill-opacity": "0.08", className: `fade-${delay}` }),
+            jsx_factory_h("circle", { cx: cx, cy: cy, r: node.radius, fill: node.color, "fill-opacity": "0.7", stroke: node.color, "stroke-width": "1.5", "stroke-opacity": "0.9", className: `fade-${delay}` }),
+            jsx_factory_h("text", { x: cx, y: cy + node.radius + 14, className: `t t-value fade-${delay}`, "text-anchor": "middle" }, svg_utils_escapeXml(truncate(node.name, 18)))));
+    });
+    // Group labels at the bottom showing language ecosystem clusters
+    const langGroups = new Map();
+    for (const node of nodes) {
+        const lang = node.color; // Use color as key since we don't have lang name in ConstellationNode
+        if (!langGroups.has(lang)) {
+            langGroups.set(lang, { color: lang, minX: node.x, maxX: node.x });
+        }
+        else {
+            const group = langGroups.get(lang);
+            group.minX = Math.min(group.minX, node.x);
+            group.maxX = Math.max(group.maxX, node.x);
+        }
+    }
+    const svg = (jsx_factory_h(Fragment, null,
+        connectionsSvg.join(""),
+        nodesSvg.join("")));
     return { svg, height };
 }
 void Fragment;
@@ -42609,11 +42560,9 @@ for (const parser of PARSERS) {
         PARSER_MAP.set(filename, parser);
     }
 }
-const parseManifest = (filename, text) => PARSER_MAP.get(filename)?.parseDependencies(text) ?? [];
+const parsers_parseManifest = (filename, text) => PARSER_MAP.get(filename)?.parseDependencies(text) ?? [];
 
 ;// CONCATENATED MODULE: ./src/metrics.ts
-
-
 
 
 
@@ -42623,12 +42572,10 @@ const parseManifest = (filename, text) => PARSER_MAP.get(filename)?.parseDepende
 const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
 // ── Section keys ────────────────────────────────────────────────────────────
 const SECTION_KEYS = {
-    pulse: "metrics-pulse.svg",
-    languages: "metrics-languages.svg",
-    expertise: "metrics-expertise.svg",
-    projects: "metrics-complexity.svg",
-    contributions: "metrics-contributions.svg",
-    calendar: "metrics-calendar.svg",
+    velocity: "metrics-velocity.svg",
+    rhythm: "metrics-rhythm.svg",
+    constellation: "metrics-constellation.svg",
+    impact: "metrics-impact.svg",
 };
 // ── Aggregation ─────────────────────────────────────────────────────────────
 const aggregateLanguages = (repos) => {
@@ -42800,89 +42747,234 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
         .map(toProjectItemWithSummary);
     return { active, maintained, inactive, archived };
 };
-// ── Section definitions ─────────────────────────────────────────────────────
-const buildSections = ({ languages, techHighlights, projects, contributionData, }) => {
-    const sections = [];
-    // 1. At a Glance
-    sections.push({
-        filename: "metrics-pulse.svg",
-        title: "At a Glance",
-        subtitle: "Contribution activity over the past year",
-        renderBody: (y) => {
-            const stats = [
-                {
-                    label: "COMMITS",
-                    value: contributionData.contributions.totalCommitContributions.toLocaleString(),
-                },
-                {
-                    label: "PRS",
-                    value: contributionData.contributions.totalPullRequestContributions.toLocaleString(),
-                },
-                {
-                    label: "REVIEWS",
-                    value: contributionData.contributions.totalPullRequestReviewContributions.toLocaleString(),
-                },
-                {
-                    label: "REPOS",
-                    value: contributionData.contributions.totalRepositoriesWithContributedCommits.toLocaleString(),
-                },
-            ];
-            return renderStatCards(stats, y);
+// ── Language Velocity ────────────────────────────────────────────────────────
+const computeLanguageVelocity = (contributionData, repos) => {
+    // Build a map of repo name → primary language + color
+    const repoLangMap = new Map();
+    for (const repo of repos) {
+        if (repo.primaryLanguage) {
+            repoLangMap.set(repo.name, {
+                name: repo.primaryLanguage.name,
+                color: repo.primaryLanguage.color,
+            });
+        }
+    }
+    // Build monthly commit counts per language from commitContributionsByRepository
+    const monthlyMap = new Map();
+    // Use contribution calendar to get month boundaries
+    const calendar = contributionData.contributionCalendar;
+    if (!calendar)
+        return [];
+    // Get the date range from the calendar
+    const allDays = calendar.weeks.flatMap((w) => w.contributionDays);
+    if (allDays.length === 0)
+        return [];
+    // Create 12 monthly buckets from the calendar date range
+    const firstDate = new Date(allDays[0].date);
+    const lastDate = new Date(allDays[allDays.length - 1].date);
+    // Initialize month keys
+    const months = [];
+    const d = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    while (d <= lastDate) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        months.push(key);
+        monthlyMap.set(key, new Map());
+        d.setMonth(d.getMonth() + 1);
+    }
+    // Distribute commit contributions across months proportionally
+    // Since we only have yearly totals per repo, distribute evenly across months
+    // where the repo had activity (based on pushedAt date)
+    for (const entry of contributionData.commitContributionsByRepository || []) {
+        const repoName = entry.repository.name;
+        const lang = repoLangMap.get(repoName);
+        if (!lang)
+            continue;
+        const totalCommits = entry.contributions.totalCount;
+        if (totalCommits === 0)
+            continue;
+        // Find the repo to get its pushed date for activity approximation
+        const repo = repos.find((r) => r.name === repoName);
+        if (!repo)
+            continue;
+        // Distribute commits across all months (simple even distribution)
+        const commitsPerMonth = totalCommits / months.length;
+        for (const monthKey of months) {
+            const langMap = monthlyMap.get(monthKey);
+            if (!langMap)
+                continue;
+            const existing = langMap.get(lang.name);
+            if (existing) {
+                existing.commits += commitsPerMonth;
+            }
+            else {
+                langMap.set(lang.name, { commits: commitsPerMonth, color: lang.color });
+            }
+        }
+    }
+    // Convert to output format
+    return months.map((month) => {
+        const langMap = monthlyMap.get(month) || new Map();
+        const languages = [...langMap.entries()]
+            .map(([name, data]) => ({
+            name,
+            commits: Math.round(data.commits),
+            color: data.color,
+        }))
+            .sort((a, b) => b.commits - a.commits);
+        return { month, languages };
+    });
+};
+// ── Contribution Rhythm ─────────────────────────────────────────────────────
+const computeContributionRhythm = (contributionData) => {
+    const dayTotals = [
+        0, 0, 0, 0, 0, 0, 0,
+    ];
+    const calendar = contributionData.contributionCalendar;
+    let longestStreak = 0;
+    let currentStreak = 0;
+    if (calendar) {
+        for (const week of calendar.weeks) {
+            for (const day of week.contributionDays) {
+                const dayOfWeek = new Date(day.date).getDay();
+                dayTotals[dayOfWeek] += day.contributionCount;
+                if (day.contributionCount > 0) {
+                    currentStreak++;
+                    longestStreak = Math.max(longestStreak, currentStreak);
+                }
+                else {
+                    currentStreak = 0;
+                }
+            }
+        }
+    }
+    const { contributions } = contributionData;
+    const stats = [
+        {
+            label: "COMMITS",
+            value: contributions.totalCommitContributions.toLocaleString(),
         },
+        {
+            label: "PRS",
+            value: contributions.totalPullRequestContributions.toLocaleString(),
+        },
+        {
+            label: "REVIEWS",
+            value: contributions.totalPullRequestReviewContributions.toLocaleString(),
+        },
+        {
+            label: "REPOS",
+            value: contributions.totalRepositoriesWithContributedCommits.toLocaleString(),
+        },
+        { label: "STREAK", value: `${longestStreak}d` },
+    ];
+    return { dayTotals, longestStreak, stats };
+};
+// ── Project Constellation ───────────────────────────────────────────────────
+const computeConstellationLayout = (projects, repos) => {
+    if (projects.length === 0)
+        return [];
+    const chartWidth = 760;
+    const chartHeight = 340;
+    const padX = 40;
+    const padY = 30;
+    // Build repo lookup for disk usage
+    const repoMap = new Map();
+    for (const repo of repos) {
+        repoMap.set(repo.name, repo);
+    }
+    // Group projects by primary language
+    const langGroups = new Map();
+    for (let i = 0; i < projects.length; i++) {
+        const p = projects[i];
+        const lang = p.languages?.[0] || "Other";
+        if (!langGroups.has(lang))
+            langGroups.set(lang, []);
+        langGroups.get(lang).push(i);
+    }
+    const langKeys = [...langGroups.keys()].sort();
+    const bandWidth = (chartWidth - 2 * padX) / Math.max(langKeys.length, 1);
+    // Compute complexity range for y-axis normalization
+    const complexities = projects.map((p) => {
+        const repo = repoMap.get(p.name);
+        return repo ? complexityScore(repo) : 0;
     });
-    // 2. Languages
-    sections.push({
-        filename: "metrics-languages.svg",
-        title: "Languages",
-        subtitle: "By bytes of code across all public repos",
-        renderBody: (y) => renderDonutChart(languages, y),
+    const minC = Math.min(...complexities);
+    const maxC = Math.max(...complexities);
+    const rangeC = maxC - minC || 1;
+    const nodes = projects.map((p, i) => {
+        const lang = p.languages?.[0] || "Other";
+        const bandIndex = langKeys.indexOf(lang);
+        const groupIndices = langGroups.get(lang) || [];
+        const indexInGroup = groupIndices.indexOf(i);
+        // X: center of language band with jitter
+        const bandCenter = padX + bandIndex * bandWidth + bandWidth / 2;
+        const jitter = groupIndices.length > 1
+            ? ((indexInGroup - (groupIndices.length - 1) / 2) * bandWidth * 0.4) /
+                Math.max(groupIndices.length - 1, 1)
+            : 0;
+        const x = Math.max(padX, Math.min(chartWidth - padX, bandCenter + jitter));
+        // Y: complexity score (inverted so higher complexity = higher on chart)
+        const normC = (complexities[i] - minC) / rangeC;
+        const y = padY + (1 - normC) * (chartHeight - 2 * padY);
+        // Radius: based on disk usage
+        const repo = repoMap.get(p.name);
+        const diskKb = repo?.diskUsage || 100;
+        const radius = Math.max(6, Math.min(22, 3 + Math.log2(diskKb / 100) * 3));
+        // Color: primary language color
+        const color = repo?.primaryLanguage?.color || "#8b949e";
+        return { name: p.name, url: p.url, x, y, radius, color, connections: [] };
     });
-    // 3. Expertise
-    if (techHighlights.length > 0) {
+    // Connect projects that share 2+ languages
+    for (let i = 0; i < projects.length; i++) {
+        for (let j = i + 1; j < projects.length; j++) {
+            const langsA = new Set(projects[i].languages || []);
+            const langsB = projects[j].languages || [];
+            const shared = langsB.filter((l) => langsA.has(l)).length;
+            if (shared >= 2) {
+                nodes[i].connections.push(j);
+                nodes[j].connections.push(i);
+            }
+        }
+    }
+    return nodes;
+};
+// ── Section definitions ─────────────────────────────────────────────────────
+const buildSections = ({ velocity, rhythm, constellation, projects, contributionData, }) => {
+    const sections = [];
+    // 1. Language Velocity
+    if (velocity.length > 0) {
         sections.push({
-            filename: "metrics-expertise.svg",
-            title: "Expertise",
-            subtitle: "Curated from dependencies, topics, and languages via AI analysis",
-            renderBody: (y) => renderTechHighlights(techHighlights, y),
+            filename: "metrics-velocity.svg",
+            title: "Language Velocity",
+            subtitle: "How language usage has evolved over the past year",
+            renderBody: (y) => renderLanguageVelocity(velocity, y),
         });
     }
-    // 4. Signature Projects
+    // 2. Contribution Rhythm
     sections.push({
-        filename: "metrics-complexity.svg",
-        title: "Signature Projects",
-        subtitle: "Top projects by technical complexity",
-        renderBody: (y) => renderProjectCards(projects, y),
+        filename: "metrics-rhythm.svg",
+        title: "Contribution Rhythm",
+        subtitle: "Activity patterns and statistics over the past year",
+        renderBody: (y) => renderContributionRhythm(rhythm, y),
     });
-    // 5. Contribution Calendar
-    if (contributionData.contributionCalendar) {
-        const calendarData = contributionData.contributionCalendar;
+    // 3. Project Constellation
+    if (constellation.length > 0) {
         sections.push({
-            filename: "metrics-calendar.svg",
-            title: "Contribution Calendar",
-            subtitle: `${calendarData.totalContributions.toLocaleString()} contributions in the last year`,
-            renderBody: (y) => renderContributionCalendar(calendarData, y),
+            filename: "metrics-constellation.svg",
+            title: "Project Constellation",
+            subtitle: "Projects mapped by language ecosystem and complexity",
+            renderBody: (y) => renderProjectConstellation(constellation, y),
         });
     }
-    // 6. Open Source Contributions
+    // 4. Impact Trail
     if (contributionData.externalRepos.nodes.length > 0) {
         sections.push({
-            filename: "metrics-contributions.svg",
-            title: "Open Source Contributions",
-            subtitle: "External repositories contributed to (all time)",
+            filename: "metrics-impact.svg",
+            title: "Open Source Impact",
+            subtitle: "External repositories contributed to",
             renderBody: (y) => {
-                const repos = contributionData.externalRepos.nodes.slice(0, 5);
-                const highlights = repos.map((r) => ({
-                    project: r.nameWithOwner,
-                    detail: [
-                        r.stargazerCount > 0
-                            ? `\u2605 ${r.stargazerCount.toLocaleString()}`
-                            : null,
-                        r.primaryLanguage?.name,
-                    ]
-                        .filter(Boolean)
-                        .join(" \u00b7 "),
-                }));
-                return renderContributionCards(highlights, y);
+                const repos = contributionData.externalRepos.nodes.slice(0, 8);
+                return renderImpactTrail(repos, y);
             },
         });
     }
@@ -43069,20 +43161,24 @@ function modernTemplate(ctx) {
     const archivedSection = renderProjectSection("Archived", ctx.archivedProjects);
     if (archivedSection)
         parts.push(archivedSection);
-    // GitHub Stats section: pulse + calendar
-    const statsImages = [];
-    if (ctx.sectionSvgs.pulse) {
-        statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+    // Constellation
+    if (ctx.sectionSvgs.constellation) {
+        parts.push(`## Project Map\n\n![Project Constellation](${ctx.sectionSvgs.constellation})`);
     }
-    if (ctx.sectionSvgs.calendar) {
-        statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+    // GitHub Stats section: rhythm + velocity
+    const statsImages = [];
+    if (ctx.sectionSvgs.velocity) {
+        statsImages.push(`![Language Velocity](${ctx.sectionSvgs.velocity})`);
+    }
+    if (ctx.sectionSvgs.rhythm) {
+        statsImages.push(`![Contribution Rhythm](${ctx.sectionSvgs.rhythm})`);
     }
     if (statsImages.length > 0) {
         parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
     }
-    // Other areas of interest: expertise
-    if (ctx.sectionSvgs.expertise) {
-        parts.push(`## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`);
+    // Impact
+    if (ctx.sectionSvgs.impact) {
+        parts.push(`## Open Source Impact\n\n![Impact Trail](${ctx.sectionSvgs.impact})`);
     }
     parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
@@ -43144,20 +43240,24 @@ function ecosystemTemplate(ctx) {
     if (ctx.archivedProjects.length > 0) {
         parts.push(renderProjectTable("Archived", ctx.archivedProjects));
     }
-    // GitHub Stats section: pulse + calendar
-    const statsImages = [];
-    if (ctx.sectionSvgs.pulse) {
-        statsImages.push(`![At a Glance](${ctx.sectionSvgs.pulse})`);
+    // Constellation
+    if (ctx.sectionSvgs.constellation) {
+        parts.push(`## Project Map\n\n![Project Constellation](${ctx.sectionSvgs.constellation})`);
     }
-    if (ctx.sectionSvgs.calendar) {
-        statsImages.push(`![Contributions](${ctx.sectionSvgs.calendar})`);
+    // GitHub Stats section: velocity + rhythm
+    const statsImages = [];
+    if (ctx.sectionSvgs.velocity) {
+        statsImages.push(`![Language Velocity](${ctx.sectionSvgs.velocity})`);
+    }
+    if (ctx.sectionSvgs.rhythm) {
+        statsImages.push(`![Contribution Rhythm](${ctx.sectionSvgs.rhythm})`);
     }
     if (statsImages.length > 0) {
         parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
     }
-    // Other areas of interest: expertise
-    if (ctx.sectionSvgs.expertise) {
-        parts.push(`## Other Areas of Interest\n\n![Expertise](${ctx.sectionSvgs.expertise})`);
+    // Impact
+    if (ctx.sectionSvgs.impact) {
+        parts.push(`## Open Source Impact\n\n![Impact Trail](${ctx.sectionSvgs.impact})`);
     }
     parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
@@ -43225,46 +43325,36 @@ async function run() {
         core.info("Fetching repo data...");
         const repos = await fetchAllRepoData(graphql, username);
         core.info(`Found ${repos.length} public repos`);
-        core.info("Fetching dependency manifests...");
         core.info("Fetching contribution data...");
-        core.info("Fetching READMEs...");
         core.info("Fetching user profile...");
-        const [manifests, contributionData, readmeMap, userProfile] = await Promise.all([
-            fetchManifestsForRepos(graphql, username, repos),
+        const [contributionData, userProfile] = await Promise.all([
             fetchContributionData(graphql, username),
-            fetchReadmeForRepos(graphql, username, repos),
             fetchUserProfile(graphql, username),
         ]);
-        core.info(`Fetched manifests for ${manifests.size} repos`);
         core.info(`Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
-        core.info(`Fetched READMEs for ${readmeMap.size} repos`);
         core.info(`User profile: ${userProfile.name || username}`);
         // ── Transform ─────────────────────────────────────────────────────────
         const languages = aggregateLanguages(repos);
         const complexProjects = getTopProjectsByComplexity(repos);
         const projects = complexProjects.slice(0, 5);
-        const allDeps = collectAllDependencies(repos, manifests);
-        const allTopics = collectAllTopics(repos);
         core.info("Fetching project classifications from GitHub Models...");
         const classificationInputs = buildClassificationInputs(repos, contributionData);
-        const [aiClassifications, techHighlights] = await Promise.all([
-            fetchProjectClassifications(token, classificationInputs),
-            (async () => {
-                core.info("Fetching expertise analysis from GitHub Models...");
-                return fetchExpertiseAnalysis(token, languages, allDeps, allTopics, repos, readmeMap, userConfig);
-            })(),
-        ]);
+        const aiClassifications = await fetchProjectClassifications(token, classificationInputs);
         core.info(`Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`);
-        core.info(`Expertise analysis: ${techHighlights.length} categories`);
         const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+        // ── Compute new visualization data ───────────────────────────────────
+        const velocity = computeLanguageVelocity(contributionData, repos);
+        const rhythm = computeContributionRhythm(contributionData);
+        const constellation = computeConstellationLayout(complexProjects, repos);
         const sectionDefs = buildSections({
-            languages,
-            techHighlights,
+            velocity,
+            rhythm,
+            constellation,
             projects,
             contributionData,
         });
         // Filter sections by requested keys if specified
-        let activeSections = sectionDefs.filter((s) => s.renderBody || (s.items && s.items.length > 0));
+        let activeSections = sectionDefs.filter((s) => s.renderBody);
         if (requestedSections.length > 0) {
             const allowedFilenames = new Set(requestedSections.map((key) => SECTION_KEYS[key]).filter(Boolean));
             activeSections = activeSections.filter((s) => allowedFilenames.has(s.filename));
@@ -43272,7 +43362,9 @@ async function run() {
         // ── Render + Write ────────────────────────────────────────────────────
         (0,external_node_fs_namespaceObject.mkdirSync)(outputDir, { recursive: true });
         for (const section of activeSections) {
-            const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody || section.items || [], section.options || {});
+            if (!section.renderBody)
+                continue;
+            const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody);
             (0,external_node_fs_namespaceObject.writeFileSync)(`${outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
             core.info(`Wrote ${outputDir}/${section.filename}`);
         }
@@ -43290,7 +43382,6 @@ async function run() {
                     profile: userProfile,
                     userConfig,
                     languages,
-                    techHighlights,
                     activeProjects,
                     complexProjects,
                 });
@@ -43345,7 +43436,9 @@ async function run() {
                     allProjects: complexProjects,
                     categorizedProjects,
                     languages,
-                    techHighlights,
+                    velocity,
+                    rhythm,
+                    constellation,
                     contributionData,
                     socialBadges,
                     svgDir,
@@ -43401,7 +43494,9 @@ async function run() {
                         allProjects: complexProjects,
                         categorizedProjects,
                         languages,
-                        techHighlights,
+                        velocity,
+                        rhythm,
+                        constellation,
                         contributionData,
                         socialBadges,
                         svgDir: ".",

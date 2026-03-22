@@ -43,8 +43,6 @@ export interface SectionDef {
     title: string;
     subtitle: string;
     renderBody?: (y: number) => RenderResult;
-    items?: BarItem[];
-    options?: Record<string, unknown>;
 }
 export interface RepoLanguageEdge {
     size: number;
@@ -132,10 +130,27 @@ export interface PackageParser {
     /** Extract dependency names from file content */
     parseDependencies(text: string): string[];
 }
-export interface TechHighlight {
-    category: string;
-    items: string[];
-    score: number;
+export interface MonthlyLanguageBucket {
+    month: string;
+    languages: {
+        name: string;
+        commits: number;
+        color: string;
+    }[];
+}
+export interface ContributionRhythm {
+    dayTotals: [number, number, number, number, number, number, number];
+    longestStreak: number;
+    stats: StatItem[];
+}
+export interface ConstellationNode {
+    name: string;
+    url: string;
+    x: number;
+    y: number;
+    radius: number;
+    color: string;
+    connections: number[];
 }
 export interface UserConfig {
     title?: string;
@@ -201,7 +216,9 @@ export interface TemplateContext {
     allProjects: ProjectItem[];
     categorizedProjects: Record<string, ProjectItem[]>;
     languages: LanguageItem[];
-    techHighlights: TechHighlight[];
+    velocity: MonthlyLanguageBucket[];
+    rhythm: ContributionRhythm;
+    constellation: ConstellationNode[];
     contributionData: ContributionData;
     socialBadges: string;
     svgDir: string;
