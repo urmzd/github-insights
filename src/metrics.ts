@@ -440,7 +440,7 @@ export const computeConstellationLayout = (
     const p = projects[i];
     const lang = p.languages?.[0] || "Other";
     if (!langGroups.has(lang)) langGroups.set(lang, []);
-    langGroups.get(lang)!.push(i);
+    langGroups.get(lang)?.push(i);
   }
 
   const langKeys = [...langGroups.keys()].sort();
@@ -507,13 +507,11 @@ export const buildSections = ({
   velocity,
   rhythm,
   constellation,
-  projects,
   contributionData,
 }: {
   velocity: MonthlyLanguageBucket[];
   rhythm: ContributionRhythm;
   constellation: ConstellationNode[];
-  projects: ProjectItem[];
   contributionData: ContributionData;
 }): SectionDef[] => {
   const sections: SectionDef[] = [];
