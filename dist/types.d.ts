@@ -143,6 +143,11 @@ export interface ContributionRhythm {
     longestStreak: number;
     stats: StatItem[];
 }
+export interface GrowthArcPoint {
+    label: string;
+    avgComplexity: number;
+    repoCount: number;
+}
 export interface ConstellationNode {
     name: string;
     url: string;
