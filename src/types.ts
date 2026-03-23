@@ -166,6 +166,12 @@ export interface ContributionRhythm {
 
 // ── Project constellation ─────────────────────────────────────────────────
 
+export interface GrowthArcPoint {
+  label: string;
+  avgComplexity: number;
+  repoCount: number;
+}
+
 export interface ConstellationNode {
   name: string;
   url: string;
