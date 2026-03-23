@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.3.0 (2026-03-23)
+
+### Features
+
+- add visualization components and centralized types ([b770442](https://github.com/urmzd/github-insights/commit/b77044202eb1e366f4d0b84902de8bfa3854a135))
+
+### Documentation
+
+- add example visualization assets for metrics documentation ([9870e5c](https://github.com/urmzd/github-insights/commit/9870e5c76894511e73a0c2984185436f8f09555b))
+
+### Miscellaneous
+
+- **ci**: update githooks configuration ([683e0e2](https://github.com/urmzd/github-insights/commit/683e0e208f15b6431fc51d35781fb0694ae1f405))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v2.2.0...v2.3.0)
+
+
 ## 2.2.0 (2026-03-22)
 
 ### Features
