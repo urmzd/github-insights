@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.4.0 (2026-03-24)
+
+### Features
+
+- **templates**: add AI metadata, descriptive alt text, and section structure ([5c371b5](https://github.com/urmzd/github-insights/commit/5c371b52e8d1c29d001cc15e0dc715690d3657a9))
+
+### Documentation
+
+- **examples**: regenerate example documentation outputs ([6696f57](https://github.com/urmzd/github-insights/commit/6696f57a9088a325daff30b6a694f6631beb65a6))
+- **assets**: regenerate default visualization assets ([790231c](https://github.com/urmzd/github-insights/commit/790231c8c6fcdd07fe300443138d6f0cd96637aa))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v2.3.0...v2.4.0)
+
+
 ## 2.3.0 (2026-03-23)
 
 ### Features

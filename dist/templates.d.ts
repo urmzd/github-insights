@@ -1,4 +1,5 @@
 import type { TemplateFunction, TemplateName, UserProfile } from "./types.js";
+export declare function descriptiveAlt(label: string, name: string): string;
 export declare function extractFirstName(fullName: string): string;
 /** Escape special characters for shields.io badge labels (`-` → `--`, `_` → `__`). */
 export declare function shieldsBadgeLabel(text: string): string;
