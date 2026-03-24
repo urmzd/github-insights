@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeContributionData, makeUserProfile } from "./__fixtures__/repos.js";
 import {
   buildSocialBadges,
+  descriptiveAlt,
   extractFirstName,
   getTemplate,
   shieldsBadgeLabel,
@@ -219,9 +220,11 @@ describe("classicTemplate", () => {
     expect(output).toContain("A software developer in Austin, TX.");
   });
 
-  it("includes SVG embeds", () => {
+  it("includes SVG embeds with descriptive alt text", () => {
     const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("![GitHub Metrics](assets/insights/index.svg)");
+    expect(output).toContain(
+      `![${descriptiveAlt("GitHub Metrics", "Urmzd Maharramoff")}](assets/insights/index.svg)`,
+    );
   });
 
   it("includes social badges", () => {
@@ -246,7 +249,7 @@ describe("classicTemplate", () => {
     expect(output).toContain("/ˈʊrm.zəd/");
   });
 
-  it("includes archived section for archived projects", () => {
+  it("omits archived section", () => {
     const output = getTemplate("classic")(
       makeContext({
         archivedProjects: [
@@ -259,12 +262,6 @@ describe("classicTemplate", () => {
         ],
       }),
     );
-    expect(output).toContain("## Archived");
-    expect(output).toContain("[old-project]");
-  });
-
-  it("omits archived section when no archived projects", () => {
-    const output = getTemplate("classic")(makeContext());
     expect(output).not.toContain("## Archived");
   });
 
@@ -293,7 +290,7 @@ describe("modernTemplate", () => {
     expect(output).toContain(
       "### [resume-generator](https://github.com/urmzd/resume-generator)",
     );
-    expect(output).toContain("\u2605 42");
+    expect(output).toContain("Stars: 42");
   });
 
   it("includes maintained projects section with h3 headings", () => {
@@ -334,7 +331,7 @@ describe("modernTemplate", () => {
     expect(output).toContain("assets/insights/metrics-constellation.svg");
   });
 
-  it("includes archived section separate from active/maintained", () => {
+  it("omits archived section", () => {
     const output = getTemplate("modern")(
       makeContext({
         archivedProjects: [
@@ -347,8 +344,7 @@ describe("modernTemplate", () => {
         ],
       }),
     );
-    expect(output).toContain("## Archived");
-    expect(output).toContain("[legacy-lib]");
+    expect(output).not.toContain("## Archived");
   });
 
   it("includes social badges", () => {
@@ -375,9 +371,11 @@ describe("minimalTemplate", () => {
     expect(output).toContain("A software developer in Austin, TX.");
   });
 
-  it("includes SVG embeds", () => {
+  it("includes SVG embeds with descriptive alt text", () => {
     const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("![GitHub Metrics](assets/insights/index.svg)");
+    expect(output).toContain(
+      `![${descriptiveAlt("GitHub Metrics", "Urmzd Maharramoff")}](assets/insights/index.svg)`,
+    );
   });
 
   it("includes social badges", () => {
@@ -390,7 +388,7 @@ describe("minimalTemplate", () => {
     expect(output).toContain("@urmzd/github-insights");
   });
 
-  it("includes archived section for archived projects", () => {
+  it("omits archived section", () => {
     const output = getTemplate("minimal")(
       makeContext({
         archivedProjects: [
@@ -403,8 +401,7 @@ describe("minimalTemplate", () => {
         ],
       }),
     );
-    expect(output).toContain("## Archived");
-    expect(output).toContain("[old-util]");
+    expect(output).not.toContain("## Archived");
   });
 
   it("ends with trailing newline", () => {
@@ -466,7 +463,7 @@ describe("ecosystemTemplate", () => {
     expect(output).toContain("@urmzd/github-insights");
   });
 
-  it("separates archived projects from category tables", () => {
+  it("omits archived section", () => {
     const output = getTemplate("ecosystem")(
       makeContext({
         archivedProjects: [
@@ -478,31 +475,9 @@ describe("ecosystemTemplate", () => {
             category: "Applications",
           },
         ],
-        categorizedProjects: {
-          Applications: [
-            {
-              name: "resume-generator",
-              url: "https://github.com/urmzd/resume-generator",
-              description: "CLI tool for professional resumes",
-              stars: 42,
-              category: "Applications",
-            },
-            {
-              name: "old-app",
-              url: "https://github.com/urmzd/old-app",
-              description: "A retired application",
-              stars: 3,
-              category: "Applications",
-            },
-          ],
-        },
       }),
     );
-    expect(output).toContain("### Archived");
-    expect(output).toContain("[old-app]");
-    // old-app should NOT appear in the Applications table
-    const appSection = output.split("### Applications")[1].split("###")[0];
-    expect(appSection).not.toContain("old-app");
+    expect(output).not.toContain("### Archived");
   });
 
   it("ends with trailing newline", () => {
