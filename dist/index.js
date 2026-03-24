@@ -43019,7 +43019,45 @@ function loadPreamble(path) {
 // ── Helpers ────────────────────────────────────────────────────────────────
 function attribution(templateName) {
     const now = new Date().toISOString().split("T")[0];
-    return `<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: \`${templateName}\`</sub>`;
+    return `<!-- section: footer -->\n<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: \`${templateName}\`</sub>`;
+}
+function frontmatter(ctx) {
+    const langs = ctx.languages.slice(0, 10).map((l) => l.name);
+    const lines = [
+        "<!-- ai-metadata",
+        `type: github-profile`,
+        `name: ${ctx.name}`,
+        `username: ${ctx.username}`,
+        ...(ctx.title ? [`title: ${ctx.title}`] : []),
+        `languages: [${langs.join(", ")}]`,
+        `profile: https://github.com/${ctx.username}`,
+        "-->",
+    ];
+    return lines.join("\n");
+}
+const ALT_TEXT_MAP = {
+    "GitHub Metrics": "Combined visualization of language velocity, contribution rhythm, project constellation, and open source impact for {name}",
+    "Language Velocity": "Streamgraph of {name}'s programming language usage over the past year",
+    "Contribution Rhythm": "Radar chart of {name}'s contribution patterns by day of week",
+    "Project Constellation": "Map of {name}'s projects positioned by language ecosystem and complexity",
+    "Impact Trail": "Bar chart of {name}'s open source contributions by repository star count",
+};
+function descriptiveAlt(label, name) {
+    const template = ALT_TEXT_MAP[label];
+    if (template)
+        return template.replace(/\{name\}/g, name);
+    return label;
+}
+function inlineMetadata(ctx) {
+    const parts = [];
+    if (ctx.title)
+        parts.push(`**Role:** ${ctx.title}`);
+    const topLangs = ctx.languages.slice(0, 5).map((l) => l.name);
+    if (topLangs.length > 0)
+        parts.push(`**Top Languages:** ${topLangs.join(", ")}`);
+    if (parts.length === 0)
+        return "";
+    return parts.join(" | ");
 }
 function extractFirstName(fullName) {
     return fullName.trim().split(/\s+/)[0] || fullName;
@@ -43073,9 +43111,9 @@ function renderProjectSection(title, projects) {
         const desc = p.summary || p.description || "No description";
         const meta = [];
         if (p.stars > 0)
-            meta.push(`\u2605 ${p.stars}`);
+            meta.push(`Stars: ${p.stars}`);
         if (p.languages?.length)
-            meta.push(p.languages.slice(0, 3).join(", "));
+            meta.push(`Languages: ${p.languages.slice(0, 3).join(", ")}`);
         const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
         return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
     })
@@ -43086,12 +43124,16 @@ function renderProjectSection(title, projects) {
 function renderProjectTable(title, projects) {
     if (projects.length === 0)
         return "";
-    const header = `| Project | Description |\n|---------|-------------|`;
+    const header = `| Project | Description | Stars | Languages |\n|---------|-------------|-------|-----------|`;
     const rows = projects
         .map((p) => {
         const desc = p.summary || p.description || "No description";
         const safeDesc = desc.replace(/\|/g, "\\|").replace(/\n/g, " ");
-        return `| [${p.name}](${p.url}) | ${safeDesc} |`;
+        const stars = p.stars > 0 ? String(p.stars) : "-";
+        const langs = p.languages?.length
+            ? p.languages.slice(0, 3).join(", ")
+            : "-";
+        return `| [${p.name}](${p.url}) | ${safeDesc} | ${stars} | ${langs} |`;
     })
         .join("\n");
     return `### ${title}\n\n${header}\n${rows}`;
@@ -43099,6 +43141,7 @@ function renderProjectTable(title, projects) {
 // ── Classic template ───────────────────────────────────────────────────────
 function classicTemplate(ctx) {
     const parts = [];
+    parts.push(frontmatter(ctx));
     if (ctx.pronunciation) {
         parts.push(`# ${ctx.name} <sub><i>(${ctx.pronunciation})</i></sub>`);
     }
@@ -43111,14 +43154,17 @@ function classicTemplate(ctx) {
     if (ctx.preamble) {
         parts.push(ctx.preamble);
     }
+    const meta = inlineMetadata(ctx);
+    if (meta)
+        parts.push(meta);
     if (ctx.socialBadges) {
-        parts.push(ctx.socialBadges);
+        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
     }
-    for (const svg of ctx.svgs) {
-        parts.push(`![${svg.label}](${svg.path})`);
-    }
-    if (ctx.archivedProjects.length > 0) {
-        parts.push(renderProjectSection("Archived", ctx.archivedProjects));
+    if (ctx.svgs.length > 0) {
+        const svgLines = ctx.svgs
+            .map((svg) => `![${descriptiveAlt(svg.label, ctx.name)}](${svg.path})`)
+            .join("\n");
+        parts.push(`<!-- section: visualizations -->\n${svgLines}`);
     }
     if (ctx.bio) {
         parts.push(`---\n\n<sub>${ctx.bio}</sub>`);
@@ -43129,43 +43175,54 @@ function classicTemplate(ctx) {
 // ── Modern template ────────────────────────────────────────────────────────
 function modernTemplate(ctx) {
     const parts = [];
+    parts.push(frontmatter(ctx));
     parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
     if (ctx.preamble) {
         parts.push(ctx.preamble);
     }
+    const meta = inlineMetadata(ctx);
+    if (meta)
+        parts.push(meta);
     if (ctx.socialBadges) {
-        parts.push(ctx.socialBadges);
+        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
     }
+    // Projects
+    const projectSections = [];
     const activeSection = renderProjectSection("Active Projects", ctx.activeProjects);
     if (activeSection)
-        parts.push(activeSection);
+        projectSections.push(activeSection);
     const maintainedSection = renderProjectSection("Maintained Projects", ctx.maintainedProjects);
     if (maintainedSection)
-        parts.push(maintainedSection);
+        projectSections.push(maintainedSection);
     const inactiveSection = renderProjectSection("Inactive Projects", ctx.inactiveProjects);
     if (inactiveSection)
-        parts.push(inactiveSection);
-    const archivedSection = renderProjectSection("Archived", ctx.archivedProjects);
-    if (archivedSection)
-        parts.push(archivedSection);
+        projectSections.push(inactiveSection);
+    if (projectSections.length > 0) {
+        parts.push(`<!-- section: projects -->\n${projectSections.join("\n\n")}`);
+    }
+    // Visualizations
+    const vizParts = [];
     // Constellation
     if (ctx.sectionSvgs.constellation) {
-        parts.push(`## Project Map\n\n![Project Constellation](${ctx.sectionSvgs.constellation})`);
+        vizParts.push(`## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`);
     }
     // GitHub Stats section: rhythm + velocity
     const statsImages = [];
     if (ctx.sectionSvgs.velocity) {
-        statsImages.push(`![Language Velocity](${ctx.sectionSvgs.velocity})`);
+        statsImages.push(`![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`);
     }
     if (ctx.sectionSvgs.rhythm) {
-        statsImages.push(`![Contribution Rhythm](${ctx.sectionSvgs.rhythm})`);
+        statsImages.push(`![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`);
     }
     if (statsImages.length > 0) {
-        parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
+        vizParts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
     }
     // Impact
     if (ctx.sectionSvgs.impact) {
-        parts.push(`## Open Source Impact\n\n![Impact Trail](${ctx.sectionSvgs.impact})`);
+        vizParts.push(`## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`);
+    }
+    if (vizParts.length > 0) {
+        parts.push(`<!-- section: visualizations -->\n${vizParts.join("\n\n")}`);
     }
     parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
@@ -43173,18 +43230,22 @@ function modernTemplate(ctx) {
 // ── Minimal template ───────────────────────────────────────────────────────
 function minimalTemplate(ctx) {
     const parts = [];
+    parts.push(frontmatter(ctx));
     parts.push(`# ${ctx.firstName}`);
     if (ctx.preamble) {
         parts.push(ctx.preamble);
     }
+    const meta = inlineMetadata(ctx);
+    if (meta)
+        parts.push(meta);
     if (ctx.socialBadges) {
-        parts.push(ctx.socialBadges);
+        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
     }
-    for (const svg of ctx.svgs) {
-        parts.push(`![${svg.label}](${svg.path})`);
-    }
-    if (ctx.archivedProjects.length > 0) {
-        parts.push(renderProjectSection("Archived", ctx.archivedProjects));
+    if (ctx.svgs.length > 0) {
+        const svgLines = ctx.svgs
+            .map((svg) => `![${descriptiveAlt(svg.label, ctx.name)}](${svg.path})`)
+            .join("\n");
+        parts.push(`<!-- section: visualizations -->\n${svgLines}`);
     }
     parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
@@ -43198,53 +43259,60 @@ const CATEGORY_ORDER = [
 ];
 function ecosystemTemplate(ctx) {
     const parts = [];
+    parts.push(frontmatter(ctx));
     parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
     if (ctx.preamble) {
         parts.push(ctx.preamble);
     }
+    const meta = inlineMetadata(ctx);
+    if (meta)
+        parts.push(meta);
     if (ctx.socialBadges) {
-        parts.push(ctx.socialBadges);
+        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
     }
-    // Build a set of archived project names to filter them out of category tables
-    const archivedNames = new Set(ctx.archivedProjects.map((p) => p.name));
-    // Render project tables grouped by category (excluding archived)
+    // Projects
+    const projectParts = [];
+    // Render project tables grouped by category
     for (const category of CATEGORY_ORDER) {
-        const projects = ctx.categorizedProjects[category]?.filter((p) => !archivedNames.has(p.name));
+        const projects = ctx.categorizedProjects[category];
         if (projects && projects.length > 0) {
-            parts.push(renderProjectTable(category, projects));
+            projectParts.push(renderProjectTable(category, projects));
         }
     }
-    // Render any uncategorized projects that don't match known categories (excluding archived)
+    // Render any uncategorized projects that don't match known categories
     for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
         if (!CATEGORY_ORDER.includes(category)) {
-            const nonArchived = projects.filter((p) => !archivedNames.has(p.name));
-            if (nonArchived.length > 0) {
-                parts.push(renderProjectTable(category, nonArchived));
+            if (projects.length > 0) {
+                projectParts.push(renderProjectTable(category, projects));
             }
         }
     }
-    // Render all archived projects in one consolidated section
-    if (ctx.archivedProjects.length > 0) {
-        parts.push(renderProjectTable("Archived", ctx.archivedProjects));
+    if (projectParts.length > 0) {
+        parts.push(`<!-- section: projects -->\n${projectParts.join("\n\n")}`);
     }
+    // Visualizations
+    const vizParts = [];
     // Constellation
     if (ctx.sectionSvgs.constellation) {
-        parts.push(`## Project Map\n\n![Project Constellation](${ctx.sectionSvgs.constellation})`);
+        vizParts.push(`## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`);
     }
     // GitHub Stats section: velocity + rhythm
     const statsImages = [];
     if (ctx.sectionSvgs.velocity) {
-        statsImages.push(`![Language Velocity](${ctx.sectionSvgs.velocity})`);
+        statsImages.push(`![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`);
     }
     if (ctx.sectionSvgs.rhythm) {
-        statsImages.push(`![Contribution Rhythm](${ctx.sectionSvgs.rhythm})`);
+        statsImages.push(`![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`);
     }
     if (statsImages.length > 0) {
-        parts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
+        vizParts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
     }
     // Impact
     if (ctx.sectionSvgs.impact) {
-        parts.push(`## Open Source Impact\n\n![Impact Trail](${ctx.sectionSvgs.impact})`);
+        vizParts.push(`## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`);
+    }
+    if (vizParts.length > 0) {
+        parts.push(`<!-- section: visualizations -->\n${vizParts.join("\n\n")}`);
     }
     parts.push(attribution(ctx.templateName));
     return `${parts.join("\n\n")}\n`;
