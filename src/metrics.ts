@@ -425,7 +425,7 @@ export const computeConstellationLayout = (
 
   const chartWidth = 760;
   const chartHeight = 340;
-  const padX = 40;
+  const padX = 60;
   const padY = 30;
 
   // Build repo lookup for disk usage
