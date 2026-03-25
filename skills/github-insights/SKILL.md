@@ -5,7 +5,8 @@ description: >-
   Handles setup, configuration, theming, section selection, template choice,
   troubleshooting, and extending with new components or parsers.
   Use when users want to set up, customize, debug, or extend GitHub profile metrics.
-argument-hint: [setup | customize | generate | debug | extend]
+metadata:
+  argument-hint: [setup | customize | generate | debug | extend]
 ---
 
 # GitHub Insights — Agent Skill
