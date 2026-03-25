@@ -170,11 +170,7 @@ npm run fmt:fix     # format fix
 
 This project ships an [Agent Skill](https://github.com/vercel-labs/skills) for use with Claude Code, Cursor, and other compatible agents.
 
-**Install:**
-
-```sh
-npx skills add urmzd/github-insights
-```
+Available as portable agent skills in [`skills/`](skills/).
 
 Once installed, use `/github-insights` to generate and customize SVG profile metrics.
 

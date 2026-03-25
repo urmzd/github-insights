@@ -2,13 +2,13 @@
 type: github-profile
 name: Urmzd Mukhammadnaim
 username: urmzd
-languages: [Go, Rust, TypeScript, Python, Java, TeX, Shell, JavaScript, Jinja, Lua]
+languages: [Go, Rust, TypeScript, Python, Java, TeX, Shell, JavaScript, MDX, Jinja]
 profile: https://github.com/urmzd
 -->
 
 # Urmzd
 
-I build robust, multi-language systems in Go, Rust, and TypeScript—from AI-powered resume tools and privacy-first research agents to scalable smart home and AGI experiments. My work focuses on empowering people with open, local-first tech and practical automation.
+I build robust systems and AI tools in Go, Rust, and TypeScript—from template-driven resume generators and privacy-first agents to advanced genetic programming frameworks and efficient language models. My work empowers people with scalable, local-first solutions and deep technical insight.
 
 **Top Languages:** Go, Rust, TypeScript, Python, Java
 
@@ -19,4 +19,4 @@ I build robust, multi-language systems in Go, Rust, and TypeScript—from AI-pow
 ![Combined visualization of language velocity, contribution rhythm, project constellation, and open source impact for Urmzd Mukhammadnaim](./index.svg)
 
 <!-- section: footer -->
-<sub>Last generated on 2026-03-24 using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: `minimal`</sub>
+<sub>Last generated on 2026-03-25 using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: `minimal`</sub>
