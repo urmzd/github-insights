@@ -10,7 +10,7 @@ export function renderImpactTrail(
   if (repos.length === 0) return { svg: "", height: 0 };
 
   const { padX } = LAYOUT;
-  const rowHeight = 36;
+  const rowHeight = 50;
   const nameWidth = 280;
   const barMaxWidth = 400;
   const gap = 6;
@@ -67,11 +67,11 @@ export function renderImpactTrail(
           {`\u2605 ${repo.stargazerCount.toLocaleString()}`}
         </text>
 
-        {/* Language label */}
+        {/* Language label (underneath repo name) */}
         {langName ? (
           <text
-            x={padX + nameWidth + barMaxWidth + 80}
-            y={ry + rowHeight / 2 + 4}
+            x={padX}
+            y={ry + rowHeight / 2 + 18}
             className={`t t-value fade-${delay}`}
           >
             {escapeXml(langName)}
