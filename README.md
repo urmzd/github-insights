@@ -22,6 +22,14 @@
 
 ![Example output](assets/insights/index.svg)
 
+### CLI / TUI
+
+<p align="center">
+  <img src="showcase/demo.gif" width="80%" alt="GitHub Insights TUI demo">
+</p>
+
+Run `npm run generate` locally for a full TUI experience — live phase tracking, spinners, and timing for each pipeline step.
+
 ## Features
 
 - **Language Velocity** — streamgraph showing how your language usage has evolved over the past year
