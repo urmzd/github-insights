@@ -26,6 +26,7 @@ export function renderProjectConstellation(
         const other = nodes[j];
         return (
           <line
+            key={`${i}-${j}`}
             x1={padX + node.x}
             y1={y + node.y}
             x2={padX + other.x}

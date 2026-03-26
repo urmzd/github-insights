@@ -3,9 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",
-    "jsx": "react",
-    "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment",
+    "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -16,6 +14,6 @@
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "build", "src/tui", "src/cli.tsx"]
+  "include": ["src/tui/**/*", "src/cli.tsx"],
+  "exclude": ["src/components/**/*"]
 }

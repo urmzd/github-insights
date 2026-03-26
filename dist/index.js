@@ -40221,14 +40221,14 @@ exports.visitAsync = visitAsync;
 /************************************************************************/
 var __webpack_exports__ = {};
 
-;// CONCATENATED MODULE: external "node:fs"
-const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(7484);
-// EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
-var exec = __nccwpck_require__(5236);
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
+;// CONCATENATED MODULE: external "node:child_process"
+const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
 var github = __nccwpck_require__(3228);
 ;// CONCATENATED MODULE: ./src/api.ts
@@ -42060,7 +42060,58 @@ var yaml_dist = __nccwpck_require__(8815);
 
 
 
-const VALID_TEMPLATES = new Set(["classic", "modern", "minimal"]);
+const VALID_TEMPLATES = new Set([
+    "classic",
+    "modern",
+    "minimal",
+    "ecosystem",
+    "showcase",
+]);
+const VALID_SECTIONS = new Set([
+    "spotlight",
+    "velocity",
+    "rhythm",
+    "constellation",
+    "impact",
+    "portfolio",
+]);
+const SECTION_PRESETS = {
+    classic: ["velocity", "rhythm", "constellation", "impact"],
+    modern: ["spotlight", "velocity", "rhythm", "constellation", "impact"],
+    minimal: ["velocity", "rhythm"],
+    ecosystem: [
+        "spotlight",
+        "velocity",
+        "rhythm",
+        "constellation",
+        "portfolio",
+        "impact",
+    ],
+    showcase: [
+        "spotlight",
+        "velocity",
+        "rhythm",
+        "constellation",
+        "portfolio",
+        "impact",
+    ],
+};
+const DEFAULT_SECTIONS = SECTION_PRESETS.showcase;
+function resolveTemplateSections(templateName, explicitSections) {
+    if (explicitSections && explicitSections.length > 0) {
+        const valid = explicitSections.filter((s) => {
+            if (VALID_SECTIONS.has(s))
+                return true;
+            console.warn(`Unknown section "${s}", ignoring.`);
+            return false;
+        });
+        return valid.length > 0 ? valid : DEFAULT_SECTIONS;
+    }
+    if (templateName && SECTION_PRESETS[templateName]) {
+        return SECTION_PRESETS[templateName];
+    }
+    return DEFAULT_SECTIONS;
+}
 function extractConfig(parsed) {
     const config = {};
     if (typeof parsed.title === "string" && parsed.title.trim()) {
@@ -42093,7 +42144,13 @@ function extractConfig(parsed) {
     if (Array.isArray(parsed.sections)) {
         const sections = parsed.sections
             .filter((s) => typeof s === "string" && s.trim().length > 0)
-            .map((s) => s.trim().toLowerCase());
+            .map((s) => s.trim().toLowerCase())
+            .filter((s) => {
+            if (VALID_SECTIONS.has(s))
+                return true;
+            console.warn(`Unknown section "${s}" in config, ignoring. Valid: ${[...VALID_SECTIONS].join(", ")}`);
+            return false;
+        });
         if (sections.length > 0) {
             config.sections = sections;
         }
@@ -42221,7 +42278,7 @@ function renderImpactTrail(repos, y) {
     if (repos.length === 0)
         return { svg: "", height: 0 };
     const { padX } = theme_LAYOUT;
-    const rowHeight = 36;
+    const rowHeight = 50;
     const nameWidth = 280;
     const barMaxWidth = 400;
     const gap = 6;
@@ -42244,7 +42301,7 @@ function renderImpactTrail(repos, y) {
             jsx_factory_h("text", { x: padX, y: ry + rowHeight / 2 + 4, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(repo.nameWithOwner, 38))),
             jsx_factory_h("rect", { x: padX + nameWidth, y: ry + rowHeight / 2 - 6, width: barWidth, height: "12", rx: "3", fill: color, "fill-opacity": "0.7", className: `fade-${delay}` }),
             jsx_factory_h("text", { x: padX + nameWidth + barMaxWidth + 16, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, `\u2605 ${repo.stargazerCount.toLocaleString()}`),
-            langName ? (jsx_factory_h("text", { x: padX + nameWidth + barMaxWidth + 80, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, svg_utils_escapeXml(langName))) : ("")));
+            langName ? (jsx_factory_h("text", { x: padX, y: ry + rowHeight / 2 + 18, className: `t t-value fade-${delay}` }, svg_utils_escapeXml(langName))) : ("")));
     }
     const totalHeight = sorted.length * (rowHeight + gap) - gap;
     return { svg, height: totalHeight };
@@ -42557,7 +42614,16 @@ const SECTION_KEYS = {
     rhythm: "metrics-rhythm.svg",
     constellation: "metrics-constellation.svg",
     impact: "metrics-impact.svg",
+    spotlight: "",
+    portfolio: "",
 };
+const SVG_SECTION_KEYS = [
+    "velocity",
+    "rhythm",
+    "constellation",
+    "impact",
+];
+const TEXT_SECTION_KEYS = (/* unused pure expression or super */ null && (["spotlight", "portfolio"]));
 // ── Aggregation ─────────────────────────────────────────────────────────────
 const aggregateLanguages = (repos) => {
     const langBytes = new Map();
@@ -42728,6 +42794,49 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
         .map(toProjectItemWithSummary);
     return { active, maintained, inactive, archived };
 };
+// ── Spotlight (Heat Score) ────────────────────────────────────────────────────
+const computeSpotlightProjects = (repos, contributionData, aiClassifications, topN = 5) => {
+    const commitMap = new Map();
+    for (const entry of contributionData.commitContributionsByRepository || []) {
+        commitMap.set(entry.repository.name, entry.contributions.totalCount);
+    }
+    const aiMap = new Map();
+    if (aiClassifications) {
+        for (const c of aiClassifications) {
+            aiMap.set(c.name, c);
+        }
+    }
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const scored = repos
+        .filter((repo) => !repo.isArchived)
+        .map((repo) => {
+        const commits = commitMap.get(repo.name) || 0;
+        const daysSincePush = Math.max(0, (now - new Date(repo.pushedAt).getTime()) / DAY_MS);
+        const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
+        const commitBoost = Math.min(commits, 50) * 2;
+        const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
+        const heatScore = commitBoost + recencyBonus + starBoost;
+        const pushedInLast30 = daysSincePush <= 30;
+        const pushedInLast90 = daysSincePush <= 90;
+        let activityLabel;
+        if (commits >= 10 && pushedInLast30) {
+            activityLabel = "Active";
+        }
+        else if (commits >= 1 || pushedInLast90) {
+            activityLabel = "Building";
+        }
+        const ai = aiMap.get(repo.name);
+        return {
+            ...toProjectItem(repo),
+            summary: ai?.summary || undefined,
+            category: ai?.category || undefined,
+            heatScore,
+            activityLabel,
+        };
+    });
+    return scored.sort((a, b) => b.heatScore - a.heatScore).slice(0, topN);
+};
 // ── Language Velocity ────────────────────────────────────────────────────────
 const computeLanguageVelocity = (contributionData, repos) => {
     // Build a map of repo name → primary language + color
@@ -42862,7 +42971,7 @@ const computeConstellationLayout = (projects, repos) => {
         return [];
     const chartWidth = 760;
     const chartHeight = 340;
-    const padX = 40;
+    const padX = 60;
     const padY = 30;
     // Build repo lookup for disk usage
     const repoMap = new Map();
@@ -43017,9 +43126,9 @@ function loadPreamble(path) {
 
 ;// CONCATENATED MODULE: ./src/templates.ts
 // ── Helpers ────────────────────────────────────────────────────────────────
-function attribution(templateName) {
+function attribution() {
     const now = new Date().toISOString().split("T")[0];
-    return `<!-- section: footer -->\n<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: \`${templateName}\`</sub>`;
+    return `<!-- section: footer -->\n<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>`;
 }
 function frontmatter(ctx) {
     const langs = ctx.languages.slice(0, 10).map((l) => l.name);
@@ -43102,25 +43211,7 @@ function buildSocialBadges(profile) {
     }
     return badges.join(" ");
 }
-// ── Project section helper (modern template) ─────────────────────────────
-function renderProjectSection(title, projects) {
-    if (projects.length === 0)
-        return "";
-    const items = projects
-        .map((p) => {
-        const desc = p.summary || p.description || "No description";
-        const meta = [];
-        if (p.stars > 0)
-            meta.push(`Stars: ${p.stars}`);
-        if (p.languages?.length)
-            meta.push(`Languages: ${p.languages.slice(0, 3).join(", ")}`);
-        const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
-        return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
-    })
-        .join("\n\n");
-    return `## ${title}\n\n${items}`;
-}
-// ── Project table helper (ecosystem template) ────────────────────────────
+// ── Project table helper ──────────────────────────────────────────────────
 function renderProjectTable(title, projects) {
     if (projects.length === 0)
         return "";
@@ -43138,8 +43229,82 @@ function renderProjectTable(title, projects) {
         .join("\n");
     return `### ${title}\n\n${header}\n${rows}`;
 }
-// ── Classic template ───────────────────────────────────────────────────────
-function classicTemplate(ctx) {
+// ── Section renderers ─────────────────────────────────────────────────────
+const CATEGORY_ORDER = [
+    "Developer Tools",
+    "SDKs",
+    "Applications",
+    "Research & Experiments",
+];
+function renderSpotlight(ctx) {
+    if (ctx.spotlightProjects.length === 0)
+        return "";
+    const items = ctx.spotlightProjects
+        .map((p) => {
+        const desc = p.summary || p.description || "No description";
+        const meta = [];
+        if (p.stars > 0)
+            meta.push(`Stars: ${p.stars}`);
+        if (p.languages?.length)
+            meta.push(`Languages: ${p.languages.slice(0, 3).join(", ")}`);
+        if (p.activityLabel)
+            meta.push(`**${p.activityLabel}**`);
+        const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
+        return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
+    })
+        .join("\n\n");
+    return `## Spotlight\n\n${items}`;
+}
+function renderVelocity(ctx) {
+    if (!ctx.sectionSvgs.velocity)
+        return "";
+    return `## Language Velocity\n\n![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`;
+}
+function renderRhythm(ctx) {
+    if (!ctx.sectionSvgs.rhythm)
+        return "";
+    return `## Contribution Rhythm\n\n![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`;
+}
+function renderConstellation(ctx) {
+    if (!ctx.sectionSvgs.constellation)
+        return "";
+    return `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`;
+}
+function renderImpact(ctx) {
+    if (!ctx.sectionSvgs.impact)
+        return "";
+    return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
+}
+function renderPortfolio(ctx) {
+    const tableParts = [];
+    for (const category of CATEGORY_ORDER) {
+        const projects = ctx.categorizedProjects[category];
+        if (projects && projects.length > 0) {
+            tableParts.push(renderProjectTable(category, projects));
+        }
+    }
+    for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
+        if (!CATEGORY_ORDER.includes(category)) {
+            if (projects.length > 0) {
+                tableParts.push(renderProjectTable(category, projects));
+            }
+        }
+    }
+    if (tableParts.length === 0)
+        return "";
+    return `## Portfolio\n\n<details>\n<summary>All Projects</summary>\n\n${tableParts.join("\n\n")}\n\n</details>`;
+}
+// ── Section dispatcher ────────────────────────────────────────────────────
+const SECTION_RENDERERS = {
+    spotlight: renderSpotlight,
+    velocity: renderVelocity,
+    rhythm: renderRhythm,
+    constellation: renderConstellation,
+    impact: renderImpact,
+    portfolio: renderPortfolio,
+};
+// ── Showcase template ─────────────────────────────────────────────────────
+function showcaseTemplate(ctx) {
     const parts = [];
     parts.push(frontmatter(ctx));
     if (ctx.pronunciation) {
@@ -43148,9 +43313,6 @@ function classicTemplate(ctx) {
     else {
         parts.push(`# ${ctx.name}`);
     }
-    if (ctx.title) {
-        parts.push(`> ${ctx.title}`);
-    }
     if (ctx.preamble) {
         parts.push(ctx.preamble);
     }
@@ -43160,175 +43322,24 @@ function classicTemplate(ctx) {
     if (ctx.socialBadges) {
         parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
     }
-    if (ctx.svgs.length > 0) {
-        const svgLines = ctx.svgs
-            .map((svg) => `![${descriptiveAlt(svg.label, ctx.name)}](${svg.path})`)
-            .join("\n");
-        parts.push(`<!-- section: visualizations -->\n${svgLines}`);
-    }
-    if (ctx.bio) {
-        parts.push(`---\n\n<sub>${ctx.bio}</sub>`);
-    }
-    parts.push(attribution(ctx.templateName));
-    return `${parts.join("\n\n")}\n`;
-}
-// ── Modern template ────────────────────────────────────────────────────────
-function modernTemplate(ctx) {
-    const parts = [];
-    parts.push(frontmatter(ctx));
-    parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
-    if (ctx.preamble) {
-        parts.push(ctx.preamble);
-    }
-    const meta = inlineMetadata(ctx);
-    if (meta)
-        parts.push(meta);
-    if (ctx.socialBadges) {
-        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
-    }
-    // Projects
-    const projectSections = [];
-    const activeSection = renderProjectSection("Active Projects", ctx.activeProjects);
-    if (activeSection)
-        projectSections.push(activeSection);
-    const maintainedSection = renderProjectSection("Maintained Projects", ctx.maintainedProjects);
-    if (maintainedSection)
-        projectSections.push(maintainedSection);
-    const inactiveSection = renderProjectSection("Inactive Projects", ctx.inactiveProjects);
-    if (inactiveSection)
-        projectSections.push(inactiveSection);
-    if (projectSections.length > 0) {
-        parts.push(`<!-- section: projects -->\n${projectSections.join("\n\n")}`);
-    }
-    // Visualizations
-    const vizParts = [];
-    // Constellation
-    if (ctx.sectionSvgs.constellation) {
-        vizParts.push(`## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`);
-    }
-    // GitHub Stats section: rhythm + velocity
-    const statsImages = [];
-    if (ctx.sectionSvgs.velocity) {
-        statsImages.push(`![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`);
-    }
-    if (ctx.sectionSvgs.rhythm) {
-        statsImages.push(`![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`);
-    }
-    if (statsImages.length > 0) {
-        vizParts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
-    }
-    // Impact
-    if (ctx.sectionSvgs.impact) {
-        vizParts.push(`## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`);
-    }
-    if (vizParts.length > 0) {
-        parts.push(`<!-- section: visualizations -->\n${vizParts.join("\n\n")}`);
-    }
-    parts.push(attribution(ctx.templateName));
-    return `${parts.join("\n\n")}\n`;
-}
-// ── Minimal template ───────────────────────────────────────────────────────
-function minimalTemplate(ctx) {
-    const parts = [];
-    parts.push(frontmatter(ctx));
-    parts.push(`# ${ctx.firstName}`);
-    if (ctx.preamble) {
-        parts.push(ctx.preamble);
-    }
-    const meta = inlineMetadata(ctx);
-    if (meta)
-        parts.push(meta);
-    if (ctx.socialBadges) {
-        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
-    }
-    if (ctx.svgs.length > 0) {
-        const svgLines = ctx.svgs
-            .map((svg) => `![${descriptiveAlt(svg.label, ctx.name)}](${svg.path})`)
-            .join("\n");
-        parts.push(`<!-- section: visualizations -->\n${svgLines}`);
-    }
-    parts.push(attribution(ctx.templateName));
-    return `${parts.join("\n\n")}\n`;
-}
-// ── Ecosystem template ────────────────────────────────────────────────────
-const CATEGORY_ORDER = [
-    "Developer Tools",
-    "SDKs",
-    "Applications",
-    "Research & Experiments",
-];
-function ecosystemTemplate(ctx) {
-    const parts = [];
-    parts.push(frontmatter(ctx));
-    parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
-    if (ctx.preamble) {
-        parts.push(ctx.preamble);
-    }
-    const meta = inlineMetadata(ctx);
-    if (meta)
-        parts.push(meta);
-    if (ctx.socialBadges) {
-        parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
-    }
-    // Projects
-    const projectParts = [];
-    // Render project tables grouped by category
-    for (const category of CATEGORY_ORDER) {
-        const projects = ctx.categorizedProjects[category];
-        if (projects && projects.length > 0) {
-            projectParts.push(renderProjectTable(category, projects));
-        }
-    }
-    // Render any uncategorized projects that don't match known categories
-    for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
-        if (!CATEGORY_ORDER.includes(category)) {
-            if (projects.length > 0) {
-                projectParts.push(renderProjectTable(category, projects));
+    for (const sectionKey of ctx.resolvedSections) {
+        const renderer = SECTION_RENDERERS[sectionKey];
+        if (renderer) {
+            const block = renderer(ctx);
+            if (block) {
+                parts.push(`<!-- section: ${sectionKey} -->\n${block}`);
             }
         }
     }
-    if (projectParts.length > 0) {
-        parts.push(`<!-- section: projects -->\n${projectParts.join("\n\n")}`);
-    }
-    // Visualizations
-    const vizParts = [];
-    // Constellation
-    if (ctx.sectionSvgs.constellation) {
-        vizParts.push(`## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`);
-    }
-    // GitHub Stats section: velocity + rhythm
-    const statsImages = [];
-    if (ctx.sectionSvgs.velocity) {
-        statsImages.push(`![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`);
-    }
-    if (ctx.sectionSvgs.rhythm) {
-        statsImages.push(`![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`);
-    }
-    if (statsImages.length > 0) {
-        vizParts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
-    }
-    // Impact
-    if (ctx.sectionSvgs.impact) {
-        vizParts.push(`## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`);
-    }
-    if (vizParts.length > 0) {
-        parts.push(`<!-- section: visualizations -->\n${vizParts.join("\n\n")}`);
-    }
-    parts.push(attribution(ctx.templateName));
+    parts.push(attribution());
     return `${parts.join("\n\n")}\n`;
 }
-// ── Registry ───────────────────────────────────────────────────────────────
-const TEMPLATES = {
-    classic: classicTemplate,
-    modern: modernTemplate,
-    minimal: minimalTemplate,
-    ecosystem: ecosystemTemplate,
-};
-function getTemplate(name) {
-    return TEMPLATES[name] || TEMPLATES.classic;
+// ── Public API ────────────────────────────────────────────────────────────
+function getTemplate(_name) {
+    return showcaseTemplate;
 }
 
-;// CONCATENATED MODULE: ./src/index.ts
+;// CONCATENATED MODULE: ./src/pipeline.ts
 
 
 
@@ -43339,246 +43350,290 @@ function getTemplate(name) {
 
 
 
-
-async function run() {
-    try {
-        const token = core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
-        const username = core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
-        const outputDir = core.getInput("output-dir") || "assets/insights";
-        const commitPush = (core.getInput("commit-push") || (process.env.CI ? "true" : "false")) ===
-            "true";
-        const commitMessage = core.getInput("commit-message") || "chore: update metrics";
-        const commitName = core.getInput("commit-name") || "github-actions[bot]";
-        const commitEmail = core.getInput("commit-email") ||
-            "41898282+github-actions[bot]@users.noreply.github.com";
-        const configPath = core.getInput("config-file") || undefined;
-        const readmePath = core.getInput("readme-path") ||
-            (process.env.CI ? "README.md" : "_README.md");
-        const indexOnly = (core.getInput("index-only") || "true") === "true";
-        const userConfig = loadUserConfig(configPath);
-        // Template and sections from action inputs or config
-        const templateName = core.getInput("template") ||
-            userConfig.template ||
-            "classic";
-        const sectionsInput = core.getInput("sections") || "";
-        const requestedSections = sectionsInput.length > 0
-            ? sectionsInput
-                .split(",")
-                .map((s) => s.trim().toLowerCase())
-                .filter(Boolean)
-            : userConfig.sections || [];
-        if (!token) {
-            core.setFailed("github-token is required");
-            return;
+// ── Git helper ──────────────────────────────────────────────────────────────
+function git(args) {
+    return new Promise((resolve, reject) => {
+        (0,external_node_child_process_namespaceObject.execFile)("git", args, (err) => {
+            if (err)
+                reject(err);
+            else
+                resolve();
+        });
+    });
+}
+function gitQuiet(args) {
+    return new Promise((resolve) => {
+        (0,external_node_child_process_namespaceObject.execFile)("git", args, (err) => {
+            resolve(err ? 1 : 0);
+        });
+    });
+}
+// ── Pipeline ────────────────────────────────────────────────────────────────
+async function runPipeline(config, cb) {
+    const userConfig = loadUserConfig(config.configPath);
+    const templateName = config.templateName || userConfig.template || "showcase";
+    const requestedSections = config.requestedSections.length > 0
+        ? config.requestedSections
+        : userConfig.sections || [];
+    const resolvedSections = resolveTemplateSections(templateName, requestedSections);
+    const svgSectionsNeeded = new Set(resolvedSections.filter((s) => SVG_SECTION_KEYS.includes(s)));
+    if (!config.token)
+        throw new Error("github-token is required");
+    if (!config.username)
+        throw new Error("username is required");
+    // ── Fetch ─────────────────────────────────────────────────────────────────
+    const graphql = makeGraphql(config.token);
+    cb.onPhaseStart("fetch-repos", "Fetching repositories");
+    const repos = await fetchAllRepoData(graphql, config.username);
+    cb.onPhaseComplete("fetch-repos", `${repos.length} public repos`);
+    cb.onPhaseStart("fetch-profile", "Fetching contributions & profile");
+    const [contributionData, userProfile] = await Promise.all([
+        fetchContributionData(graphql, config.username),
+        fetchUserProfile(graphql, config.username),
+    ]);
+    cb.onPhaseComplete("fetch-profile", `${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
+    // ── Classify ──────────────────────────────────────────────────────────────
+    cb.onPhaseStart("classify", "Classifying projects");
+    const languages = aggregateLanguages(repos);
+    const complexProjects = getTopProjectsByComplexity(repos);
+    const classificationInputs = buildClassificationInputs(repos, contributionData);
+    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs);
+    cb.onPhaseComplete("classify", `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`);
+    // ── Transform ─────────────────────────────────────────────────────────────
+    cb.onPhaseStart("transform", "Computing metrics");
+    const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+    const velocity = computeLanguageVelocity(contributionData, repos);
+    const rhythm = computeContributionRhythm(contributionData);
+    const constellation = computeConstellationLayout(complexProjects, repos);
+    const sectionDefs = buildSections({
+        velocity,
+        rhythm,
+        constellation,
+        contributionData,
+    });
+    let activeSections = sectionDefs.filter((s) => s.renderBody);
+    if (svgSectionsNeeded.size > 0) {
+        const allowedFilenames = new Set([...svgSectionsNeeded].map((key) => SECTION_KEYS[key]).filter(Boolean));
+        activeSections = activeSections.filter((s) => allowedFilenames.has(s.filename));
+    }
+    cb.onPhaseComplete("transform", `${activeSections.length} sections`);
+    // ── Render SVGs ───────────────────────────────────────────────────────────
+    cb.onPhaseStart("render-svg", "Rendering SVGs");
+    (0,external_node_fs_namespaceObject.mkdirSync)(config.outputDir, { recursive: true });
+    for (const section of activeSections) {
+        if (!section.renderBody)
+            continue;
+        const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody);
+        (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
+        cb.onProgress(`Wrote ${section.filename}`);
+    }
+    const combinedSvg = generateFullSvg(activeSections);
+    (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/index.svg`, combinedSvg);
+    cb.onPhaseComplete("render-svg", `${activeSections.length + 1} SVG files`);
+    // ── Write files ───────────────────────────────────────────────────────────
+    cb.onPhaseStart("write-files", "Writing output files");
+    const filesWritten = [`${config.outputDir}/index.svg`];
+    for (const s of activeSections) {
+        filesWritten.push(`${config.outputDir}/${s.filename}`);
+    }
+    cb.onPhaseComplete("write-files", `${filesWritten.length} files`);
+    // ── README ────────────────────────────────────────────────────────────────
+    if (config.readmePath && config.readmePath !== "none") {
+        cb.onPhaseStart("generate-readme", "Generating README");
+        const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(config.readmePath), config.outputDir) || ".";
+        let preamble = loadPreamble(userConfig.preamble);
+        if (!preamble) {
+            cb.onProgress("Generating preamble with AI...");
+            preamble = await fetchAIPreamble(config.token, {
+                username: config.username,
+                profile: userProfile,
+                userConfig,
+                languages,
+                activeProjects,
+                complexProjects,
+            });
         }
-        if (!username) {
-            core.setFailed("username is required");
-            return;
+        const svgs = activeSections.map((s) => ({
+            label: s.title,
+            path: `${svgDir}/${s.filename}`,
+        }));
+        const sectionSvgs = {};
+        for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+            if (activeSections.some((s) => s.filename === filename)) {
+                sectionSvgs[key] = `${svgDir}/${filename}`;
+            }
         }
-        // ── Fetch ─────────────────────────────────────────────────────────────
-        const graphql = makeGraphql(token);
-        core.info("Fetching repo data...");
-        const repos = await fetchAllRepoData(graphql, username);
-        core.info(`Found ${repos.length} public repos`);
-        core.info("Fetching contribution data...");
-        core.info("Fetching user profile...");
-        const [contributionData, userProfile] = await Promise.all([
-            fetchContributionData(graphql, username),
-            fetchUserProfile(graphql, username),
-        ]);
-        core.info(`Contributions: ${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
-        core.info(`User profile: ${userProfile.name || username}`);
-        // ── Transform ─────────────────────────────────────────────────────────
-        const languages = aggregateLanguages(repos);
-        const complexProjects = getTopProjectsByComplexity(repos);
-        core.info("Fetching project classifications from GitHub Models...");
-        const classificationInputs = buildClassificationInputs(repos, contributionData);
-        const aiClassifications = await fetchProjectClassifications(token, classificationInputs);
-        core.info(`Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`);
-        const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
-        // ── Compute new visualization data ───────────────────────────────────
-        const velocity = computeLanguageVelocity(contributionData, repos);
-        const rhythm = computeContributionRhythm(contributionData);
-        const constellation = computeConstellationLayout(complexProjects, repos);
-        const sectionDefs = buildSections({
+        const displayName = userConfig.name || userProfile.name || config.username;
+        const socialBadges = buildSocialBadges(userProfile);
+        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
+        const allProjectItems = [
+            ...activeProjects,
+            ...maintainedProjects,
+            ...inactiveProjects,
+            ...archivedProjects,
+        ];
+        const categorizedProjects = {};
+        for (const project of allProjectItems) {
+            const cat = project.category || "Other";
+            if (!categorizedProjects[cat])
+                categorizedProjects[cat] = [];
+            categorizedProjects[cat].push(project);
+        }
+        const template = getTemplate(templateName);
+        const readme = template({
+            username: config.username,
+            name: displayName,
+            firstName: extractFirstName(displayName),
+            pronunciation: userConfig.pronunciation,
+            title: userConfig.title,
+            bio: userConfig.bio,
+            preamble,
+            templateName,
+            svgs,
+            sectionSvgs,
+            profile: userProfile,
+            activeProjects,
+            maintainedProjects,
+            inactiveProjects,
+            archivedProjects,
+            allProjects: complexProjects,
+            categorizedProjects,
+            languages,
             velocity,
             rhythm,
             constellation,
             contributionData,
+            socialBadges,
+            svgDir,
+            spotlightProjects,
+            resolvedSections,
         });
-        // Filter sections by requested keys if specified
-        let activeSections = sectionDefs.filter((s) => s.renderBody);
-        if (requestedSections.length > 0) {
-            const allowedFilenames = new Set(requestedSections.map((key) => SECTION_KEYS[key]).filter(Boolean));
-            activeSections = activeSections.filter((s) => allowedFilenames.has(s.filename));
-        }
-        // ── Render + Write ────────────────────────────────────────────────────
-        (0,external_node_fs_namespaceObject.mkdirSync)(outputDir, { recursive: true });
-        for (const section of activeSections) {
-            if (!section.renderBody)
-                continue;
-            const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody);
-            (0,external_node_fs_namespaceObject.writeFileSync)(`${outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
-            core.info(`Wrote ${outputDir}/${section.filename}`);
-        }
-        const combinedSvg = generateFullSvg(activeSections);
-        (0,external_node_fs_namespaceObject.writeFileSync)(`${outputDir}/index.svg`, combinedSvg);
-        core.info(`Wrote ${outputDir}/index.svg`);
-        // ── README ─────────────────────────────────────────────────────────────
-        if (readmePath && readmePath !== "none") {
-            const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(readmePath), outputDir) || ".";
-            let preamble = loadPreamble(userConfig.preamble);
-            if (!preamble) {
-                core.info("No PREAMBLE.md found, generating with AI...");
-                preamble = await fetchAIPreamble(token, {
-                    username,
-                    profile: userProfile,
-                    userConfig,
-                    languages,
-                    activeProjects,
-                    complexProjects,
-                });
+        (0,external_node_fs_namespaceObject.writeFileSync)(config.readmePath, readme);
+        // Local template preview
+        if (!process.env.CI) {
+            const tplDir = "examples/default";
+            (0,external_node_fs_namespaceObject.mkdirSync)(tplDir, { recursive: true });
+            (0,external_node_fs_namespaceObject.copyFileSync)(`${config.outputDir}/index.svg`, `${tplDir}/index.svg`);
+            for (const section of activeSections) {
+                (0,external_node_fs_namespaceObject.copyFileSync)(`${config.outputDir}/${section.filename}`, `${tplDir}/${section.filename}`);
             }
-            const svgs = indexOnly
-                ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
-                : activeSections.map((s) => ({
-                    label: s.title,
-                    path: `${svgDir}/${s.filename}`,
-                }));
-            // Build section SVG path map for templates
-            const sectionSvgs = {};
+            const previewSvgs = activeSections.map((s) => ({
+                label: s.title,
+                path: `./${s.filename}`,
+            }));
+            const previewSectionSvgs = {};
             for (const [key, filename] of Object.entries(SECTION_KEYS)) {
                 if (activeSections.some((s) => s.filename === filename)) {
-                    sectionSvgs[key] = `${svgDir}/${filename}`;
+                    previewSectionSvgs[key] = `./${filename}`;
                 }
             }
-            const displayName = userConfig.name || userProfile.name || username;
-            const socialBadges = buildSocialBadges(userProfile);
-            // Build categorized projects map for ecosystem template
-            const allProjectItems = [
-                ...activeProjects,
-                ...maintainedProjects,
-                ...inactiveProjects,
-                ...archivedProjects,
-            ];
-            const categorizedProjects = {};
-            for (const project of allProjectItems) {
-                const cat = project.category || "Other";
-                if (!categorizedProjects[cat])
-                    categorizedProjects[cat] = [];
-                categorizedProjects[cat].push(project);
-            }
-            {
-                const template = getTemplate(templateName);
-                const readme = template({
-                    username,
-                    name: displayName,
-                    firstName: extractFirstName(displayName),
-                    pronunciation: userConfig.pronunciation,
-                    title: userConfig.title,
-                    bio: userConfig.bio,
-                    preamble,
-                    templateName,
-                    svgs,
-                    sectionSvgs,
-                    profile: userProfile,
-                    activeProjects,
-                    maintainedProjects,
-                    inactiveProjects,
-                    archivedProjects,
-                    allProjects: complexProjects,
-                    categorizedProjects,
-                    languages,
-                    velocity,
-                    rhythm,
-                    constellation,
-                    contributionData,
-                    socialBadges,
-                    svgDir,
-                });
-                (0,external_node_fs_namespaceObject.writeFileSync)(readmePath, readme);
-            }
-            core.info(`Wrote ${readmePath} (template: ${templateName})`);
-            // ── Local template previews ──────────────────────────────────────────
-            if (!process.env.CI) {
-                const allTemplateNames = [
-                    "classic",
-                    "modern",
-                    "minimal",
-                    "ecosystem",
-                ];
-                for (const tplName of allTemplateNames) {
-                    const tplDir = `examples/${tplName}`;
-                    (0,external_node_fs_namespaceObject.mkdirSync)(tplDir, { recursive: true });
-                    // Copy SVGs into the subfolder
-                    (0,external_node_fs_namespaceObject.copyFileSync)(`${outputDir}/index.svg`, `${tplDir}/index.svg`);
-                    for (const section of activeSections) {
-                        (0,external_node_fs_namespaceObject.copyFileSync)(`${outputDir}/${section.filename}`, `${tplDir}/${section.filename}`);
-                    }
-                    const previewSvgs = indexOnly
-                        ? [{ label: "GitHub Metrics", path: `./index.svg` }]
-                        : activeSections.map((s) => ({
-                            label: s.title,
-                            path: `./${s.filename}`,
-                        }));
-                    const previewSectionSvgs = {};
-                    for (const [key, filename] of Object.entries(SECTION_KEYS)) {
-                        if (activeSections.some((s) => s.filename === filename)) {
-                            previewSectionSvgs[key] = `./${filename}`;
-                        }
-                    }
-                    const template = getTemplate(tplName);
-                    const output = template({
-                        username,
-                        name: displayName,
-                        firstName: extractFirstName(displayName),
-                        pronunciation: userConfig.pronunciation,
-                        title: userConfig.title,
-                        bio: userConfig.bio,
-                        preamble,
-                        templateName: tplName,
-                        svgs: previewSvgs,
-                        sectionSvgs: previewSectionSvgs,
-                        profile: userProfile,
-                        activeProjects,
-                        maintainedProjects,
-                        inactiveProjects,
-                        archivedProjects,
-                        allProjects: complexProjects,
-                        categorizedProjects,
-                        languages,
-                        velocity,
-                        rhythm,
-                        constellation,
-                        contributionData,
-                        socialBadges,
-                        svgDir: ".",
-                    });
-                    const previewPath = `${tplDir}/README.md`;
-                    (0,external_node_fs_namespaceObject.writeFileSync)(previewPath, output);
-                    core.info(`Wrote ${previewPath} (template preview: ${tplName})`);
-                }
-            }
+            const previewReadme = template({
+                username: config.username,
+                name: displayName,
+                firstName: extractFirstName(displayName),
+                pronunciation: userConfig.pronunciation,
+                title: userConfig.title,
+                bio: userConfig.bio,
+                preamble,
+                templateName,
+                svgs: previewSvgs,
+                sectionSvgs: previewSectionSvgs,
+                profile: userProfile,
+                activeProjects,
+                maintainedProjects,
+                inactiveProjects,
+                archivedProjects,
+                allProjects: complexProjects,
+                categorizedProjects,
+                languages,
+                velocity,
+                rhythm,
+                constellation,
+                contributionData,
+                socialBadges,
+                svgDir: ".",
+                spotlightProjects,
+                resolvedSections,
+            });
+            (0,external_node_fs_namespaceObject.writeFileSync)(`${tplDir}/README.md`, previewReadme);
+            cb.onProgress(`Preview at ${tplDir}/README.md`);
         }
-        // ── Commit + Push ─────────────────────────────────────────────────────
-        if (commitPush) {
-            await exec.exec("git", ["config", "user.name", commitName]);
-            await exec.exec("git", ["config", "user.email", commitEmail]);
-            const filesToAdd = [`${outputDir}/`];
-            if (readmePath && readmePath !== "none") {
-                filesToAdd.push(readmePath);
-            }
-            await exec.exec("git", ["add", ...filesToAdd]);
-            const diffResult = await exec.exec("git", ["diff", "--staged", "--quiet"], { ignoreReturnCode: true });
-            if (diffResult !== 0) {
-                await exec.exec("git", ["commit", "-m", commitMessage]);
-                await exec.exec("git", ["push"]);
-                core.info("Changes committed and pushed.");
-            }
-            else {
-                core.info("No changes to commit.");
-            }
+        cb.onPhaseComplete("generate-readme", config.readmePath);
+    }
+    // ── Commit + Push ─────────────────────────────────────────────────────────
+    if (config.commitPush) {
+        cb.onPhaseStart("commit-push", "Committing & pushing");
+        await git(["config", "user.name", config.commitName]);
+        await git(["config", "user.email", config.commitEmail]);
+        const filesToAdd = [`${config.outputDir}/`];
+        if (config.readmePath && config.readmePath !== "none") {
+            filesToAdd.push(config.readmePath);
         }
+        await git(["add", ...filesToAdd]);
+        const diffResult = await gitQuiet(["diff", "--staged", "--quiet"]);
+        if (diffResult !== 0) {
+            await git(["commit", "-m", config.commitMessage]);
+            await git(["push"]);
+            cb.onPhaseComplete("commit-push", "Changes committed and pushed");
+        }
+        else {
+            cb.onPhaseComplete("commit-push", "No changes to commit");
+        }
+    }
+}
+
+;// CONCATENATED MODULE: ./src/action.ts
+
+
+async function run() {
+    const token = core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
+    const username = core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
+    const outputDir = core.getInput("output-dir") || "assets/insights";
+    const commitPush = (core.getInput("commit-push") || (process.env.CI ? "true" : "false")) ===
+        "true";
+    const commitMessage = core.getInput("commit-message") || "chore: update metrics";
+    const commitName = core.getInput("commit-name") || "github-actions[bot]";
+    const commitEmail = core.getInput("commit-email") ||
+        "41898282+github-actions[bot]@users.noreply.github.com";
+    const configPath = core.getInput("config-file") || undefined;
+    const readmePath = core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
+    const templateName = core.getInput("template") || "showcase";
+    const sectionsInput = core.getInput("sections") || "";
+    const requestedSections = sectionsInput.length > 0
+        ? sectionsInput
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean)
+        : [];
+    const config = {
+        token,
+        username,
+        outputDir,
+        commitPush,
+        commitMessage,
+        commitName,
+        commitEmail,
+        configPath,
+        readmePath,
+        templateName,
+        requestedSections,
+    };
+    const callbacks = {
+        onPhaseStart(_phase, label) {
+            core.info(label + "...");
+        },
+        onPhaseComplete(_phase, summary) {
+            core.info(summary);
+        },
+        onProgress(message) {
+            core.info(message);
+        },
+        onError(error) {
+            core.setFailed(error.message);
+        },
+    };
+    try {
+        await runPipeline(config, callbacks);
     }
     catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
