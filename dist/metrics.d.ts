@@ -1,5 +1,7 @@
-import type { ConstellationNode, ContributionData, ContributionRhythm, LanguageItem, ManifestMap, MonthlyLanguageBucket, ProjectItem, RepoClassificationInput, RepoClassificationOutput, RepoNode, SectionDef } from "./types.js";
+import type { ConstellationNode, ContributionData, ContributionRhythm, LanguageItem, ManifestMap, MonthlyLanguageBucket, ProjectItem, RepoClassificationInput, RepoClassificationOutput, RepoNode, SectionDef, SpotlightProject } from "./types.js";
 export declare const SECTION_KEYS: Record<string, string>;
+export declare const SVG_SECTION_KEYS: readonly ["velocity", "rhythm", "constellation", "impact"];
+export declare const TEXT_SECTION_KEYS: readonly ["spotlight", "portfolio"];
 export declare const aggregateLanguages: (repos: RepoNode[]) => LanguageItem[];
 export declare const collectAllDependencies: (repos: RepoNode[], manifests: ManifestMap) => string[];
 export declare const collectAllTopics: (repos: RepoNode[]) => string[];
@@ -13,6 +15,7 @@ export declare const splitProjectsByRecency: (repos: RepoNode[], contributionDat
     inactive: ProjectItem[];
     archived: ProjectItem[];
 };
+export declare const computeSpotlightProjects: (repos: RepoNode[], contributionData: ContributionData, aiClassifications?: RepoClassificationOutput[], topN?: number) => SpotlightProject[];
 export declare const computeLanguageVelocity: (contributionData: ContributionData, repos: RepoNode[]) => MonthlyLanguageBucket[];
 export declare const computeContributionRhythm: (contributionData: ContributionData) => ContributionRhythm;
 export declare const computeConstellationLayout: (projects: ProjectItem[], repos: RepoNode[]) => ConstellationNode[];

@@ -1,5 +1,6 @@
 import type {
   ProjectItem,
+  ShowcaseSection,
   TemplateContext,
   TemplateFunction,
   TemplateName,
@@ -8,9 +9,9 @@ import type {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function attribution(templateName: string): string {
+function attribution(): string {
   const now = new Date().toISOString().split("T")[0];
-  return `<!-- section: footer -->\n<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights) · Template: \`${templateName}\`</sub>`;
+  return `<!-- section: footer -->\n<sub>Last generated on ${now} using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>`;
 }
 
 function frontmatter(ctx: TemplateContext): string {
@@ -112,27 +113,7 @@ export function buildSocialBadges(profile: UserProfile): string {
   return badges.join(" ");
 }
 
-// ── Project section helper (modern template) ─────────────────────────────
-
-function renderProjectSection(title: string, projects: ProjectItem[]): string {
-  if (projects.length === 0) return "";
-
-  const items = projects
-    .map((p) => {
-      const desc = p.summary || p.description || "No description";
-      const meta: string[] = [];
-      if (p.stars > 0) meta.push(`Stars: ${p.stars}`);
-      if (p.languages?.length)
-        meta.push(`Languages: ${p.languages.slice(0, 3).join(", ")}`);
-      const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
-      return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
-    })
-    .join("\n\n");
-
-  return `## ${title}\n\n${items}`;
-}
-
-// ── Project table helper (ecosystem template) ────────────────────────────
+// ── Project table helper ──────────────────────────────────────────────────
 
 function renderProjectTable(title: string, projects: ProjectItem[]): string {
   if (projects.length === 0) return "";
@@ -153,9 +134,94 @@ function renderProjectTable(title: string, projects: ProjectItem[]): string {
   return `### ${title}\n\n${header}\n${rows}`;
 }
 
-// ── Classic template ───────────────────────────────────────────────────────
+// ── Section renderers ─────────────────────────────────────────────────────
 
-function classicTemplate(ctx: TemplateContext): string {
+const CATEGORY_ORDER = [
+  "Developer Tools",
+  "SDKs",
+  "Applications",
+  "Research & Experiments",
+];
+
+function renderSpotlight(ctx: TemplateContext): string {
+  if (ctx.spotlightProjects.length === 0) return "";
+
+  const items = ctx.spotlightProjects
+    .map((p) => {
+      const desc = p.summary || p.description || "No description";
+      const meta: string[] = [];
+      if (p.stars > 0) meta.push(`Stars: ${p.stars}`);
+      if (p.languages?.length)
+        meta.push(`Languages: ${p.languages.slice(0, 3).join(", ")}`);
+      if (p.activityLabel) meta.push(`**${p.activityLabel}**`);
+      const metaLine = meta.length > 0 ? `${meta.join(" \u00b7 ")}` : "";
+      return `### [${p.name}](${p.url})\n${desc}${metaLine ? `\n${metaLine}` : ""}`;
+    })
+    .join("\n\n");
+
+  return `## Spotlight\n\n${items}`;
+}
+
+function renderVelocity(ctx: TemplateContext): string {
+  if (!ctx.sectionSvgs.velocity) return "";
+  return `## Language Velocity\n\n![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`;
+}
+
+function renderRhythm(ctx: TemplateContext): string {
+  if (!ctx.sectionSvgs.rhythm) return "";
+  return `## Contribution Rhythm\n\n![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`;
+}
+
+function renderConstellation(ctx: TemplateContext): string {
+  if (!ctx.sectionSvgs.constellation) return "";
+  return `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`;
+}
+
+function renderImpact(ctx: TemplateContext): string {
+  if (!ctx.sectionSvgs.impact) return "";
+  return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
+}
+
+function renderPortfolio(ctx: TemplateContext): string {
+  const tableParts: string[] = [];
+
+  for (const category of CATEGORY_ORDER) {
+    const projects = ctx.categorizedProjects[category];
+    if (projects && projects.length > 0) {
+      tableParts.push(renderProjectTable(category, projects));
+    }
+  }
+
+  for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
+    if (!CATEGORY_ORDER.includes(category)) {
+      if (projects.length > 0) {
+        tableParts.push(renderProjectTable(category, projects));
+      }
+    }
+  }
+
+  if (tableParts.length === 0) return "";
+
+  return `## Portfolio\n\n<details>\n<summary>All Projects</summary>\n\n${tableParts.join("\n\n")}\n\n</details>`;
+}
+
+// ── Section dispatcher ────────────────────────────────────────────────────
+
+const SECTION_RENDERERS: Record<
+  ShowcaseSection,
+  (ctx: TemplateContext) => string
+> = {
+  spotlight: renderSpotlight,
+  velocity: renderVelocity,
+  rhythm: renderRhythm,
+  constellation: renderConstellation,
+  impact: renderImpact,
+  portfolio: renderPortfolio,
+};
+
+// ── Showcase template ─────────────────────────────────────────────────────
+
+function showcaseTemplate(ctx: TemplateContext): string {
   const parts: string[] = [];
 
   parts.push(frontmatter(ctx));
@@ -166,10 +232,6 @@ function classicTemplate(ctx: TemplateContext): string {
     parts.push(`# ${ctx.name}`);
   }
 
-  if (ctx.title) {
-    parts.push(`> ${ctx.title}`);
-  }
-
   if (ctx.preamble) {
     parts.push(ctx.preamble);
   }
@@ -181,242 +243,23 @@ function classicTemplate(ctx: TemplateContext): string {
     parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
   }
 
-  if (ctx.svgs.length > 0) {
-    const svgLines = ctx.svgs
-      .map((svg) => `![${descriptiveAlt(svg.label, ctx.name)}](${svg.path})`)
-      .join("\n");
-    parts.push(`<!-- section: visualizations -->\n${svgLines}`);
-  }
-
-  if (ctx.bio) {
-    parts.push(`---\n\n<sub>${ctx.bio}</sub>`);
-  }
-
-  parts.push(attribution(ctx.templateName));
-
-  return `${parts.join("\n\n")}\n`;
-}
-
-// ── Modern template ────────────────────────────────────────────────────────
-
-function modernTemplate(ctx: TemplateContext): string {
-  const parts: string[] = [];
-
-  parts.push(frontmatter(ctx));
-
-  parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
-
-  if (ctx.preamble) {
-    parts.push(ctx.preamble);
-  }
-
-  const meta = inlineMetadata(ctx);
-  if (meta) parts.push(meta);
-
-  if (ctx.socialBadges) {
-    parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
-  }
-
-  // Projects
-  const projectSections: string[] = [];
-  const activeSection = renderProjectSection(
-    "Active Projects",
-    ctx.activeProjects,
-  );
-  if (activeSection) projectSections.push(activeSection);
-
-  const maintainedSection = renderProjectSection(
-    "Maintained Projects",
-    ctx.maintainedProjects,
-  );
-  if (maintainedSection) projectSections.push(maintainedSection);
-
-  const inactiveSection = renderProjectSection(
-    "Inactive Projects",
-    ctx.inactiveProjects,
-  );
-  if (inactiveSection) projectSections.push(inactiveSection);
-
-  if (projectSections.length > 0) {
-    parts.push(`<!-- section: projects -->\n${projectSections.join("\n\n")}`);
-  }
-
-  // Visualizations
-  const vizParts: string[] = [];
-
-  // Constellation
-  if (ctx.sectionSvgs.constellation) {
-    vizParts.push(
-      `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`,
-    );
-  }
-
-  // GitHub Stats section: rhythm + velocity
-  const statsImages: string[] = [];
-  if (ctx.sectionSvgs.velocity) {
-    statsImages.push(
-      `![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`,
-    );
-  }
-  if (ctx.sectionSvgs.rhythm) {
-    statsImages.push(
-      `![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`,
-    );
-  }
-  if (statsImages.length > 0) {
-    vizParts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
-  }
-
-  // Impact
-  if (ctx.sectionSvgs.impact) {
-    vizParts.push(
-      `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`,
-    );
-  }
-
-  if (vizParts.length > 0) {
-    parts.push(`<!-- section: visualizations -->\n${vizParts.join("\n\n")}`);
-  }
-
-  parts.push(attribution(ctx.templateName));
-
-  return `${parts.join("\n\n")}\n`;
-}
-
-// ── Minimal template ───────────────────────────────────────────────────────
-
-function minimalTemplate(ctx: TemplateContext): string {
-  const parts: string[] = [];
-
-  parts.push(frontmatter(ctx));
-
-  parts.push(`# ${ctx.firstName}`);
-
-  if (ctx.preamble) {
-    parts.push(ctx.preamble);
-  }
-
-  const meta = inlineMetadata(ctx);
-  if (meta) parts.push(meta);
-
-  if (ctx.socialBadges) {
-    parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
-  }
-
-  if (ctx.svgs.length > 0) {
-    const svgLines = ctx.svgs
-      .map((svg) => `![${descriptiveAlt(svg.label, ctx.name)}](${svg.path})`)
-      .join("\n");
-    parts.push(`<!-- section: visualizations -->\n${svgLines}`);
-  }
-
-  parts.push(attribution(ctx.templateName));
-
-  return `${parts.join("\n\n")}\n`;
-}
-
-// ── Ecosystem template ────────────────────────────────────────────────────
-
-const CATEGORY_ORDER = [
-  "Developer Tools",
-  "SDKs",
-  "Applications",
-  "Research & Experiments",
-];
-
-function ecosystemTemplate(ctx: TemplateContext): string {
-  const parts: string[] = [];
-
-  parts.push(frontmatter(ctx));
-
-  parts.push(`# Hi, I'm ${ctx.firstName} 👋`);
-
-  if (ctx.preamble) {
-    parts.push(ctx.preamble);
-  }
-
-  const meta = inlineMetadata(ctx);
-  if (meta) parts.push(meta);
-
-  if (ctx.socialBadges) {
-    parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
-  }
-
-  // Projects
-  const projectParts: string[] = [];
-
-  // Render project tables grouped by category
-  for (const category of CATEGORY_ORDER) {
-    const projects = ctx.categorizedProjects[category];
-    if (projects && projects.length > 0) {
-      projectParts.push(renderProjectTable(category, projects));
-    }
-  }
-
-  // Render any uncategorized projects that don't match known categories
-  for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
-    if (!CATEGORY_ORDER.includes(category)) {
-      if (projects.length > 0) {
-        projectParts.push(renderProjectTable(category, projects));
+  for (const sectionKey of ctx.resolvedSections) {
+    const renderer = SECTION_RENDERERS[sectionKey];
+    if (renderer) {
+      const block = renderer(ctx);
+      if (block) {
+        parts.push(`<!-- section: ${sectionKey} -->\n${block}`);
       }
     }
   }
 
-  if (projectParts.length > 0) {
-    parts.push(`<!-- section: projects -->\n${projectParts.join("\n\n")}`);
-  }
-
-  // Visualizations
-  const vizParts: string[] = [];
-
-  // Constellation
-  if (ctx.sectionSvgs.constellation) {
-    vizParts.push(
-      `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`,
-    );
-  }
-
-  // GitHub Stats section: velocity + rhythm
-  const statsImages: string[] = [];
-  if (ctx.sectionSvgs.velocity) {
-    statsImages.push(
-      `![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`,
-    );
-  }
-  if (ctx.sectionSvgs.rhythm) {
-    statsImages.push(
-      `![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`,
-    );
-  }
-  if (statsImages.length > 0) {
-    vizParts.push(`## GitHub Stats\n\n${statsImages.join("\n")}`);
-  }
-
-  // Impact
-  if (ctx.sectionSvgs.impact) {
-    vizParts.push(
-      `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`,
-    );
-  }
-
-  if (vizParts.length > 0) {
-    parts.push(`<!-- section: visualizations -->\n${vizParts.join("\n\n")}`);
-  }
-
-  parts.push(attribution(ctx.templateName));
+  parts.push(attribution());
 
   return `${parts.join("\n\n")}\n`;
 }
 
-// ── Registry ───────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────
 
-const TEMPLATES: Record<TemplateName, TemplateFunction> = {
-  classic: classicTemplate,
-  modern: modernTemplate,
-  minimal: minimalTemplate,
-  ecosystem: ecosystemTemplate,
-};
-
-export function getTemplate(name: TemplateName): TemplateFunction {
-  return TEMPLATES[name] || TEMPLATES.classic;
+export function getTemplate(_name?: TemplateName): TemplateFunction {
+  return showcaseTemplate;
 }

@@ -16,6 +16,7 @@ import type {
   RepoClassificationOutput,
   RepoNode,
   SectionDef,
+  SpotlightProject,
 } from "./types.js";
 
 // ── Category Sets ───────────────────────────────────────────────────────────
@@ -29,7 +30,18 @@ export const SECTION_KEYS: Record<string, string> = {
   rhythm: "metrics-rhythm.svg",
   constellation: "metrics-constellation.svg",
   impact: "metrics-impact.svg",
+  spotlight: "",
+  portfolio: "",
 };
+
+export const SVG_SECTION_KEYS = [
+  "velocity",
+  "rhythm",
+  "constellation",
+  "impact",
+] as const;
+
+export const TEXT_SECTION_KEYS = ["spotlight", "portfolio"] as const;
 
 // ── Aggregation ─────────────────────────────────────────────────────────────
 
@@ -262,6 +274,65 @@ export const splitProjectsByRecency = (
     .map(toProjectItemWithSummary);
 
   return { active, maintained, inactive, archived };
+};
+
+// ── Spotlight (Heat Score) ────────────────────────────────────────────────────
+
+export const computeSpotlightProjects = (
+  repos: RepoNode[],
+  contributionData: ContributionData,
+  aiClassifications?: RepoClassificationOutput[],
+  topN = 5,
+): SpotlightProject[] => {
+  const commitMap = new Map<string, number>();
+  for (const entry of contributionData.commitContributionsByRepository || []) {
+    commitMap.set(entry.repository.name, entry.contributions.totalCount);
+  }
+
+  const aiMap = new Map<string, RepoClassificationOutput>();
+  if (aiClassifications) {
+    for (const c of aiClassifications) {
+      aiMap.set(c.name, c);
+    }
+  }
+
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const scored: SpotlightProject[] = repos
+    .filter((repo) => !repo.isArchived)
+    .map((repo) => {
+      const commits = commitMap.get(repo.name) || 0;
+      const daysSincePush = Math.max(
+        0,
+        (now - new Date(repo.pushedAt).getTime()) / DAY_MS,
+      );
+
+      const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
+      const commitBoost = Math.min(commits, 50) * 2;
+      const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
+      const heatScore = commitBoost + recencyBonus + starBoost;
+
+      const pushedInLast30 = daysSincePush <= 30;
+      const pushedInLast90 = daysSincePush <= 90;
+      let activityLabel: string | undefined;
+      if (commits >= 10 && pushedInLast30) {
+        activityLabel = "Active";
+      } else if (commits >= 1 || pushedInLast90) {
+        activityLabel = "Building";
+      }
+
+      const ai = aiMap.get(repo.name);
+      return {
+        ...toProjectItem(repo),
+        summary: ai?.summary || undefined,
+        category: ai?.category || undefined,
+        heatScore,
+        activityLabel,
+      };
+    });
+
+  return scored.sort((a, b) => b.heatScore - a.heatScore).slice(0, topN);
 };
 
 // ── Language Velocity ────────────────────────────────────────────────────────

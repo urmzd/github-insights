@@ -127,6 +127,7 @@ export function renderLanguageVelocity(
       {/* Streamgraph paths */}
       {paths.map((p, i) => (
         <path
+          key={p.name}
           d={p.path}
           fill={p.color}
           fill-opacity="0.75"
@@ -163,6 +164,7 @@ export function renderLanguageVelocity(
       {/* Month labels */}
       {monthLabels.map((m) => (
         <text
+          key={m.label}
           x={m.x}
           y={y + chartHeight + 14}
           className="t t-value"

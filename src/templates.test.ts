@@ -7,7 +7,24 @@ import {
   getTemplate,
   shieldsBadgeLabel,
 } from "./templates.js";
-import type { TemplateContext } from "./types.js";
+import type {
+  ShowcaseSection,
+  SpotlightProject,
+  TemplateContext,
+} from "./types.js";
+
+const makeSpotlight = (
+  overrides: Partial<SpotlightProject> = {},
+): SpotlightProject => ({
+  name: "hot-project",
+  url: "https://github.com/urmzd/hot-project",
+  description: "A trending project",
+  stars: 15,
+  heatScore: 80,
+  activityLabel: "Active",
+  languages: ["Rust", "TypeScript"],
+  ...overrides,
+});
 
 const makeContext = (
   overrides: Partial<TemplateContext> = {},
@@ -48,7 +65,7 @@ const makeContext = (
   inactiveProjects: [],
   archivedProjects: [],
   allProjects: [],
-  templateName: "classic",
+  templateName: "showcase",
   categorizedProjects: {
     Applications: [
       {
@@ -80,6 +97,15 @@ const makeContext = (
   socialBadges:
     "[![urmzd.dev](https://img.shields.io/badge/urmzd.dev-4285F4?style=flat&logo=google-chrome&logoColor=white)](https://urmzd.dev)",
   svgDir: "assets/insights",
+  spotlightProjects: [makeSpotlight()],
+  resolvedSections: [
+    "spotlight",
+    "velocity",
+    "rhythm",
+    "constellation",
+    "portfolio",
+    "impact",
+  ],
   ...overrides,
 });
 
@@ -185,303 +211,156 @@ describe("shieldsBadgeLabel", () => {
 // ── getTemplate ────────────────────────────────────────────────────────────
 
 describe("getTemplate", () => {
-  it("returns a function for classic", () => {
-    expect(typeof getTemplate("classic")).toBe("function");
+  it("returns a function", () => {
+    expect(typeof getTemplate("showcase")).toBe("function");
   });
 
-  it("returns a function for modern", () => {
-    expect(typeof getTemplate("modern")).toBe("function");
-  });
-
-  it("returns a function for minimal", () => {
-    expect(typeof getTemplate("minimal")).toBe("function");
-  });
-
-  it("returns a function for ecosystem", () => {
-    expect(typeof getTemplate("ecosystem")).toBe("function");
+  it("returns the same function regardless of template name", () => {
+    expect(getTemplate("classic")).toBe(getTemplate("showcase"));
   });
 });
 
-// ── Classic template ───────────────────────────────────────────────────────
+// ── showcaseTemplate ───────────────────────────────────────────────────────
 
-describe("classicTemplate", () => {
+describe("showcaseTemplate", () => {
   it("includes name heading", () => {
-    const output = getTemplate("classic")(makeContext());
+    const output = getTemplate("showcase")(makeContext());
     expect(output).toContain("# Urmzd Maharramoff");
   });
 
-  it("includes title blockquote", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("> Software Engineer");
-  });
-
-  it("includes preamble content", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("A software developer in Austin, TX.");
-  });
-
-  it("includes SVG embeds with descriptive alt text", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output).toContain(
-      `![${descriptiveAlt("GitHub Metrics", "Urmzd Maharramoff")}](assets/insights/index.svg)`,
-    );
-  });
-
-  it("includes social badges", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("img.shields.io");
-  });
-
-  it("includes bio footer", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("<sub>Building tools</sub>");
-  });
-
-  it("includes attribution", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output).toContain("@urmzd/github-insights");
-  });
-
   it("includes pronunciation when provided", () => {
-    const output = getTemplate("classic")(
+    const output = getTemplate("showcase")(
       makeContext({ pronunciation: "/ˈʊrm.zəd/" }),
     );
     expect(output).toContain("/ˈʊrm.zəd/");
   });
 
-  it("omits archived section", () => {
-    const output = getTemplate("classic")(
-      makeContext({
-        archivedProjects: [
-          {
-            name: "old-project",
-            url: "https://github.com/urmzd/old-project",
-            description: "An archived project",
-            stars: 2,
-          },
-        ],
-      }),
-    );
-    expect(output).not.toContain("## Archived");
-  });
-
-  it("ends with trailing newline", () => {
-    const output = getTemplate("classic")(makeContext());
-    expect(output.endsWith("\n")).toBe(true);
-  });
-});
-
-// ── Modern template ────────────────────────────────────────────────────────
-
-describe("modernTemplate", () => {
-  it("includes wave greeting with first name", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("# Hi, I'm Urmzd");
-  });
-
   it("includes preamble", () => {
-    const output = getTemplate("modern")(makeContext());
+    const output = getTemplate("showcase")(makeContext());
     expect(output).toContain("A software developer in Austin, TX.");
   });
 
-  it("includes active projects section with h3 headings", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("## Active Projects");
-    expect(output).toContain(
-      "### [resume-generator](https://github.com/urmzd/resume-generator)",
-    );
-    expect(output).toContain("Stars: 42");
+  it("includes inline metadata", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("**Top Languages:** TypeScript, Rust");
   });
 
-  it("includes maintained projects section with h3 headings", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("## Maintained Projects");
-    expect(output).toContain(
-      "### [flappy-bird](https://github.com/urmzd/flappy-bird)",
-    );
+  it("includes social badges", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("img.shields.io");
   });
 
-  it("includes AI summary in project section when available", () => {
-    const output = getTemplate("modern")(
+  it("includes attribution", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("@urmzd/github-insights");
+  });
+
+  it("ends with trailing newline", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output.endsWith("\n")).toBe(true);
+  });
+
+  // Section rendering
+  it("renders spotlight section with project cards", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("## Spotlight");
+    expect(output).toContain(
+      "### [hot-project](https://github.com/urmzd/hot-project)",
+    );
+    expect(output).toContain("**Active**");
+    expect(output).toContain("Stars: 15");
+  });
+
+  it("renders velocity section", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("## Language Velocity");
+    expect(output).toContain("assets/insights/metrics-velocity.svg");
+  });
+
+  it("renders rhythm section", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("## Contribution Rhythm");
+    expect(output).toContain("assets/insights/metrics-rhythm.svg");
+  });
+
+  it("renders constellation section", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("## Project Map");
+    expect(output).toContain("assets/insights/metrics-constellation.svg");
+  });
+
+  it("renders impact section", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("## Open Source Impact");
+    expect(output).toContain("assets/insights/metrics-impact.svg");
+  });
+
+  it("renders portfolio section with collapsible details", () => {
+    const output = getTemplate("showcase")(makeContext());
+    expect(output).toContain("## Portfolio");
+    expect(output).toContain("<details>");
+    expect(output).toContain("<summary>All Projects</summary>");
+    expect(output).toContain("### Applications");
+    expect(output).toContain("### Research & Experiments");
+    expect(output).toContain("</details>");
+  });
+
+  it("omits sections not in resolvedSections", () => {
+    const output = getTemplate("showcase")(
       makeContext({
-        activeProjects: [
-          {
-            name: "my-tool",
-            url: "https://github.com/urmzd/my-tool",
-            description: "A CLI tool",
-            stars: 5,
-            summary: "AI-generated summary of the project.",
-          },
+        resolvedSections: ["spotlight", "rhythm"],
+      }),
+    );
+    expect(output).toContain("## Spotlight");
+    expect(output).toContain("## Contribution Rhythm");
+    expect(output).not.toContain("## Language Velocity");
+    expect(output).not.toContain("## Project Map");
+    expect(output).not.toContain("## Portfolio");
+    expect(output).not.toContain("## Open Source Impact");
+  });
+
+  it("renders sections in the order specified", () => {
+    const output = getTemplate("showcase")(
+      makeContext({
+        resolvedSections: ["impact", "spotlight"],
+      }),
+    );
+    const impactIdx = output.indexOf("## Open Source Impact");
+    const spotlightIdx = output.indexOf("## Spotlight");
+    expect(impactIdx).toBeLessThan(spotlightIdx);
+  });
+
+  it("omits spotlight section when no spotlight projects", () => {
+    const output = getTemplate("showcase")(
+      makeContext({ spotlightProjects: [] }),
+    );
+    expect(output).not.toContain("## Spotlight");
+  });
+
+  it("omits portfolio section when no categorized projects", () => {
+    const output = getTemplate("showcase")(
+      makeContext({ categorizedProjects: {} }),
+    );
+    expect(output).not.toContain("## Portfolio");
+  });
+
+  it("uses AI summary when available in spotlight", () => {
+    const output = getTemplate("showcase")(
+      makeContext({
+        spotlightProjects: [
+          makeSpotlight({ summary: "AI-generated summary of the project." }),
         ],
       }),
     );
     expect(output).toContain("AI-generated summary of the project.");
   });
 
-  it("includes GitHub Stats section with velocity and rhythm", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("## GitHub Stats");
-    expect(output).toContain("assets/insights/metrics-velocity.svg");
-    expect(output).toContain("assets/insights/metrics-rhythm.svg");
-  });
-
-  it("includes constellation section", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("## Project Map");
-    expect(output).toContain("assets/insights/metrics-constellation.svg");
-  });
-
-  it("omits archived section", () => {
-    const output = getTemplate("modern")(
+  it("shows Building activity label", () => {
+    const output = getTemplate("showcase")(
       makeContext({
-        archivedProjects: [
-          {
-            name: "legacy-lib",
-            url: "https://github.com/urmzd/legacy-lib",
-            description: "A legacy library",
-            stars: 1,
-          },
-        ],
+        spotlightProjects: [makeSpotlight({ activityLabel: "Building" })],
       }),
     );
-    expect(output).not.toContain("## Archived");
-  });
-
-  it("includes social badges", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output).toContain("img.shields.io");
-  });
-
-  it("ends with trailing newline", () => {
-    const output = getTemplate("modern")(makeContext());
-    expect(output.endsWith("\n")).toBe(true);
-  });
-});
-
-// ── Minimal template ───────────────────────────────────────────────────────
-
-describe("minimalTemplate", () => {
-  it("uses first name as heading", () => {
-    const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("# Urmzd");
-  });
-
-  it("includes preamble", () => {
-    const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("A software developer in Austin, TX.");
-  });
-
-  it("includes SVG embeds with descriptive alt text", () => {
-    const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain(
-      `![${descriptiveAlt("GitHub Metrics", "Urmzd Maharramoff")}](assets/insights/index.svg)`,
-    );
-  });
-
-  it("includes social badges", () => {
-    const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("img.shields.io");
-  });
-
-  it("includes attribution", () => {
-    const output = getTemplate("minimal")(makeContext());
-    expect(output).toContain("@urmzd/github-insights");
-  });
-
-  it("omits archived section", () => {
-    const output = getTemplate("minimal")(
-      makeContext({
-        archivedProjects: [
-          {
-            name: "old-util",
-            url: "https://github.com/urmzd/old-util",
-            description: "A retired utility",
-            stars: 0,
-          },
-        ],
-      }),
-    );
-    expect(output).not.toContain("## Archived");
-  });
-
-  it("ends with trailing newline", () => {
-    const output = getTemplate("minimal")(makeContext());
-    expect(output.endsWith("\n")).toBe(true);
-  });
-});
-
-// ── Ecosystem template ──────────────────────────────────────────────────
-
-describe("ecosystemTemplate", () => {
-  it("includes wave greeting with first name", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("# Hi, I'm Urmzd");
-  });
-
-  it("includes preamble", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("A software developer in Austin, TX.");
-  });
-
-  it("renders projects as categorized tables", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("### Applications");
-    expect(output).toContain("| Project | Description |");
-    expect(output).toContain(
-      "| [resume-generator](https://github.com/urmzd/resume-generator) |",
-    );
-  });
-
-  it("renders Research & Experiments category", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("### Research & Experiments");
-    expect(output).toContain(
-      "| [flappy-bird](https://github.com/urmzd/flappy-bird) |",
-    );
-  });
-
-  it("includes GitHub Stats section with velocity and rhythm", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("## GitHub Stats");
-    expect(output).toContain("assets/insights/metrics-velocity.svg");
-    expect(output).toContain("assets/insights/metrics-rhythm.svg");
-  });
-
-  it("includes constellation section", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("## Project Map");
-    expect(output).toContain("assets/insights/metrics-constellation.svg");
-  });
-
-  it("includes social badges", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("img.shields.io");
-  });
-
-  it("includes attribution", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output).toContain("@urmzd/github-insights");
-  });
-
-  it("omits archived section", () => {
-    const output = getTemplate("ecosystem")(
-      makeContext({
-        archivedProjects: [
-          {
-            name: "old-app",
-            url: "https://github.com/urmzd/old-app",
-            description: "A retired application",
-            stars: 3,
-            category: "Applications",
-          },
-        ],
-      }),
-    );
-    expect(output).not.toContain("### Archived");
-  });
-
-  it("ends with trailing newline", () => {
-    const output = getTemplate("ecosystem")(makeContext());
-    expect(output.endsWith("\n")).toBe(true);
+    expect(output).toContain("**Building**");
   });
 });

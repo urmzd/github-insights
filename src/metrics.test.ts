@@ -9,6 +9,7 @@ import {
   buildSections,
   collectAllDependencies,
   collectAllTopics,
+  computeSpotlightProjects,
   getTopProjectsByStars,
   SECTION_KEYS,
   splitProjectsByRecency,
@@ -658,5 +659,128 @@ describe("buildSections", () => {
         expect(() => section.renderBody?.(0)).not.toThrow();
       }
     }
+  });
+});
+
+// ── computeSpotlightProjects ──────────────────────────────────────────────
+
+describe("computeSpotlightProjects", () => {
+  it("returns top N projects sorted by heat score", () => {
+    const repos = [
+      makeRepo({
+        name: "active-repo",
+        stargazerCount: 5,
+        pushedAt: new Date().toISOString(),
+      }),
+      makeRepo({
+        name: "stale-repo",
+        stargazerCount: 100,
+        pushedAt: new Date(
+          Date.now() - 180 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: {
+            name: "active-repo",
+            nameWithOwner: "user/active-repo",
+          },
+          contributions: { totalCount: 30 },
+        },
+        {
+          repository: { name: "stale-repo", nameWithOwner: "user/stale-repo" },
+          contributions: { totalCount: 0 },
+        },
+      ],
+    });
+
+    const result = computeSpotlightProjects(repos, contribData, undefined, 5);
+    expect(result.length).toBe(2);
+    expect(result[0].name).toBe("active-repo");
+    expect(result[0].heatScore).toBeGreaterThan(result[1].heatScore);
+  });
+
+  it("assigns Active label for high commit repos pushed recently", () => {
+    const repos = [
+      makeRepo({ name: "hot", pushedAt: new Date().toISOString() }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "hot", nameWithOwner: "user/hot" },
+          contributions: { totalCount: 20 },
+        },
+      ],
+    });
+
+    const result = computeSpotlightProjects(repos, contribData);
+    expect(result[0].activityLabel).toBe("Active");
+  });
+
+  it("assigns Building label for low-commit repos", () => {
+    const repos = [
+      makeRepo({ name: "new", pushedAt: new Date().toISOString() }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "new", nameWithOwner: "user/new" },
+          contributions: { totalCount: 3 },
+        },
+      ],
+    });
+
+    const result = computeSpotlightProjects(repos, contribData);
+    expect(result[0].activityLabel).toBe("Building");
+  });
+
+  it("excludes archived repos", () => {
+    const repos = [
+      makeRepo({ name: "archived", isArchived: true }),
+      makeRepo({ name: "active" }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "archived", nameWithOwner: "user/archived" },
+          contributions: { totalCount: 50 },
+        },
+        {
+          repository: { name: "active", nameWithOwner: "user/active" },
+          contributions: { totalCount: 5 },
+        },
+      ],
+    });
+
+    const result = computeSpotlightProjects(repos, contribData);
+    expect(result.every((p) => p.name !== "archived")).toBe(true);
+  });
+
+  it("handles repos with zero commits but recent push", () => {
+    const repos = [
+      makeRepo({
+        name: "fresh",
+        stargazerCount: 0,
+        pushedAt: new Date().toISOString(),
+      }),
+    ];
+    const contribData = makeContributionData();
+
+    const result = computeSpotlightProjects(repos, contribData);
+    expect(result.length).toBe(1);
+    expect(result[0].heatScore).toBeGreaterThan(0);
+    expect(result[0].activityLabel).toBe("Building");
+  });
+
+  it("respects topN limit", () => {
+    const repos = Array.from({ length: 10 }, (_, i) =>
+      makeRepo({ name: `repo-${i}`, pushedAt: new Date().toISOString() }),
+    );
+    const contribData = makeContributionData();
+
+    const result = computeSpotlightProjects(repos, contribData, undefined, 3);
+    expect(result.length).toBe(3);
   });
 });

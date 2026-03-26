@@ -23,6 +23,7 @@ export function renderContributionHeatmap(
       {calendar.weeks.map((week, wi) =>
         week.contributionDays.map((day, di) => (
           <rect
+            key={`${day.date}`}
             x={padX + wi * step}
             y={y + di * step}
             width={cellSize}

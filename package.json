@@ -3,12 +3,16 @@
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
+    "ink": "^6.8.0",
+    "ink-spinner": "^5.0.0",
+    "react": "^19.2.4",
     "smol-toml": "^1.6.0",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@types/node": "^24.0.0",
+    "@types/react": "^19.2.14",
     "@vercel/ncc": "^0.38.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0",
@@ -21,11 +25,11 @@
     "url": "https://github.com/urmzd/github-insights.git"
   },
   "scripts": {
-    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "build": "ncc build src/action.ts -o dist --source-map --license licenses.txt",
     "ci": "npm run fmt && npm run lint && npm run typecheck && npm run test && npm run build",
     "fmt": "biome format src/",
     "fmt:fix": "biome check --fix src/",
-    "generate": "GITHUB_TOKEN=$(gh auth token) GITHUB_REPOSITORY_OWNER=$(gh api user --jq .login) tsx src/index.ts",
+    "generate": "GITHUB_TOKEN=$(gh auth token) GITHUB_REPOSITORY_OWNER=$(gh api user --jq .login) tsx --tsconfig tsconfig.cli.json src/cli.tsx",
     "lint": "biome check src/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
