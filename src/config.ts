@@ -93,6 +93,9 @@ function extractConfig(parsed: Record<string, unknown>): UserConfig {
       );
     }
   }
+  if (typeof parsed.exclude_archived === "boolean") {
+    config.exclude_archived = parsed.exclude_archived;
+  }
   if (Array.isArray(parsed.sections)) {
     const sections = parsed.sections
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0)

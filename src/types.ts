@@ -191,6 +191,7 @@ export interface UserConfig {
   preamble?: string;
   template?: TemplateName;
   sections?: string[];
+  exclude_archived?: boolean;
 }
 
 export interface UserProfile {
