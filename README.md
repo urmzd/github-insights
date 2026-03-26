@@ -20,28 +20,37 @@
   <a href="https://www.npmjs.com/package/@urmzd/github-insights"><img src="https://img.shields.io/npm/v/@urmzd/github-insights" alt="npm version"></a>
 </p>
 
-![Example output](assets/insights/index.svg)
+## Showcase
 
-### CLI / TUI
+<table>
+<tr>
+<td width="50%" align="center"><strong>SVG Output</strong></td>
+<td width="50%" align="center"><strong>CLI / TUI</strong></td>
+</tr>
+<tr>
+<td><img src="assets/insights/index.svg" alt="Example SVG output"></td>
+<td><img src="showcase/demo.gif" alt="GitHub Insights TUI demo"></td>
+</tr>
+</table>
 
-<p align="center">
-  <img src="showcase/demo.gif" width="80%" alt="GitHub Insights TUI demo">
-</p>
-
-Run `npm run generate` locally for a full TUI experience — live phase tracking, spinners, and timing for each pipeline step.
+Run `npm run generate` locally for a full TUI experience with live phase tracking, spinners, and timing for each pipeline step.
 
 ## Features
 
+- **Composable sections** — pick and order sections (`spotlight`, `velocity`, `rhythm`, `constellation`, `portfolio`, `impact`) or use a preset
+- **Spotlight** — surfaces your most active projects using a composite heat score (commits, recency, stars)
 - **Language Velocity** — streamgraph showing how your language usage has evolved over the past year
 - **Contribution Rhythm** — radar chart revealing day-of-week commit patterns, plus stats (commits, PRs, reviews, streak)
 - **Project Constellation** — visual map of projects positioned by language ecosystem and complexity, with connections between related repos
+- **Portfolio** — full project list in a collapsible `<details>` tag, grouped by AI-classified category
 - **Open Source Impact** — external contributions sorted by repo star count with logarithmic impact bars
 - **AI preamble generation** — auto-generated profile introduction (or supply your own `PREAMBLE.md`)
 - **AI project classification** — repos classified by status (active/maintained/inactive) and purpose (Developer Tools/SDKs/Applications/Research)
+- **CLI / TUI** — local generation with an interactive terminal UI (Ink-based), live progress, and phase timing
 - **Social badges** — auto-detected from your GitHub profile (website, Twitter, LinkedIn, etc.)
 - **Dual theme** — SVGs automatically adapt to GitHub's light and dark mode via `prefers-color-scheme`
 - **CSS animations** — subtle fade-in and scale animations on load
-- **Configuration** — customize name, title, bio, and more via `github-insights.yml`
+- **Configuration** — customize name, title, bio, sections, and more via `github-insights.yml`
 
 ## Quick Start
 
@@ -83,7 +92,8 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
 | `config-file` | Path to config file | `github-insights.yml` |
 | `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `none` (local) |
-| `index-only` | When `true`, embeds only the combined `index.svg` in the generated README; when `false`, embeds each section SVG as a separate image | `true` |
+| `template` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) | `showcase` |
+| `sections` | Comma-separated ordered list of sections (overrides `template`) | _(all)_ |
 
 ## Configuration
 
@@ -96,6 +106,14 @@ title: Software Engineer
 desired_title: Senior Software Engineer
 bio: Building things on the internet.
 preamble: PREAMBLE.md  # path to custom preamble (optional)
+template: showcase     # section preset (optional)
+sections:              # explicit section order (overrides template)
+  - spotlight
+  - velocity
+  - rhythm
+  - constellation
+  - portfolio
+  - impact
 ```
 
 All fields are optional. The `UserConfig` type in `src/types.ts` defines the full schema.
@@ -170,17 +188,17 @@ The spotlight section surfaces your most active projects using a composite score
 
 This scoring is designed to be inclusive of entry-level developers — even a few recent commits will surface a project.
 
-### Legacy Template Presets
+### Template Presets
 
-For backwards compatibility, the `template` input maps to predefined section lists:
+The `template` input maps to predefined section lists:
 
-| Preset | Equivalent `sections` |
-|--------|----------------------|
-| `classic` | `velocity, rhythm, constellation, impact` |
-| `modern` | `spotlight, velocity, rhythm, constellation, impact` |
-| `minimal` | `velocity, rhythm` |
-| `ecosystem` | `spotlight, velocity, rhythm, constellation, portfolio, impact` |
+| Preset | Sections |
+|--------|----------|
 | `showcase` (default) | `spotlight, velocity, rhythm, constellation, portfolio, impact` |
+| `ecosystem` | `spotlight, velocity, rhythm, constellation, portfolio, impact` |
+| `modern` | `spotlight, velocity, rhythm, constellation, impact` |
+| `classic` | `velocity, rhythm, constellation, impact` |
+| `minimal` | `velocity, rhythm` |
 
 The `sections` input overrides `template` when both are specified.
 
@@ -195,7 +213,8 @@ The `sections` input overrides `template` when both are specified.
 
 ```sh
 npm run ci          # full CI check (fmt, lint, typecheck, test, build)
-npm run generate    # generate metrics locally (uses gh auth token)
+npm run generate    # generate metrics locally (TUI with live progress)
+npm run showcase    # record a terminal demo GIF via teasr
 npm run build       # build ncc bundle
 npm test            # run tests
 npm run typecheck   # type-check
@@ -217,6 +236,7 @@ npm run fmt:fix     # format fix
 | `assets/insights/metrics-impact.svg` | Open Source Impact trail |
 | `README.md` | Generated profile README (CI only) |
 | `examples/default/README.md` | Local preview (generated by `npm run generate`) |
+| `showcase/demo.gif` | Terminal demo recording (generated by `npm run showcase`) |
 
 ## Agent Skill
 
