@@ -212,7 +212,25 @@ export interface SvgEmbed {
 
 // ── Template types ────────────────────────────────────────────────────────
 
-export type TemplateName = "classic" | "modern" | "minimal" | "ecosystem";
+export type TemplateName =
+  | "classic"
+  | "modern"
+  | "minimal"
+  | "ecosystem"
+  | "showcase";
+
+export type ShowcaseSection =
+  | "spotlight"
+  | "velocity"
+  | "rhythm"
+  | "constellation"
+  | "impact"
+  | "portfolio";
+
+export interface SpotlightProject extends ProjectItem {
+  heatScore: number;
+  activityLabel?: string;
+}
 
 export type ProjectStatus = "active" | "maintained" | "inactive";
 
@@ -260,6 +278,8 @@ export interface TemplateContext {
   contributionData: ContributionData;
   socialBadges: string;
   svgDir: string;
+  spotlightProjects: SpotlightProject[];
+  resolvedSections: ShowcaseSection[];
 }
 
 export type TemplateFunction = (context: TemplateContext) => string;

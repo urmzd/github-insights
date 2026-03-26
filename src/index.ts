@@ -12,7 +12,7 @@ import {
 } from "./api.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
-import { loadUserConfig } from "./config.js";
+import { loadUserConfig, resolveTemplateSections } from "./config.js";
 import {
   aggregateLanguages,
   buildClassificationInputs,
@@ -20,8 +20,10 @@ import {
   computeConstellationLayout,
   computeContributionRhythm,
   computeLanguageVelocity,
+  computeSpotlightProjects,
   getTopProjectsByComplexity,
   SECTION_KEYS,
+  SVG_SECTION_KEYS,
   splitProjectsByRecency,
 } from "./metrics.js";
 import { loadPreamble } from "./readme.js";
@@ -50,16 +52,14 @@ async function run(): Promise<void> {
       "41898282+github-actions[bot]@users.noreply.github.com";
     const configPath = core.getInput("config-file") || undefined;
     const readmePath =
-      core.getInput("readme-path") ||
-      (process.env.CI ? "README.md" : "_README.md");
-    const indexOnly = (core.getInput("index-only") || "true") === "true";
+      core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
     const userConfig = loadUserConfig(configPath);
 
     // Template and sections from action inputs or config
     const templateName: TemplateName =
       (core.getInput("template") as TemplateName) ||
       userConfig.template ||
-      "classic";
+      "showcase";
     const sectionsInput = core.getInput("sections") || "";
     const requestedSections =
       sectionsInput.length > 0
@@ -68,6 +68,15 @@ async function run(): Promise<void> {
             .map((s) => s.trim().toLowerCase())
             .filter(Boolean)
         : userConfig.sections || [];
+    const resolvedSections = resolveTemplateSections(
+      templateName,
+      requestedSections,
+    );
+    const svgSectionsNeeded = new Set(
+      resolvedSections.filter((s) =>
+        (SVG_SECTION_KEYS as readonly string[]).includes(s),
+      ),
+    );
 
     if (!token) {
       core.setFailed("github-token is required");
@@ -132,11 +141,11 @@ async function run(): Promise<void> {
       contributionData,
     });
 
-    // Filter sections by requested keys if specified
+    // Filter SVG sections to only those needed by resolved sections
     let activeSections = sectionDefs.filter((s) => s.renderBody);
-    if (requestedSections.length > 0) {
+    if (svgSectionsNeeded.size > 0) {
       const allowedFilenames = new Set(
-        requestedSections.map((key) => SECTION_KEYS[key]).filter(Boolean),
+        [...svgSectionsNeeded].map((key) => SECTION_KEYS[key]).filter(Boolean),
       );
       activeSections = activeSections.filter((s) =>
         allowedFilenames.has(s.filename),
@@ -182,12 +191,10 @@ async function run(): Promise<void> {
         });
       }
 
-      const svgs = indexOnly
-        ? [{ label: "GitHub Metrics", path: `${svgDir}/index.svg` }]
-        : activeSections.map((s) => ({
-            label: s.title,
-            path: `${svgDir}/${s.filename}`,
-          }));
+      const svgs = activeSections.map((s) => ({
+        label: s.title,
+        path: `${svgDir}/${s.filename}`,
+      }));
 
       // Build section SVG path map for templates
       const sectionSvgs: Record<string, string> = {};
@@ -200,7 +207,14 @@ async function run(): Promise<void> {
       const displayName = userConfig.name || userProfile.name || username;
       const socialBadges = buildSocialBadges(userProfile);
 
-      // Build categorized projects map for ecosystem template
+      // Compute spotlight projects
+      const spotlightProjects = computeSpotlightProjects(
+        repos,
+        contributionData,
+        aiClassifications,
+      );
+
+      // Build categorized projects map
       const allProjectItems = [
         ...activeProjects,
         ...maintainedProjects,
@@ -241,79 +255,74 @@ async function run(): Promise<void> {
           contributionData,
           socialBadges,
           svgDir,
+          spotlightProjects,
+          resolvedSections,
         });
         writeFileSync(readmePath, readme);
       }
 
-      core.info(`Wrote ${readmePath} (template: ${templateName})`);
+      core.info(
+        `Wrote ${readmePath} (sections: ${resolvedSections.join(", ")})`,
+      );
 
-      // ── Local template previews ──────────────────────────────────────────
+      // ── Local template preview ───────────────────────────────────────────
       if (!process.env.CI) {
-        const allTemplateNames: TemplateName[] = [
-          "classic",
-          "modern",
-          "minimal",
-          "ecosystem",
-        ];
-        for (const tplName of allTemplateNames) {
-          const tplDir = `examples/${tplName}`;
-          mkdirSync(tplDir, { recursive: true });
+        const tplDir = "examples/default";
+        mkdirSync(tplDir, { recursive: true });
 
-          // Copy SVGs into the subfolder
-          copyFileSync(`${outputDir}/index.svg`, `${tplDir}/index.svg`);
-          for (const section of activeSections) {
-            copyFileSync(
-              `${outputDir}/${section.filename}`,
-              `${tplDir}/${section.filename}`,
-            );
-          }
-
-          const previewSvgs = indexOnly
-            ? [{ label: "GitHub Metrics", path: `./index.svg` }]
-            : activeSections.map((s) => ({
-                label: s.title,
-                path: `./${s.filename}`,
-              }));
-
-          const previewSectionSvgs: Record<string, string> = {};
-          for (const [key, filename] of Object.entries(SECTION_KEYS)) {
-            if (activeSections.some((s) => s.filename === filename)) {
-              previewSectionSvgs[key] = `./${filename}`;
-            }
-          }
-
-          const template = getTemplate(tplName);
-          const output = template({
-            username,
-            name: displayName,
-            firstName: extractFirstName(displayName),
-            pronunciation: userConfig.pronunciation,
-            title: userConfig.title,
-            bio: userConfig.bio,
-            preamble,
-            templateName: tplName,
-            svgs: previewSvgs,
-            sectionSvgs: previewSectionSvgs,
-            profile: userProfile,
-            activeProjects,
-            maintainedProjects,
-            inactiveProjects,
-            archivedProjects,
-            allProjects: complexProjects,
-            categorizedProjects,
-            languages,
-            velocity,
-            rhythm,
-            constellation,
-            contributionData,
-            socialBadges,
-            svgDir: ".",
-          });
-
-          const previewPath = `${tplDir}/README.md`;
-          writeFileSync(previewPath, output);
-          core.info(`Wrote ${previewPath} (template preview: ${tplName})`);
+        copyFileSync(`${outputDir}/index.svg`, `${tplDir}/index.svg`);
+        for (const section of activeSections) {
+          copyFileSync(
+            `${outputDir}/${section.filename}`,
+            `${tplDir}/${section.filename}`,
+          );
         }
+
+        const previewSvgs = activeSections.map((s) => ({
+          label: s.title,
+          path: `./${s.filename}`,
+        }));
+
+        const previewSectionSvgs: Record<string, string> = {};
+        for (const [key, filename] of Object.entries(SECTION_KEYS)) {
+          if (activeSections.some((s) => s.filename === filename)) {
+            previewSectionSvgs[key] = `./${filename}`;
+          }
+        }
+
+        const template = getTemplate(templateName);
+        const output = template({
+          username,
+          name: displayName,
+          firstName: extractFirstName(displayName),
+          pronunciation: userConfig.pronunciation,
+          title: userConfig.title,
+          bio: userConfig.bio,
+          preamble,
+          templateName,
+          svgs: previewSvgs,
+          sectionSvgs: previewSectionSvgs,
+          profile: userProfile,
+          activeProjects,
+          maintainedProjects,
+          inactiveProjects,
+          archivedProjects,
+          allProjects: complexProjects,
+          categorizedProjects,
+          languages,
+          velocity,
+          rhythm,
+          constellation,
+          contributionData,
+          socialBadges,
+          svgDir: ".",
+          spotlightProjects,
+          resolvedSections,
+        });
+
+        const previewPath = `${tplDir}/README.md`;
+        writeFileSync(previewPath, output);
+        core.info(`Wrote ${previewPath} (preview)`);
       }
     }
 

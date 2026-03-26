@@ -1,3 +1,5 @@
+/** @jsx h */
+/** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
 import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
@@ -21,6 +23,7 @@ export function renderContributionRhythm(
   const guides = [0.25, 0.5, 0.75, 1.0];
   const guidesSvg = guides.map((pct) => (
     <circle
+      key={pct}
       cx={radarCx}
       cy={radarCy}
       r={radarR * pct}
@@ -32,12 +35,13 @@ export function renderContributionRhythm(
   ));
 
   // Spoke lines
-  const spokesSvg = DAY_NAMES.map((_, i) => {
+  const spokesSvg = DAY_NAMES.map((dayName, i) => {
     const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
     const x2 = radarCx + radarR * Math.cos(angle);
     const y2 = radarCy + radarR * Math.sin(angle);
     return (
       <line
+        key={dayName}
         x1={radarCx}
         y1={radarCy}
         x2={x2}
@@ -56,7 +60,7 @@ export function renderContributionRhythm(
     const lx = radarCx + labelR * Math.cos(angle);
     const ly = radarCy + labelR * Math.sin(angle) + 4;
     return (
-      <text x={lx} y={ly} className="t t-value" text-anchor="middle">
+      <text key={name} x={lx} y={ly} className="t t-value" text-anchor="middle">
         {escapeXml(name)}
       </text>
     );
@@ -129,6 +133,7 @@ export function renderContributionRhythm(
         const py = radarCy + r * Math.sin(angle);
         return (
           <circle
+            key={DAY_NAMES[i]}
             cx={px}
             cy={py}
             r="3"

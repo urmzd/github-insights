@@ -32,13 +32,13 @@ inputs:
     description: "Output path for the generated profile README (set to 'none' to skip; defaults to _README.md locally)"
     default: "README.md"
   index-only:
-    description: "Embed only the combined index.svg; when false, embeds each section SVG individually"
+    description: "[DEPRECATED] Use 'sections' instead. This input is ignored."
     default: "true"
   template:
-    description: "README template to use: classic, modern, minimal, or ecosystem"
-    default: "classic"
+    description: "Section preset (classic, modern, minimal, ecosystem, showcase). Ignored if 'sections' is specified."
+    default: "showcase"
   sections:
-    description: "Comma-separated list of sections to generate (e.g. velocity,rhythm,constellation,impact). Empty = all."
+    description: "Comma-separated ordered list of sections: spotlight, velocity, rhythm, constellation, impact, portfolio. Overrides 'template' preset."
     default: ""
 runs:
   using: "node24"

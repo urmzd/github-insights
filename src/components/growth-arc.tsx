@@ -1,3 +1,5 @@
+/** @jsx h */
+/** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
 import { LAYOUT, THEME } from "../theme.js";
@@ -65,6 +67,7 @@ export function renderGrowthArc(
       {/* Data points */}
       {coords.map((p, i) => (
         <circle
+          key={`pt-${p.label}`}
           cx={p.x}
           cy={p.y}
           r="4"
@@ -76,6 +79,7 @@ export function renderGrowthArc(
       {/* Point labels (complexity value) */}
       {coords.map((p) => (
         <text
+          key={`lbl-${p.label}`}
           x={p.x}
           y={p.y - 10}
           className="t t-value"
@@ -89,6 +93,7 @@ export function renderGrowthArc(
       {/* X-axis labels (relative time) */}
       {coords.map((p) => (
         <text
+          key={`x-${p.label}`}
           x={p.x}
           y={y + chartHeight + 14}
           className="t t-value"
@@ -101,6 +106,7 @@ export function renderGrowthArc(
       {/* Repo count annotations */}
       {coords.map((p) => (
         <text
+          key={`rc-${p.label}`}
           x={p.x}
           y={y + chartHeight + 24}
           className="t t-muted"

@@ -1,9 +1,66 @@
 import { existsSync, readFileSync } from "node:fs";
 import * as toml from "smol-toml";
 import * as yaml from "yaml";
-import type { TemplateName, UserConfig } from "./types.js";
+import type { ShowcaseSection, TemplateName, UserConfig } from "./types.js";
 
-const VALID_TEMPLATES = new Set<string>(["classic", "modern", "minimal"]);
+const VALID_TEMPLATES = new Set<string>([
+  "classic",
+  "modern",
+  "minimal",
+  "ecosystem",
+  "showcase",
+]);
+
+const VALID_SECTIONS = new Set<string>([
+  "spotlight",
+  "velocity",
+  "rhythm",
+  "constellation",
+  "impact",
+  "portfolio",
+]);
+
+const SECTION_PRESETS: Record<string, ShowcaseSection[]> = {
+  classic: ["velocity", "rhythm", "constellation", "impact"],
+  modern: ["spotlight", "velocity", "rhythm", "constellation", "impact"],
+  minimal: ["velocity", "rhythm"],
+  ecosystem: [
+    "spotlight",
+    "velocity",
+    "rhythm",
+    "constellation",
+    "portfolio",
+    "impact",
+  ],
+  showcase: [
+    "spotlight",
+    "velocity",
+    "rhythm",
+    "constellation",
+    "portfolio",
+    "impact",
+  ],
+};
+
+const DEFAULT_SECTIONS: ShowcaseSection[] = SECTION_PRESETS.showcase;
+
+export function resolveTemplateSections(
+  templateName?: TemplateName,
+  explicitSections?: string[],
+): ShowcaseSection[] {
+  if (explicitSections && explicitSections.length > 0) {
+    const valid = explicitSections.filter((s) => {
+      if (VALID_SECTIONS.has(s)) return true;
+      console.warn(`Unknown section "${s}", ignoring.`);
+      return false;
+    });
+    return valid.length > 0 ? (valid as ShowcaseSection[]) : DEFAULT_SECTIONS;
+  }
+  if (templateName && SECTION_PRESETS[templateName]) {
+    return SECTION_PRESETS[templateName];
+  }
+  return DEFAULT_SECTIONS;
+}
 
 function extractConfig(parsed: Record<string, unknown>): UserConfig {
   const config: UserConfig = {};
@@ -39,7 +96,14 @@ function extractConfig(parsed: Record<string, unknown>): UserConfig {
   if (Array.isArray(parsed.sections)) {
     const sections = parsed.sections
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
-      .map((s) => s.trim().toLowerCase());
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => {
+        if (VALID_SECTIONS.has(s)) return true;
+        console.warn(
+          `Unknown section "${s}" in config, ignoring. Valid: ${[...VALID_SECTIONS].join(", ")}`,
+        );
+        return false;
+      });
     if (sections.length > 0) {
       config.sections = sections;
     }

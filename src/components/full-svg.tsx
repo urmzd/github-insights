@@ -1,3 +1,5 @@
+/** @jsx h */
+/** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { LAYOUT, THEME } from "../theme.js";
 import type { SectionDef } from "../types.js";

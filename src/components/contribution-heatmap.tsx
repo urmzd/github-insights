@@ -1,3 +1,5 @@
+/** @jsx h */
+/** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { LAYOUT } from "../theme.js";
 import type { ContributionCalendar, RenderResult } from "../types.js";
@@ -23,6 +25,7 @@ export function renderContributionHeatmap(
       {calendar.weeks.map((week, wi) =>
         week.contributionDays.map((day, di) => (
           <rect
+            key={`${day.date}`}
             x={padX + wi * step}
             y={y + di * step}
             width={cellSize}

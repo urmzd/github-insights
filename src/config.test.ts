@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseUserConfig } from "./config.js";
+import { parseUserConfig, resolveTemplateSections } from "./config.js";
 
 describe("parseUserConfig", () => {
   it("parses both fields", () => {
@@ -80,17 +80,24 @@ describe("parseUserConfig", () => {
     expect(parseUserConfig(raw)).toEqual({});
   });
 
-  it("parses sections array", () => {
-    const raw = `sections:\n  - pulse\n  - languages`;
+  it("parses valid sections array", () => {
+    const raw = `sections:\n  - velocity\n  - rhythm`;
     expect(parseUserConfig(raw)).toEqual({
-      sections: ["pulse", "languages"],
+      sections: ["velocity", "rhythm"],
+    });
+  });
+
+  it("filters out invalid section keys", () => {
+    const raw = `sections:\n  - velocity\n  - invalid\n  - rhythm`;
+    expect(parseUserConfig(raw)).toEqual({
+      sections: ["velocity", "rhythm"],
     });
   });
 
   it("filters out non-string sections entries", () => {
-    const raw = `sections:\n  - pulse\n  - 42\n  - languages`;
+    const raw = `sections:\n  - velocity\n  - 42\n  - rhythm`;
     expect(parseUserConfig(raw)).toEqual({
-      sections: ["pulse", "languages"],
+      sections: ["velocity", "rhythm"],
     });
   });
 
@@ -118,10 +125,95 @@ describe("parseUserConfig", () => {
     });
   });
 
+  it("parses ecosystem template", () => {
+    const raw = `template: "ecosystem"`;
+    expect(parseUserConfig(raw)).toEqual({ template: "ecosystem" });
+  });
+
+  it("parses showcase template", () => {
+    const raw = `template: "showcase"`;
+    expect(parseUserConfig(raw)).toEqual({ template: "showcase" });
+  });
+
   it("parses TOML format when specified", () => {
     const raw = `title = "Senior Backend Engineer"`;
     expect(parseUserConfig(raw, "toml")).toEqual({
       title: "Senior Backend Engineer",
     });
+  });
+});
+
+// ── resolveTemplateSections ──────────────────────────────────────────────────
+
+describe("resolveTemplateSections", () => {
+  it("returns explicit sections when provided", () => {
+    const result = resolveTemplateSections("classic", ["spotlight", "rhythm"]);
+    expect(result).toEqual(["spotlight", "rhythm"]);
+  });
+
+  it("maps classic template to preset", () => {
+    const result = resolveTemplateSections("classic");
+    expect(result).toEqual(["velocity", "rhythm", "constellation", "impact"]);
+  });
+
+  it("maps modern template to preset", () => {
+    const result = resolveTemplateSections("modern");
+    expect(result).toEqual([
+      "spotlight",
+      "velocity",
+      "rhythm",
+      "constellation",
+      "impact",
+    ]);
+  });
+
+  it("maps minimal template to preset", () => {
+    const result = resolveTemplateSections("minimal");
+    expect(result).toEqual(["velocity", "rhythm"]);
+  });
+
+  it("maps ecosystem template to preset", () => {
+    const result = resolveTemplateSections("ecosystem");
+    expect(result).toEqual([
+      "spotlight",
+      "velocity",
+      "rhythm",
+      "constellation",
+      "portfolio",
+      "impact",
+    ]);
+  });
+
+  it("defaults to showcase preset when no template specified", () => {
+    const result = resolveTemplateSections(undefined);
+    expect(result).toEqual([
+      "spotlight",
+      "velocity",
+      "rhythm",
+      "constellation",
+      "portfolio",
+      "impact",
+    ]);
+  });
+
+  it("filters out invalid section keys", () => {
+    const result = resolveTemplateSections(undefined, [
+      "spotlight",
+      "invalid",
+      "rhythm",
+    ]);
+    expect(result).toEqual(["spotlight", "rhythm"]);
+  });
+
+  it("falls back to default when all explicit sections are invalid", () => {
+    const result = resolveTemplateSections(undefined, ["invalid", "nope"]);
+    expect(result).toEqual([
+      "spotlight",
+      "velocity",
+      "rhythm",
+      "constellation",
+      "portfolio",
+      "impact",
+    ]);
   });
 });

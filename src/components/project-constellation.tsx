@@ -1,3 +1,5 @@
+/** @jsx h */
+/** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
 import { LAYOUT, THEME } from "../theme.js";
@@ -26,6 +28,7 @@ export function renderProjectConstellation(
         const other = nodes[j];
         return (
           <line
+            key={`${i}-${j}`}
             x1={padX + node.x}
             y1={y + node.y}
             x2={padX + other.x}
