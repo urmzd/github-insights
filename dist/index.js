@@ -40223,10 +40223,10 @@ var __webpack_exports__ = {};
 
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(7484);
-;// CONCATENATED MODULE: external "node:fs"
-const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
 ;// CONCATENATED MODULE: external "node:child_process"
 const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
@@ -40803,6 +40803,8 @@ const wrapText = (text, maxChars) => {
 };
 
 ;// CONCATENATED MODULE: ./src/components/section.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 
@@ -40834,6 +40836,8 @@ function renderSection(title, subtitle, renderBody) {
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/style-defs.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 function StyleDefs() {
@@ -40897,6 +40901,8 @@ function StyleDefs() {
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/full-svg.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 
@@ -42196,6 +42202,8 @@ function resolveConfigPath() {
 }
 
 ;// CONCATENATED MODULE: ./src/components/contribution-rhythm.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 
@@ -42209,13 +42217,13 @@ function renderContributionRhythm(rhythm, y) {
     const maxVal = Math.max(...rhythm.dayTotals, 1);
     // Guide circles
     const guides = [0.25, 0.5, 0.75, 1.0];
-    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" })));
+    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { key: pct, cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" })));
     // Spoke lines
-    const spokesSvg = DAY_NAMES.map((_, i) => {
+    const spokesSvg = DAY_NAMES.map((dayName, i) => {
         const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
         const x2 = radarCx + radarR * Math.cos(angle);
         const y2 = radarCy + radarR * Math.sin(angle);
-        return (jsx_factory_h("line", { x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }));
+        return (jsx_factory_h("line", { key: dayName, x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }));
     });
     // Day labels
     const labelsSvg = DAY_NAMES.map((name, i) => {
@@ -42223,7 +42231,7 @@ function renderContributionRhythm(rhythm, y) {
         const labelR = radarR + 16;
         const lx = radarCx + labelR * Math.cos(angle);
         const ly = radarCy + labelR * Math.sin(angle) + 4;
-        return (jsx_factory_h("text", { x: lx, y: ly, className: "t t-value", "text-anchor": "middle" }, svg_utils_escapeXml(name)));
+        return (jsx_factory_h("text", { key: name, x: lx, y: ly, className: "t t-value", "text-anchor": "middle" }, svg_utils_escapeXml(name)));
     });
     // Data polygon
     const points = rhythm.dayTotals
@@ -42262,7 +42270,7 @@ function renderContributionRhythm(rhythm, y) {
             const r = (val / maxVal) * radarR;
             const px = radarCx + r * Math.cos(angle);
             const py = radarCy + r * Math.sin(angle);
-            return (jsx_factory_h("circle", { cx: px, cy: py, r: "3", fill: BAR_COLORS[0], className: `fade-${Math.min(i + 1, 6)}` }));
+            return (jsx_factory_h("circle", { key: DAY_NAMES[i], cx: px, cy: py, r: "3", fill: BAR_COLORS[0], className: `fade-${Math.min(i + 1, 6)}` }));
         }),
         labelsSvg.join(""),
         statsSvg.join("")));
@@ -42271,6 +42279,8 @@ function renderContributionRhythm(rhythm, y) {
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/impact-trail.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 
@@ -42309,6 +42319,8 @@ function renderImpactTrail(repos, y) {
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/language-velocity.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 
@@ -42405,7 +42417,7 @@ function renderLanguageVelocity(velocity, y) {
         return { x, label: monthName };
     });
     const svg = (jsx_factory_h(Fragment, null,
-        paths.map((p, i) => (jsx_factory_h("path", { d: p.path, fill: p.color, "fill-opacity": "0.75", className: `fade-${Math.min(i + 1, 6)}` }))),
+        paths.map((p, i) => (jsx_factory_h("path", { key: p.name, d: p.path, fill: p.color, "fill-opacity": "0.75", className: `fade-${Math.min(i + 1, 6)}` }))),
         (() => {
             let legendX = padX;
             return topLangs.map((name) => {
@@ -42417,12 +42429,14 @@ function renderLanguageVelocity(velocity, y) {
                     jsx_factory_h("text", { x: x + 12, y: y + chartHeight + 14, className: "t t-value" }, svg_utils_escapeXml(name))));
             });
         })(),
-        monthLabels.map((m) => (jsx_factory_h("text", { x: m.x, y: y + chartHeight + 14, className: "t t-value", "text-anchor": "start", opacity: "0" }, svg_utils_escapeXml(m.label))))));
+        monthLabels.map((m) => (jsx_factory_h("text", { key: m.label, x: m.x, y: y + chartHeight + 14, className: "t t-value", "text-anchor": "start", opacity: "0" }, svg_utils_escapeXml(m.label))))));
     return { svg, height: totalHeight };
 }
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/project-constellation.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
 
 
 
@@ -42443,7 +42457,7 @@ function renderProjectConstellation(nodes, y) {
     })
         .map((j) => {
         const other = nodes[j];
-        return (jsx_factory_h("line", { x1: padX + node.x, y1: y + node.y, x2: padX + other.x, y2: y + other.y, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.15", "stroke-dasharray": "4 4" }));
+        return (jsx_factory_h("line", { key: `${i}-${j}`, x1: padX + node.x, y1: y + node.y, x2: padX + other.x, y2: y + other.y, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.15", "stroke-dasharray": "4 4" }));
     }));
     // Draw nodes
     const nodesSvg = nodes.map((node, i) => {
@@ -43620,7 +43634,7 @@ async function run() {
     };
     const callbacks = {
         onPhaseStart(_phase, label) {
-            core.info(label + "...");
+            core.info(`${label}...`);
         },
         onPhaseComplete(_phase, summary) {
             core.info(summary);

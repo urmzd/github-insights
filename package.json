@@ -30,11 +30,11 @@
     "fmt": "biome format src/",
     "fmt:fix": "biome check --fix src/",
     "generate": "GITHUB_TOKEN=$(gh auth token) GITHUB_REPOSITORY_OWNER=$(gh api user --jq .login) tsx --tsconfig tsconfig.cli.json src/cli.tsx",
-    "showcase": "teasr showme",
     "lint": "biome check src/",
+    "showcase": "teasr showme",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",
-  "version": "3.0.0"
+  "version": "3.1.0"
 }

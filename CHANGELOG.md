@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.1.0 (2026-03-26)
+
+### Features
+
+- **scripts**: add showcase command ([7b7935a](https://github.com/urmzd/github-insights/commit/7b7935a1fa2923022692fa0462e9b1b73c14eef5))
+
+### Documentation
+
+- **readme**: add CLI/TUI section with demo ([2d679e0](https://github.com/urmzd/github-insights/commit/2d679e0e484ec90fbf7b6f2541baed73708ad754))
+
+### Refactoring
+
+- **components**: add JSX pragma directives ([c6ae263](https://github.com/urmzd/github-insights/commit/c6ae263d1282805d08557e4ea96b303a484ffe3c))
+- add CLI/TUI interface and simplify templates ([a4a8476](https://github.com/urmzd/github-insights/commit/a4a84768453b1bfa494d13320ee64d10550fdaab))
+
+### Miscellaneous
+
+- **assets**: regenerate visualization SVGs ([e2f4323](https://github.com/urmzd/github-insights/commit/e2f43234561ace76711a9f8c0c70f0cf4ad5bfc8))
+- **teasr**: configure terminal recording for showcase ([39ab498](https://github.com/urmzd/github-insights/commit/39ab4981b062dd9e18112e64d714a316e886acbe))
+- use sr-releaser GitHub App for release workflow ([23c1f79](https://github.com/urmzd/github-insights/commit/23c1f79f6940cab9c23cc32b54b6c1a81794238a))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.0.0...v3.1.0)
+
+
 ## 3.0.0 (2026-03-26)
 
 ### Breaking Changes
