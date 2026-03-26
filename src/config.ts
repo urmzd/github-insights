@@ -1,24 +1,101 @@
-import { existsSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as toml from "smol-toml";
 import * as yaml from "yaml";
-import type { ShowcaseSection, TemplateName, UserConfig } from "./types.js";
+import { z } from "zod";
+import type { ShowcaseSection, TemplateName } from "./types.js";
 
-const VALID_TEMPLATES = new Set<string>([
+// ── Zod schema ────────────────────────────────────────────────────────────
+
+const VALID_TEMPLATES = [
   "classic",
   "modern",
   "minimal",
   "ecosystem",
   "showcase",
-]);
-
-const VALID_SECTIONS = new Set<string>([
+] as const;
+const VALID_SECTIONS = [
   "spotlight",
   "velocity",
   "rhythm",
   "constellation",
   "impact",
   "portfolio",
-]);
+] as const;
+
+const templateSet = new Set<string>(VALID_TEMPLATES);
+const sectionSet = new Set<string>(VALID_SECTIONS);
+
+/** Trims a string, returns undefined if empty/whitespace-only. */
+const optionalTrimmedString = z
+  .string()
+  .transform((s) => {
+    const trimmed = s.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  })
+  .optional();
+
+/** Lowercases + validates against template enum, returns undefined if invalid. */
+const lenientTemplate = z
+  .string()
+  .transform((s) => {
+    const lower = s.trim().toLowerCase();
+    return templateSet.has(lower)
+      ? (lower as (typeof VALID_TEMPLATES)[number])
+      : undefined;
+  })
+  .optional();
+
+/** Filters array to valid section strings, returns undefined if empty. */
+const lenientSections = z
+  .array(z.unknown())
+  .transform((arr) => {
+    const valid = arr
+      .filter((item): item is string => typeof item === "string")
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => sectionSet.has(s)) as (typeof VALID_SECTIONS)[number][];
+    return valid.length > 0 ? valid : undefined;
+  })
+  .optional();
+
+export const UserConfigSchema = z
+  .object({
+    name: optionalTrimmedString,
+    pronunciation: optionalTrimmedString,
+    title: optionalTrimmedString,
+    desired_title: optionalTrimmedString,
+    bio: optionalTrimmedString,
+    preamble: optionalTrimmedString,
+    template: lenientTemplate,
+    sections: lenientSections,
+    exclude_archived: z.boolean().optional(),
+  })
+  .strip()
+  .transform((obj) => {
+    // Remove keys whose value is undefined so the result is a clean partial.
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined) clean[k] = v;
+    }
+    return clean as UserConfig;
+  });
+
+export type UserConfig = {
+  name?: string;
+  pronunciation?: string;
+  title?: string;
+  desired_title?: string;
+  bio?: string;
+  preamble?: string;
+  template?: (typeof VALID_TEMPLATES)[number];
+  sections?: (typeof VALID_SECTIONS)[number][];
+  exclude_archived?: boolean;
+};
+
+export const SectionSchema = z.enum(VALID_SECTIONS);
+
+// ── Constants ─────────────────────────────────────────────────────────────
 
 const SECTION_PRESETS: Record<string, ShowcaseSection[]> = {
   classic: ["velocity", "rhythm", "constellation", "impact"],
@@ -44,75 +121,28 @@ const SECTION_PRESETS: Record<string, ShowcaseSection[]> = {
 
 const DEFAULT_SECTIONS: ShowcaseSection[] = SECTION_PRESETS.showcase;
 
+const DEFAULT_CONFIG_ASSET = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "templates",
+  "github-insights.default.yaml",
+);
+
+// ── Public API ────────────────────────────────────────────────────────────
+
 export function resolveTemplateSections(
   templateName?: TemplateName,
   explicitSections?: string[],
 ): ShowcaseSection[] {
   if (explicitSections && explicitSections.length > 0) {
-    const valid = explicitSections.filter((s) => {
-      if (VALID_SECTIONS.has(s)) return true;
-      console.warn(`Unknown section "${s}", ignoring.`);
-      return false;
-    });
+    const valid = explicitSections.filter(
+      (s) => SectionSchema.safeParse(s).success,
+    );
     return valid.length > 0 ? (valid as ShowcaseSection[]) : DEFAULT_SECTIONS;
   }
   if (templateName && SECTION_PRESETS[templateName]) {
     return SECTION_PRESETS[templateName];
   }
   return DEFAULT_SECTIONS;
-}
-
-function extractConfig(parsed: Record<string, unknown>): UserConfig {
-  const config: UserConfig = {};
-
-  if (typeof parsed.title === "string" && parsed.title.trim()) {
-    config.title = parsed.title.trim();
-  }
-  if (typeof parsed.desired_title === "string" && parsed.desired_title.trim()) {
-    config.desired_title = parsed.desired_title.trim();
-  }
-  if (typeof parsed.name === "string" && parsed.name.trim()) {
-    config.name = parsed.name.trim();
-  }
-  if (typeof parsed.pronunciation === "string" && parsed.pronunciation.trim()) {
-    config.pronunciation = parsed.pronunciation.trim();
-  }
-  if (typeof parsed.bio === "string" && parsed.bio.trim()) {
-    config.bio = parsed.bio.trim();
-  }
-  if (typeof parsed.preamble === "string" && parsed.preamble.trim()) {
-    config.preamble = parsed.preamble.trim();
-  }
-  if (typeof parsed.template === "string" && parsed.template.trim()) {
-    const t = parsed.template.trim().toLowerCase();
-    if (VALID_TEMPLATES.has(t)) {
-      config.template = t as TemplateName;
-    } else {
-      console.warn(
-        `Unknown template "${t}", falling back to "classic". Valid: ${[...VALID_TEMPLATES].join(", ")}`,
-      );
-    }
-  }
-  if (typeof parsed.exclude_archived === "boolean") {
-    config.exclude_archived = parsed.exclude_archived;
-  }
-  if (Array.isArray(parsed.sections)) {
-    const sections = parsed.sections
-      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
-      .map((s) => s.trim().toLowerCase())
-      .filter((s) => {
-        if (VALID_SECTIONS.has(s)) return true;
-        console.warn(
-          `Unknown section "${s}" in config, ignoring. Valid: ${[...VALID_SECTIONS].join(", ")}`,
-        );
-        return false;
-      });
-    if (sections.length > 0) {
-      config.sections = sections;
-    }
-  }
-
-  return config;
 }
 
 export function parseUserConfig(
@@ -123,7 +153,7 @@ export function parseUserConfig(
     format === "toml"
       ? toml.parse(raw)
       : ((yaml.parse(raw) as Record<string, unknown>) ?? {});
-  return extractConfig(parsed);
+  return UserConfigSchema.parse(parsed);
 }
 
 export function loadUserConfig(configPath?: string): UserConfig {
@@ -141,6 +171,13 @@ export function loadUserConfig(configPath?: string): UserConfig {
     ) {
       return {};
     }
+    if (err instanceof z.ZodError) {
+      const issues = err.issues
+        .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+        .join("\n");
+      console.warn(`Warning: invalid config "${resolved.path}":\n${issues}`);
+      return {};
+    }
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
       `Warning: failed to parse config file "${resolved.path}": ${msg}`,
@@ -149,16 +186,32 @@ export function loadUserConfig(configPath?: string): UserConfig {
   }
 }
 
+export function configExists(): boolean {
+  return (
+    existsSync("github-insights.yml") || existsSync("github-insights.yaml")
+  );
+}
+
+export function initConfig(path = "github-insights.yml"): string {
+  if (existsSync(path)) {
+    return path;
+  }
+  copyFileSync(DEFAULT_CONFIG_ASSET, path);
+  return path;
+}
+
+// ── Internals ─────────────────────────────────────────────────────────────
+
 function detectFormat(path: string): "yaml" | "toml" {
   return path.endsWith(".toml") ? "toml" : "yaml";
 }
 
 function resolveConfigPath(): { path: string; format: "yaml" | "toml" } {
-  if (existsSync("github-insights.yml")) {
-    return { path: "github-insights.yml", format: "yaml" };
-  }
   if (existsSync("github-insights.yaml")) {
     return { path: "github-insights.yaml", format: "yaml" };
   }
-  return { path: "github-insights.yml", format: "yaml" };
+  if (existsSync("github-insights.yml")) {
+    return { path: "github-insights.yml", format: "yaml" };
+  }
+  return { path: "github-insights.yaml", format: "yaml" };
 }

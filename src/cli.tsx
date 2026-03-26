@@ -1,8 +1,21 @@
 import { render } from "ink";
 import React from "react";
+import { configExists, initConfig } from "./config.js";
 import type { PipelineConfig } from "./pipeline.js";
 import { App } from "./tui/App.js";
 import type { TemplateName } from "./types.js";
+
+const subcommand = process.argv[2];
+
+if (subcommand === "init") {
+  if (configExists()) {
+    console.log("github-insights.yml already exists, skipping.");
+  } else {
+    const path = initConfig();
+    console.log(`Created ${path} — edit it to customize your profile.`);
+  }
+  process.exit(0);
+}
 
 const token = process.env.GITHUB_TOKEN || "";
 const username = process.env.GITHUB_REPOSITORY_OWNER || "";
