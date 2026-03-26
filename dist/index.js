@@ -42147,6 +42147,9 @@ function extractConfig(parsed) {
             console.warn(`Unknown template "${t}", falling back to "classic". Valid: ${[...VALID_TEMPLATES].join(", ")}`);
         }
     }
+    if (typeof parsed.exclude_archived === "boolean") {
+        config.exclude_archived = parsed.exclude_archived;
+    }
     if (Array.isArray(parsed.sections)) {
         const sections = parsed.sections
             .filter((s) => typeof s === "string" && s.trim().length > 0)
@@ -43480,11 +43483,12 @@ async function runPipeline(config, cb) {
         const displayName = userConfig.name || userProfile.name || config.username;
         const socialBadges = buildSocialBadges(userProfile);
         const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
+        const includeArchived = userConfig.exclude_archived === false;
         const allProjectItems = [
             ...activeProjects,
             ...maintainedProjects,
             ...inactiveProjects,
-            ...archivedProjects,
+            ...(includeArchived ? archivedProjects : []),
         ];
         const categorizedProjects = {};
         for (const project of allProjectItems) {

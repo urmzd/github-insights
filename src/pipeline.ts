@@ -246,11 +246,12 @@ export async function runPipeline(
       aiClassifications,
     );
 
+    const includeArchived = userConfig.exclude_archived === false;
     const allProjectItems = [
       ...activeProjects,
       ...maintainedProjects,
       ...inactiveProjects,
-      ...archivedProjects,
+      ...(includeArchived ? archivedProjects : []),
     ];
     const categorizedProjects: Record<string, typeof allProjectItems> = {};
     for (const project of allProjectItems) {

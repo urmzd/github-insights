@@ -215,11 +215,12 @@ async function run(): Promise<void> {
       );
 
       // Build categorized projects map
+      const includeArchived = userConfig.exclude_archived === false;
       const allProjectItems = [
         ...activeProjects,
         ...maintainedProjects,
         ...inactiveProjects,
-        ...archivedProjects,
+        ...(includeArchived ? archivedProjects : []),
       ];
       const categorizedProjects: Record<string, typeof allProjectItems> = {};
       for (const project of allProjectItems) {
