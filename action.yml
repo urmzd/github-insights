@@ -1,4 +1,5 @@
-name: "GitHub Insights"
+name: "GitHub Insights - Profile Enhancer"
+author: "urmzd"
 description: "Generate SVG insights visualizations for your GitHub profile README"
 branding:
   icon: "bar-chart-2"
