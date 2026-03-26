@@ -1,3 +1,5 @@
+/** @jsx h */
+/** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { LAYOUT } from "../theme.js";
 import type { ContributionCalendar, RenderResult } from "../types.js";
