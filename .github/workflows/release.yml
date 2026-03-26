@@ -29,9 +29,18 @@ jobs:
       contents: write
       id-token: write
     steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SR_RELEASER_APP_ID }}
+          private-key: ${{ secrets.SR_RELEASER_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-node@v4
         with:
@@ -49,7 +58,7 @@ jobs:
         id: sr
         uses: urmzd/sr@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token }}
           force: ${{ inputs.force }}
 
       - name: Publish to npm
