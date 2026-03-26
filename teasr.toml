@@ -1,0 +1,63 @@
+[output]
+dir = "./showcase"
+
+[[output.formats]]
+output_type = "png"
+
+[[output.formats]]
+output_type = "gif"
+quality = 90
+repeat = 0
+
+[font]
+family = "MonaspiceNe Nerd Font"
+size = 16
+
+[[scenes]]
+type = "terminal"
+name = "demo"
+theme = "dracula"
+cols = 100
+rows = 30
+cwd = "."
+frame_duration = 80
+formats = [{ output_type = "gif", quality = 90, repeat = 0 }, { output_type = "png" }]
+
+[scenes.intro]
+text = "GitHub Insights\ngithub.com/urmzd/github-insights"
+duration = 2000
+center = true
+
+# Hidden setup: export tokens and set a clean prompt
+[[scenes.interactions]]
+type = "type"
+text = "export PS1='> '"
+hidden = true
+
+[[scenes.interactions]]
+type = "key"
+key = "enter"
+hidden = true
+
+[[scenes.interactions]]
+type = "wait"
+duration = 500
+hidden = true
+
+# Visible demo: run the TUI
+[[scenes.interactions]]
+type = "type"
+text = "npm run generate"
+speed = 50
+
+[[scenes.interactions]]
+type = "key"
+key = "enter"
+
+[[scenes.interactions]]
+type = "wait"
+duration = 45000
+
+[[scenes.interactions]]
+type = "snapshot"
+name = "complete"
