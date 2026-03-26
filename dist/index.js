@@ -42221,7 +42221,7 @@ function renderImpactTrail(repos, y) {
     if (repos.length === 0)
         return { svg: "", height: 0 };
     const { padX } = theme_LAYOUT;
-    const rowHeight = 36;
+    const rowHeight = 50;
     const nameWidth = 280;
     const barMaxWidth = 400;
     const gap = 6;
@@ -42244,7 +42244,7 @@ function renderImpactTrail(repos, y) {
             jsx_factory_h("text", { x: padX, y: ry + rowHeight / 2 + 4, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(repo.nameWithOwner, 38))),
             jsx_factory_h("rect", { x: padX + nameWidth, y: ry + rowHeight / 2 - 6, width: barWidth, height: "12", rx: "3", fill: color, "fill-opacity": "0.7", className: `fade-${delay}` }),
             jsx_factory_h("text", { x: padX + nameWidth + barMaxWidth + 16, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, `\u2605 ${repo.stargazerCount.toLocaleString()}`),
-            langName ? (jsx_factory_h("text", { x: padX + nameWidth + barMaxWidth + 80, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, svg_utils_escapeXml(langName))) : ("")));
+            langName ? (jsx_factory_h("text", { x: padX, y: ry + rowHeight / 2 + 18, className: `t t-value fade-${delay}` }, svg_utils_escapeXml(langName))) : ("")));
     }
     const totalHeight = sorted.length * (rowHeight + gap) - gap;
     return { svg, height: totalHeight };
@@ -42862,7 +42862,7 @@ const computeConstellationLayout = (projects, repos) => {
         return [];
     const chartWidth = 760;
     const chartHeight = 340;
-    const padX = 40;
+    const padX = 60;
     const padY = 30;
     // Build repo lookup for disk usage
     const repoMap = new Map();
