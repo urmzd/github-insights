@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.2.0 (2026-03-26)
+
+### Features
+
+- exclude archived repos from portfolio by default ([4b857ad](https://github.com/urmzd/github-insights/commit/4b857ad42d8ae1194cd492448db0b4d3cbd3a0f9))
+
+### Documentation
+
+- update README with showcase layout and new features ([fa5540e](https://github.com/urmzd/github-insights/commit/fa5540e244ba5e50afd9a00c25d19e915b472080))
+
+### Miscellaneous
+
+- rename action and add author for GitHub Marketplace publishing ([985ae83](https://github.com/urmzd/github-insights/commit/985ae83535bd65f6c9941d96d655834c46b276ef))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.1.0...v3.2.0)
+
+
 ## 3.1.0 (2026-03-26)
 
 ### Features
