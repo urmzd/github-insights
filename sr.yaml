@@ -1,25 +1,75 @@
+# sr configuration — merged with new defaults
+# Run 'sr init --force' for a fully-commented template.
+
 branches:
-  - main
-
-floating_tags: true
-
-version_files:
-  - package.json
-
+- main
+tag_prefix: v
+commit_pattern: ^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?:\s+(?P<description>.+)
+breaking_section: Breaking Changes
+misc_section: Miscellaneous
+types:
+- name: feat
+  bump: minor
+  section: Features
+- name: fix
+  bump: patch
+  section: Bug Fixes
+- name: perf
+  bump: patch
+  section: Performance
+- name: docs
+  section: Documentation
+- name: refactor
+  section: Refactoring
+- name: revert
+  section: Reverts
+- name: chore
+- name: ci
+- name: test
+- name: build
+- name: style
 changelog:
   file: CHANGELOG.md
-
-commit_types:
-  chore: patch
-
+  template: null
+version_files:
+- package.json
+version_files_strict: false
 artifacts:
-  - dist.tar.gz
-
+- dist.tar.gz
+floating_tags: true
+build_command: null
+stage_files: []
+prerelease: null
+pre_release_command: null
+post_release_command: null
+sign_tags: false
+draft: false
+release_name_template: null
 hooks:
   commit-msg:
-    - sr hook commit-msg
+  - sr hook commit-msg
   pre-commit:
-    - npm run fmt
+  - step: format
+    patterns:
+    - '*.ts'
+    - '*.tsx'
+    rules:
+    - npm run fmt:fix
+  - step: lint
+    patterns:
+    - '*.ts'
+    - '*.tsx'
+    rules:
     - npm run lint
+  - step: typecheck
+    patterns:
+    - '*.ts'
+    - '*.tsx'
+    rules:
     - npm run typecheck
+  - step: test
+    patterns:
+    - '*.ts'
+    - '*.tsx'
+    rules:
     - npm run test
