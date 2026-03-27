@@ -4,7 +4,7 @@ import { renderLanguageVelocity } from "./components/language-velocity.js";
 import { renderProjectConstellation } from "./components/project-constellation.js";
 import { parseManifest } from "./parsers.js";
 import type {
-  ConstellationNode,
+  ConstellationBar,
   ContributionData,
   ContributionRhythm,
   LanguageItem,
@@ -491,85 +491,68 @@ export const computeContributionRhythm = (
 export const computeConstellationLayout = (
   projects: ProjectItem[],
   repos: RepoNode[],
-): ConstellationNode[] => {
+): ConstellationBar[] => {
   if (projects.length === 0) return [];
 
-  const chartWidth = 760;
-  const chartHeight = 340;
-  const padX = 60;
-  const padY = 30;
-
-  // Build repo lookup for disk usage
   const repoMap = new Map<string, RepoNode>();
   for (const repo of repos) {
     repoMap.set(repo.name, repo);
   }
 
-  // Group projects by primary language
-  const langGroups = new Map<string, number[]>();
-  for (let i = 0; i < projects.length; i++) {
-    const p = projects[i];
-    const lang = p.languages?.[0] || "Other";
-    if (!langGroups.has(lang)) langGroups.set(lang, []);
-    langGroups.get(lang)?.push(i);
+  // Build bars with complexity scores
+  const bars: ConstellationBar[] = projects.map((p) => {
+    const repo = repoMap.get(p.name);
+    return {
+      name: p.name,
+      url: p.url,
+      complexity: repo ? complexityScore(repo) : 0,
+      primaryLanguage: p.languages?.[0] || "Other",
+      primaryColor: repo?.primaryLanguage?.color || "#8b949e",
+      languages: p.languages || [],
+      stars: p.stars,
+    };
+  });
+
+  // Group by primary language
+  const groups = new Map<string, ConstellationBar[]>();
+  for (const bar of bars) {
+    const lang = bar.primaryLanguage;
+    if (!groups.has(lang)) groups.set(lang, []);
+    groups.get(lang)!.push(bar);
   }
 
-  const langKeys = [...langGroups.keys()].sort();
-  const bandWidth = (chartWidth - 2 * padX) / Math.max(langKeys.length, 1);
+  // Sort within each group by complexity (descending)
+  for (const group of groups.values()) {
+    group.sort((a, b) => b.complexity - a.complexity);
+  }
 
-  // Compute complexity range for y-axis normalization
-  const complexities = projects.map((p) => {
-    const repo = repoMap.get(p.name);
-    return repo ? complexityScore(repo) : 0;
-  });
-  const minC = Math.min(...complexities);
-  const maxC = Math.max(...complexities);
-  const rangeC = maxC - minC || 1;
-
-  const nodes: ConstellationNode[] = projects.map((p, i) => {
-    const lang = p.languages?.[0] || "Other";
-    const bandIndex = langKeys.indexOf(lang);
-    const groupIndices = langGroups.get(lang) || [];
-    const indexInGroup = groupIndices.indexOf(i);
-
-    // X: center of language band with jitter
-    const bandCenter = padX + bandIndex * bandWidth + bandWidth / 2;
-    const jitter =
-      groupIndices.length > 1
-        ? ((indexInGroup - (groupIndices.length - 1) / 2) * bandWidth * 0.4) /
-          Math.max(groupIndices.length - 1, 1)
-        : 0;
-    const x = Math.max(padX, Math.min(chartWidth - padX, bandCenter + jitter));
-
-    // Y: complexity score (inverted so higher complexity = higher on chart)
-    const normC = (complexities[i] - minC) / rangeC;
-    const y = padY + (1 - normC) * (chartHeight - 2 * padY);
-
-    // Radius: based on disk usage
-    const repo = repoMap.get(p.name);
-    const diskKb = repo?.diskUsage || 100;
-    const radius = Math.max(6, Math.min(22, 3 + Math.log2(diskKb / 100) * 3));
-
-    // Color: primary language color
-    const color = repo?.primaryLanguage?.color || "#8b949e";
-
-    return { name: p.name, url: p.url, x, y, radius, color, connections: [] };
-  });
-
-  // Connect projects that share 2+ languages
-  for (let i = 0; i < projects.length; i++) {
-    for (let j = i + 1; j < projects.length; j++) {
-      const langsA = new Set(projects[i].languages || []);
-      const langsB = projects[j].languages || [];
-      const shared = langsB.filter((l) => langsA.has(l)).length;
-      if (shared >= 2) {
-        nodes[i].connections.push(j);
-        nodes[j].connections.push(i);
-      }
+  // Collapse single-project groups into "Other"
+  const multiGroups: [string, ConstellationBar[]][] = [];
+  const otherBars: ConstellationBar[] = [];
+  for (const [lang, group] of groups) {
+    if (group.length === 1) {
+      otherBars.push({ ...group[0], primaryLanguage: "Other" });
+    } else {
+      multiGroups.push([lang, group]);
     }
   }
+  if (otherBars.length > 0) {
+    otherBars.sort((a, b) => b.complexity - a.complexity);
+    multiGroups.push(["Other", otherBars]);
+  }
 
-  return nodes;
+  // Sort groups by max complexity (descending)
+  multiGroups.sort(
+    (a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0),
+  );
+
+  // Cap each group at 3, then cap total at 12
+  const MAX_PER_GROUP = 3;
+  const MAX_BARS = 12;
+  const flat = multiGroups.flatMap(([, group]) =>
+    group.slice(0, MAX_PER_GROUP),
+  );
+  return flat.slice(0, MAX_BARS);
 };
 
 // ── Section definitions ─────────────────────────────────────────────────────
@@ -582,7 +565,7 @@ export const buildSections = ({
 }: {
   velocity: MonthlyLanguageBucket[];
   rhythm: ContributionRhythm;
-  constellation: ConstellationNode[];
+  constellation: ConstellationBar[];
   contributionData: ContributionData;
 }): SectionDef[] => {
   const sections: SectionDef[] = [];
@@ -610,7 +593,8 @@ export const buildSections = ({
     sections.push({
       filename: "metrics-constellation.svg",
       title: "Project Constellation",
-      subtitle: "Projects mapped by language ecosystem and complexity",
+      subtitle:
+        "Top projects ranked by complexity, grouped by primary language",
       renderBody: (y: number) => renderProjectConstellation(constellation, y),
     });
   }

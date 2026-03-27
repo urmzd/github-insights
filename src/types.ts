@@ -172,14 +172,14 @@ export interface GrowthArcPoint {
   repoCount: number;
 }
 
-export interface ConstellationNode {
+export interface ConstellationBar {
   name: string;
   url: string;
-  x: number;
-  y: number;
-  radius: number;
-  color: string;
-  connections: number[]; // indices of connected nodes
+  complexity: number;
+  primaryLanguage: string;
+  primaryColor: string;
+  languages: string[];
+  stars: number;
 }
 
 export interface UserProfile {
@@ -263,7 +263,7 @@ export interface TemplateContext {
   languages: LanguageItem[];
   velocity: MonthlyLanguageBucket[];
   rhythm: ContributionRhythm;
-  constellation: ConstellationNode[];
+  constellation: ConstellationBar[];
   contributionData: ContributionData;
   socialBadges: string;
   svgDir: string;
