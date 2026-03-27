@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import { Command } from "commander";
 import { render } from "ink";
 import React from "react";
@@ -7,8 +6,8 @@ import type { PipelineConfig } from "./pipeline.js";
 import { App } from "./tui/App.js";
 import type { TemplateName } from "./types.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../package.json") as { version: string };
+// Hardcoded at build time — update via `npm version`
+const version = "3.1.0";
 
 const program = new Command()
   .name("github-insights")

@@ -33,7 +33,7 @@
 </tr>
 </table>
 
-Run `npm run generate` locally for a full TUI experience with live phase tracking, spinners, and timing for each pipeline step.
+Run `github-insights generate` locally for a full TUI experience with live phase tracking, spinners, and timing for each pipeline step.
 
 ## Features
 
@@ -46,13 +46,71 @@ Run `npm run generate` locally for a full TUI experience with live phase trackin
 - **Open Source Impact** — external contributions sorted by repo star count with logarithmic impact bars
 - **AI preamble generation** — auto-generated profile introduction (or supply your own `PREAMBLE.md`)
 - **AI project classification** — repos classified by status (active/maintained/inactive) and purpose (Developer Tools/SDKs/Applications/Research)
-- **CLI / TUI** — local generation with an interactive terminal UI (Ink-based), live progress, and phase timing
+- **CLI / TUI** — local generation with an interactive terminal UI (Ink-based), live progress, and phase timing; powered by [Commander](https://www.npmjs.com/package/commander) with `init` and `generate` subcommands
+- **Config validation** — `github-insights.yml` validated with [Zod](https://www.npmjs.com/package/zod); invalid values are silently ignored with sensible defaults
+- **Exclude archived repos** — archived repositories are excluded from the portfolio by default (`exclude_archived: true`)
 - **Social badges** — auto-detected from your GitHub profile (website, Twitter, LinkedIn, etc.)
 - **Dual theme** — SVGs automatically adapt to GitHub's light and dark mode via `prefers-color-scheme`
 - **CSS animations** — subtle fade-in and scale animations on load
-- **Configuration** — customize name, title, bio, sections, and more via `github-insights.yml`
+- **Configuration** — customize name, title, bio, sections, and more via `github-insights.yml`; scaffold with `github-insights init`
 
 ## Quick Start
+
+### Install
+
+```sh
+# One-line install
+curl -fsSL https://raw.githubusercontent.com/urmzd/github-insights/main/install.sh | bash
+
+# Or via npm
+npm install -g @urmzd/github-insights
+
+# Or run without installing
+npx @urmzd/github-insights --help
+```
+
+### CLI Usage
+
+```sh
+# Authenticate with GitHub (required)
+gh auth login
+
+# Scaffold a config file in your profile repo
+github-insights init
+
+# Generate metrics (launches interactive TUI)
+github-insights generate
+```
+
+The CLI reads your `gh` auth token via `$GITHUB_TOKEN`. Pass options explicitly if needed:
+
+```sh
+github-insights generate \
+  --token "$(gh auth token)" \
+  --username your-username \
+  --output-dir assets/insights \
+  --template showcase
+```
+
+#### Commands
+
+| Command | Description |
+|---------|-------------|
+| `github-insights init` | Create a `github-insights.yml` config file with defaults |
+| `github-insights generate` (default) | Generate metrics and visualizations |
+
+#### Options (`generate`)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-t, --token <token>` | GitHub token | `$GITHUB_TOKEN` |
+| `-u, --username <username>` | GitHub username | `$GITHUB_REPOSITORY_OWNER` |
+| `-o, --output-dir <dir>` | Output directory for SVGs | `assets/insights` |
+| `--readme-path <path>` | README output path (`none` to skip) | `none` (local) / `README.md` (CI) |
+| `--template <name>` | Template preset | `showcase` |
+| `--sections <list>` | Comma-separated section list (overrides template) | |
+
+### GitHub Action (CI)
 
 Create `.github/workflows/metrics.yml` in your profile repository (`<username>/<username>`):
 
@@ -79,7 +137,7 @@ jobs:
 
 The action commits updated SVGs and a generated `README.md` to your repo automatically.
 
-## Inputs
+#### Action Inputs
 
 | Input | Description | Default |
 |-------|-------------|---------|
@@ -97,7 +155,7 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 
 ## Configuration
 
-Create `github-insights.yml` (or `.yaml`) in your repo root:
+Create `github-insights.yml` (or `.yaml`) in your repo root, or run `github-insights init` to scaffold one:
 
 ```yaml
 name: Your Name
@@ -105,9 +163,10 @@ pronunciation: your-name
 title: Software Engineer
 desired_title: Senior Software Engineer
 bio: Building things on the internet.
-preamble: PREAMBLE.md  # path to custom preamble (optional)
-template: showcase     # section preset (optional)
-sections:              # explicit section order (overrides template)
+preamble: PREAMBLE.md      # path to custom preamble (optional)
+template: showcase          # section preset (optional)
+exclude_archived: true      # exclude archived repos from portfolio (default: true)
+sections:                   # explicit section order (overrides template)
   - spotlight
   - velocity
   - rhythm
@@ -116,7 +175,7 @@ sections:              # explicit section order (overrides template)
   - impact
 ```
 
-All fields are optional. The `UserConfig` type in `src/types.ts` defines the full schema.
+All fields are optional and validated with Zod — invalid values are silently ignored with sensible defaults. The full schema is defined in `src/config.ts`.
 
 ## AI Features
 
@@ -213,9 +272,9 @@ The `sections` input overrides `template` when both are specified.
 
 ```sh
 npm run ci          # full CI check (fmt, lint, typecheck, test, build)
-npm run generate    # generate metrics locally (TUI with live progress)
+npm run generate    # generate metrics locally via tsx (dev mode)
+npm run build       # build action + CLI bundles (dist/ and dist-cli/)
 npm run showcase    # record a terminal demo GIF via teasr
-npm run build       # build ncc bundle
 npm test            # run tests
 npm run typecheck   # type-check
 npm run lint        # lint
@@ -223,7 +282,7 @@ npm run fmt         # format check
 npm run fmt:fix     # format fix
 ```
 
-> **Note:** When running locally (outside CI), `commit-push` defaults to `false` and `readme-path` defaults to `none` (skipped), so `npm run generate` will not overwrite your project README or push commits. A preview is generated at `examples/default/README.md`.
+> **Note:** When running locally (outside CI), `commit-push` defaults to `false` and `readme-path` defaults to `none` (skipped), so generation will not overwrite your project README or push commits. A preview is generated at `examples/default/README.md`.
 
 ## Output Files
 
@@ -235,7 +294,7 @@ npm run fmt:fix     # format fix
 | `assets/insights/metrics-constellation.svg` | Project Constellation map |
 | `assets/insights/metrics-impact.svg` | Open Source Impact trail |
 | `README.md` | Generated profile README (CI only) |
-| `examples/default/README.md` | Local preview (generated by `npm run generate`) |
+| `examples/default/README.md` | Local preview (generated by `github-insights generate`) |
 | `showcase/demo.gif` | Terminal demo recording (generated by `npm run showcase`) |
 
 ## Agent Skill
