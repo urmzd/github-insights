@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.3.0 (2026-03-27)
+
+### Features
+
+- add CLI binary, install script, and updated README ([0839939](https://github.com/urmzd/github-insights/commit/08399396a060ca20c8e6cf17c6d71f1dd2a3c264))
+- add CLI init command, Zod config validation, and commander ([a5c5f68](https://github.com/urmzd/github-insights/commit/a5c5f680feb710e8c79abd0ec00a3c4662260e3f))
+
+### Miscellaneous
+
+- fix biome formatting and remove unused variable ([525c8ab](https://github.com/urmzd/github-insights/commit/525c8ab713bc277a290cb645d80c41b269e055d3))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.2.0...v3.3.0)
+
+
 ## 3.2.0 (2026-03-26)
 
 ### Features
