@@ -1,5 +1,6 @@
 import * as github from "@actions/github";
-import type { ContributionData, ManifestMap, ProjectItem, ReadmeMap, RepoClassificationInput, RepoClassificationOutput, RepoNode, UserConfig, UserProfile } from "./types.js";
+import type { UserConfig } from "./config.js";
+import type { ContributionData, ManifestMap, ProjectItem, ReadmeMap, RepoClassificationInput, RepoClassificationOutput, RepoNode, UserProfile } from "./types.js";
 export type GraphQL = ReturnType<typeof github.getOctokit>["graphql"];
 export declare const makeGraphql: (token: string) => GraphQL;
 export declare const fetchAllRepoData: (graphql: GraphQL, username: string) => Promise<RepoNode[]>;

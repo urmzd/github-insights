@@ -1,4 +1,50 @@
-import type { ShowcaseSection, TemplateName, UserConfig } from "./types.js";
+import { z } from "zod";
+import type { ShowcaseSection, TemplateName } from "./types.js";
+declare const VALID_TEMPLATES: readonly ["classic", "modern", "minimal", "ecosystem", "showcase"];
+declare const VALID_SECTIONS: readonly ["spotlight", "velocity", "rhythm", "constellation", "impact", "portfolio"];
+export declare const UserConfigSchema: z.ZodPipe<z.ZodObject<{
+    name: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<string | undefined, string>>>;
+    pronunciation: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<string | undefined, string>>>;
+    title: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<string | undefined, string>>>;
+    desired_title: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<string | undefined, string>>>;
+    bio: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<string | undefined, string>>>;
+    preamble: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<string | undefined, string>>>;
+    template: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<"classic" | "modern" | "minimal" | "ecosystem" | "showcase" | undefined, string>>>;
+    sections: z.ZodOptional<z.ZodPipe<z.ZodArray<z.ZodUnknown>, z.ZodTransform<("spotlight" | "velocity" | "rhythm" | "constellation" | "impact" | "portfolio")[] | undefined, unknown[]>>>;
+    exclude_archived: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>, z.ZodTransform<UserConfig, {
+    name?: string | undefined;
+    pronunciation?: string | undefined;
+    title?: string | undefined;
+    desired_title?: string | undefined;
+    bio?: string | undefined;
+    preamble?: string | undefined;
+    template?: "classic" | "modern" | "minimal" | "ecosystem" | "showcase" | undefined;
+    sections?: ("spotlight" | "velocity" | "rhythm" | "constellation" | "impact" | "portfolio")[] | undefined;
+    exclude_archived?: boolean | undefined;
+}>>;
+export type UserConfig = {
+    name?: string;
+    pronunciation?: string;
+    title?: string;
+    desired_title?: string;
+    bio?: string;
+    preamble?: string;
+    template?: (typeof VALID_TEMPLATES)[number];
+    sections?: (typeof VALID_SECTIONS)[number][];
+    exclude_archived?: boolean;
+};
+export declare const SectionSchema: z.ZodEnum<{
+    spotlight: "spotlight";
+    velocity: "velocity";
+    rhythm: "rhythm";
+    constellation: "constellation";
+    impact: "impact";
+    portfolio: "portfolio";
+}>;
 export declare function resolveTemplateSections(templateName?: TemplateName, explicitSections?: string[]): ShowcaseSection[];
 export declare function parseUserConfig(raw: string, format?: "yaml" | "toml"): UserConfig;
 export declare function loadUserConfig(configPath?: string): UserConfig;
+export declare function configExists(): boolean;
+export declare function initConfig(path?: string): string;
+export {};

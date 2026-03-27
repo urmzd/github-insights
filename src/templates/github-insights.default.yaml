@@ -1,0 +1,21 @@
+# GitHub Insights configuration
+# See: https://github.com/urmzd/github-insights
+
+# name: Your Name
+# pronunciation: your-name
+# title: Software Engineer
+# desired_title: Senior Software Engineer
+# bio: Building things on the internet.
+# preamble: PREAMBLE.md
+
+template: showcase
+
+sections:
+  - spotlight
+  - velocity
+  - rhythm
+  - constellation
+  - portfolio
+  - impact
+
+exclude_archived: true

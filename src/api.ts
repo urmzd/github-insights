@@ -1,4 +1,5 @@
 import * as github from "@actions/github";
+import type { UserConfig } from "./config.js";
 import type {
   ContributionData,
   ManifestMap,
@@ -7,7 +8,6 @@ import type {
   RepoClassificationInput,
   RepoClassificationOutput,
   RepoNode,
-  UserConfig,
   UserProfile,
 } from "./types.js";
 

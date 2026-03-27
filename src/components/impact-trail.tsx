@@ -12,9 +12,11 @@ export function renderImpactTrail(
   if (repos.length === 0) return { svg: "", height: 0 };
 
   const { padX } = LAYOUT;
-  const rowHeight = 50;
-  const nameWidth = 280;
-  const barMaxWidth = 400;
+  const rowHeight = 40;
+  const nameWidth = 256;
+  const barMaxWidth = 340;
+  const starsX = padX + nameWidth + barMaxWidth + 16;
+  const langX = starsX + 92;
   const gap = 6;
 
   // Sort by stars (impact proxy)
@@ -62,18 +64,18 @@ export function renderImpactTrail(
 
         {/* Star count */}
         <text
-          x={padX + nameWidth + barMaxWidth + 16}
+          x={starsX}
           y={ry + rowHeight / 2 + 4}
           className={`t t-value fade-${delay}`}
         >
           {`\u2605 ${repo.stargazerCount.toLocaleString()}`}
         </text>
 
-        {/* Language label (underneath repo name) */}
+        {/* Language label (same line, after stars) */}
         {langName ? (
           <text
-            x={padX}
-            y={ry + rowHeight / 2 + 18}
+            x={langX}
+            y={ry + rowHeight / 2 + 4}
             className={`t t-value fade-${delay}`}
           >
             {escapeXml(langName)}

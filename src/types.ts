@@ -182,18 +182,6 @@ export interface ConstellationNode {
   connections: number[]; // indices of connected nodes
 }
 
-export interface UserConfig {
-  title?: string;
-  desired_title?: string;
-  name?: string;
-  pronunciation?: string;
-  bio?: string;
-  preamble?: string;
-  template?: TemplateName;
-  sections?: string[];
-  exclude_archived?: boolean;
-}
-
 export interface UserProfile {
   name: string | null;
   bio: string | null;
