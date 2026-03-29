@@ -27,14 +27,11 @@ inputs:
     description: "Git user email for commits"
     default: "41898282+github-actions[bot]@users.noreply.github.com"
   config-file:
-    description: "Path to github-insights.yml config file (also accepts .yaml or legacy .github-metrics.toml)"
+    description: "Path to github-insights.yml config file (also accepts .yaml)"
     default: "github-insights.yml"
   readme-path:
     description: "Output path for the generated profile README (set to 'none' to skip; defaults to _README.md locally)"
     default: "README.md"
-  index-only:
-    description: "[DEPRECATED] Use 'sections' instead. This input is ignored."
-    default: "true"
   template:
     description: "Section preset (classic, modern, minimal, ecosystem, showcase). Ignored if 'sections' is specified."
     default: "showcase"

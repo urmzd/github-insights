@@ -99,8 +99,7 @@ sections:
 | `commit-message` | `chore: update metrics` | Git commit message |
 | `config-file` | `github-insights.yml` | Path to config file |
 | `readme-path` | `README.md` (CI) / `_README.md` (local) | Set to `none` to skip |
-| `index-only` | `true` | `true` = single combined SVG; `false` = individual section SVGs |
-| `template` | `classic` | README template style |
+| `template` | `showcase` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) |
 | `sections` | (all) | Comma-separated section keys to include |
 
 ### Section keys

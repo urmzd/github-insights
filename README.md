@@ -137,21 +137,23 @@ jobs:
 
 The action commits updated SVGs and a generated `README.md` to your repo automatically.
 
+> **Branch protection?** The default `GITHUB_TOKEN` cannot push to branches with protection rules. Use a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) or a [GitHub App](https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps) token instead — pass it as `github-token: ${{ secrets.YOUR_PAT }}`.
+
 #### Action Inputs
 
 | Input | Description | Default |
 |-------|-------------|---------|
 | `github-token` | GitHub token (needs `repo` read + `models:read` for AI) | `${{ github.token }}` |
+| `template` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) | `showcase` |
+| `sections` | Comma-separated ordered list of sections (overrides `template`) | _(all)_ |
+| `config-file` | Path to config file | `github-insights.yml` |
 | `username` | GitHub username to generate metrics for | `${{ github.repository_owner }}` |
 | `output-dir` | Directory to write SVG files to | `assets/insights` |
+| `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `none` (local) |
 | `commit-push` | Whether to commit and push generated files | `true` (CI) / `false` (local) |
 | `commit-message` | Commit message for generated files | `chore: update metrics` |
 | `commit-name` | Git user name for commits | `github-actions[bot]` |
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
-| `config-file` | Path to config file | `github-insights.yml` |
-| `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `none` (local) |
-| `template` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) | `showcase` |
-| `sections` | Comma-separated ordered list of sections (overrides `template`) | _(all)_ |
 
 ## Configuration
 
@@ -302,9 +304,3 @@ npm run fmt:fix     # format fix
 This project ships an [Agent Skill](https://github.com/vercel-labs/skills) for use with Claude Code, Cursor, and other compatible agents.
 
 Available as portable agent skills in [`skills/`](skills/).
-
-Once installed, use `/github-insights` to generate and customize SVG profile metrics.
-
----
-
-<sub>Created using [@urmzd/github-insights](https://github.com/urmzd/github-insights)</sub>
