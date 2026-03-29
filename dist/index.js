@@ -56501,39 +56501,74 @@ void Fragment;
 
 
 
-function renderProjectConstellation(nodes, y) {
-    if (nodes.length === 0)
+function renderProjectConstellation(bars, y) {
+    if (bars.length === 0)
         return { svg: "", height: 0 };
     const { padX } = theme_LAYOUT;
-    const height = 380;
-    // Draw connection lines first (behind nodes)
-    const drawnConnections = new Set();
-    const connectionsSvg = nodes.flatMap((node, i) => node.connections
-        .filter((j) => {
-        const key = [Math.min(i, j), Math.max(i, j)].join("-");
-        if (drawnConnections.has(key))
-            return false;
-        drawnConnections.add(key);
-        return true;
-    })
-        .map((j) => {
-        const other = nodes[j];
-        return (jsx_factory_h("line", { key: `${i}-${j}`, x1: padX + node.x, y1: y + node.y, x2: padX + other.x, y2: y + other.y, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.15", "stroke-dasharray": "4 4" }));
-    }));
-    // Draw nodes
-    const nodesSvg = nodes.map((node, i) => {
-        const cx = padX + node.x;
-        const cy = y + node.y;
-        const delay = Math.min(i + 1, 6);
-        return (jsx_factory_h(Fragment, null,
-            jsx_factory_h("circle", { cx: cx, cy: cy, r: node.radius + 4, fill: node.color, "fill-opacity": "0.08", className: `fade-${delay}` }),
-            jsx_factory_h("circle", { cx: cx, cy: cy, r: node.radius, fill: node.color, "fill-opacity": "0.7", stroke: node.color, "stroke-width": "1.5", "stroke-opacity": "0.9", className: `fade-${delay}` }),
-            jsx_factory_h("text", { x: cx, y: cy + node.radius + 14, className: `t t-value fade-${delay}`, "text-anchor": "middle" }, svg_utils_escapeXml(truncate(node.name, 18)))));
-    });
-    const svg = (jsx_factory_h(Fragment, null,
-        connectionsSvg.join(""),
-        nodesSvg.join("")));
-    return { svg, height };
+    const nameColWidth = 180;
+    const barStartX = padX + nameColWidth;
+    const barMaxWidth = 380;
+    const starX = barStartX + barMaxWidth + 20;
+    const groupHeaderHeight = 32;
+    const groupGap = 16;
+    const rowBaseHeight = 36;
+    const langDotsHeight = 18;
+    const rowGap = 6;
+    const maxComplexity = Math.max(...bars.map((b) => b.complexity), 1);
+    // Build a color map from all bars so language dots can use real colors
+    const langColorMap = new Map();
+    for (const bar of bars) {
+        if (!langColorMap.has(bar.languages[0] || "")) {
+            langColorMap.set(bar.languages[0] || "", bar.primaryColor);
+        }
+    }
+    let currentLang = "";
+    let svg = "";
+    let curY = y;
+    let itemIndex = 0;
+    for (let i = 0; i < bars.length; i++) {
+        const bar = bars[i];
+        // Group header when language changes
+        if (bar.primaryLanguage !== currentLang) {
+            if (currentLang !== "")
+                curY += groupGap;
+            currentLang = bar.primaryLanguage;
+            const delay = Math.min(itemIndex + 1, 6);
+            // For "Other" group, use a neutral color
+            const headerColor = currentLang === "Other" ? theme_THEME.secondary : bar.primaryColor;
+            svg += (jsx_factory_h(Fragment, null,
+                jsx_factory_h("circle", { cx: padX + 5, cy: curY + groupHeaderHeight / 2, r: "5", fill: headerColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
+                jsx_factory_h("text", { x: padX + 16, y: curY + groupHeaderHeight / 2 + 4, className: `t t-subhdr fade-${delay}` }, svg_utils_escapeXml(currentLang)),
+                jsx_factory_h("line", { x1: barStartX, y1: curY + groupHeaderHeight / 2, x2: starX + 40, y2: curY + groupHeaderHeight / 2, stroke: theme_THEME.border, "stroke-opacity": "0.3", "stroke-width": "1" })));
+            curY += groupHeaderHeight;
+        }
+        const delay = Math.min(itemIndex + 1, 6);
+        const barWidth = Math.max(4, (bar.complexity / maxComplexity) * barMaxWidth);
+        const secondaryLangs = bar.languages.slice(1);
+        const hasSecondary = secondaryLangs.length > 0;
+        const totalRowHeight = rowBaseHeight + (hasSecondary ? langDotsHeight : 0);
+        // Project name
+        svg += (jsx_factory_h("text", { x: padX + 8, y: curY + 16, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(bar.name, 24))));
+        // Complexity bar
+        svg += (jsx_factory_h("rect", { x: barStartX, y: curY + 8, width: barWidth, height: "14", rx: "4", fill: bar.primaryColor, "fill-opacity": "0.7", className: `fade-${delay}` }));
+        // Star count
+        svg += (jsx_factory_h("text", { x: starX, y: curY + 16, className: `t t-value fade-${delay}` }, `\u2605 ${bar.stars.toLocaleString()}`));
+        // Secondary language tags
+        if (hasSecondary) {
+            let dotX = padX + 8;
+            for (const lang of secondaryLangs.slice(0, 5)) {
+                const dotColor = langColorMap.get(lang) || theme_THEME.muted;
+                svg += (jsx_factory_h(Fragment, null,
+                    jsx_factory_h("circle", { cx: dotX + 4, cy: curY + rowBaseHeight + 4, r: "3", fill: dotColor, "fill-opacity": "0.6", className: `fade-${delay}` }),
+                    jsx_factory_h("text", { x: dotX + 10, y: curY + rowBaseHeight + 7, className: `t fade-${delay}`, "font-size": "9", fill: theme_THEME.muted }, svg_utils_escapeXml(truncate(lang, 10)))));
+                dotX += Math.min(lang.length * 6 + 20, 80);
+            }
+        }
+        curY += totalRowHeight + rowGap;
+        itemIndex++;
+    }
+    const totalHeight = curY - y;
+    return { svg, height: totalHeight };
 }
 void Fragment;
 
@@ -57044,70 +57079,57 @@ const computeContributionRhythm = (contributionData) => {
 const computeConstellationLayout = (projects, repos) => {
     if (projects.length === 0)
         return [];
-    const chartWidth = 760;
-    const chartHeight = 340;
-    const padX = 60;
-    const padY = 30;
-    // Build repo lookup for disk usage
     const repoMap = new Map();
     for (const repo of repos) {
         repoMap.set(repo.name, repo);
     }
-    // Group projects by primary language
-    const langGroups = new Map();
-    for (let i = 0; i < projects.length; i++) {
-        const p = projects[i];
-        const lang = p.languages?.[0] || "Other";
-        if (!langGroups.has(lang))
-            langGroups.set(lang, []);
-        langGroups.get(lang)?.push(i);
+    // Build bars with complexity scores
+    const bars = projects.map((p) => {
+        const repo = repoMap.get(p.name);
+        return {
+            name: p.name,
+            url: p.url,
+            complexity: repo ? complexityScore(repo) : 0,
+            primaryLanguage: p.languages?.[0] || "Other",
+            primaryColor: repo?.primaryLanguage?.color || "#8b949e",
+            languages: p.languages || [],
+            stars: p.stars,
+        };
+    });
+    // Group by primary language
+    const groups = new Map();
+    for (const bar of bars) {
+        const lang = bar.primaryLanguage;
+        if (!groups.has(lang))
+            groups.set(lang, []);
+        groups.get(lang).push(bar);
     }
-    const langKeys = [...langGroups.keys()].sort();
-    const bandWidth = (chartWidth - 2 * padX) / Math.max(langKeys.length, 1);
-    // Compute complexity range for y-axis normalization
-    const complexities = projects.map((p) => {
-        const repo = repoMap.get(p.name);
-        return repo ? complexityScore(repo) : 0;
-    });
-    const minC = Math.min(...complexities);
-    const maxC = Math.max(...complexities);
-    const rangeC = maxC - minC || 1;
-    const nodes = projects.map((p, i) => {
-        const lang = p.languages?.[0] || "Other";
-        const bandIndex = langKeys.indexOf(lang);
-        const groupIndices = langGroups.get(lang) || [];
-        const indexInGroup = groupIndices.indexOf(i);
-        // X: center of language band with jitter
-        const bandCenter = padX + bandIndex * bandWidth + bandWidth / 2;
-        const jitter = groupIndices.length > 1
-            ? ((indexInGroup - (groupIndices.length - 1) / 2) * bandWidth * 0.4) /
-                Math.max(groupIndices.length - 1, 1)
-            : 0;
-        const x = Math.max(padX, Math.min(chartWidth - padX, bandCenter + jitter));
-        // Y: complexity score (inverted so higher complexity = higher on chart)
-        const normC = (complexities[i] - minC) / rangeC;
-        const y = padY + (1 - normC) * (chartHeight - 2 * padY);
-        // Radius: based on disk usage
-        const repo = repoMap.get(p.name);
-        const diskKb = repo?.diskUsage || 100;
-        const radius = Math.max(6, Math.min(22, 3 + Math.log2(diskKb / 100) * 3));
-        // Color: primary language color
-        const color = repo?.primaryLanguage?.color || "#8b949e";
-        return { name: p.name, url: p.url, x, y, radius, color, connections: [] };
-    });
-    // Connect projects that share 2+ languages
-    for (let i = 0; i < projects.length; i++) {
-        for (let j = i + 1; j < projects.length; j++) {
-            const langsA = new Set(projects[i].languages || []);
-            const langsB = projects[j].languages || [];
-            const shared = langsB.filter((l) => langsA.has(l)).length;
-            if (shared >= 2) {
-                nodes[i].connections.push(j);
-                nodes[j].connections.push(i);
-            }
+    // Sort within each group by complexity (descending)
+    for (const group of groups.values()) {
+        group.sort((a, b) => b.complexity - a.complexity);
+    }
+    // Collapse single-project groups into "Other"
+    const multiGroups = [];
+    const otherBars = [];
+    for (const [lang, group] of groups) {
+        if (group.length === 1) {
+            otherBars.push({ ...group[0], primaryLanguage: "Other" });
+        }
+        else {
+            multiGroups.push([lang, group]);
         }
     }
-    return nodes;
+    if (otherBars.length > 0) {
+        otherBars.sort((a, b) => b.complexity - a.complexity);
+        multiGroups.push(["Other", otherBars]);
+    }
+    // Sort groups by max complexity (descending)
+    multiGroups.sort((a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0));
+    // Cap each group at 3, then cap total at 12
+    const MAX_PER_GROUP = 3;
+    const MAX_BARS = 12;
+    const flat = multiGroups.flatMap(([, group]) => group.slice(0, MAX_PER_GROUP));
+    return flat.slice(0, MAX_BARS);
 };
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ velocity, rhythm, constellation, contributionData, }) => {
@@ -57133,7 +57155,7 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
         sections.push({
             filename: "metrics-constellation.svg",
             title: "Project Constellation",
-            subtitle: "Projects mapped by language ecosystem and complexity",
+            subtitle: "Top projects ranked by complexity, grouped by primary language",
             renderBody: (y) => renderProjectConstellation(constellation, y),
         });
     }

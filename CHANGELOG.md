@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.3.1 (2026-03-29)
+
+### Refactoring
+
+- **components**: rewrite project constellation to render bars ([e77e665](https://github.com/urmzd/github-insights/commit/e77e6657c51a7fc360d7a85d01b7f22985a7e107))
+- **metrics**: update constellation layout to bar-based grouping ([23d3ac1](https://github.com/urmzd/github-insights/commit/23d3ac18bec26f15342b7686268f56253f85be28))
+- **types**: rename ConstellationNode to ConstellationBar ([619b920](https://github.com/urmzd/github-insights/commit/619b92096cccd5c1b1bdb15cbf790bfea5cf3b78))
+
+### Miscellaneous
+
+- standardize sr.yaml and add justfile — refactor bump, clean config ([58f397c](https://github.com/urmzd/github-insights/commit/58f397ca6671593d900c9425aef49c33e8d7e468))
+- **sr**: update hooks and release configuration ([35630a4](https://github.com/urmzd/github-insights/commit/35630a41549949f21188a50871d83f8da8bc3b21))
+- **assets**: regenerate visualization SVGs ([ab54a2a](https://github.com/urmzd/github-insights/commit/ab54a2a6c1d2011292466f293e837503d32d5204))
+- **metrics**: update constellation test data structure ([6f07f66](https://github.com/urmzd/github-insights/commit/6f07f668de0421bea1b682df7f7f8af80ebca998))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.3.0...v3.3.1)
+
+
 ## 3.3.0 (2026-03-27)
 
 ### Features
