@@ -1,9 +1,10 @@
 name: "GitHub Insights - Profile Enhancer"
-author: "urmzd"
 description: "Generate SVG insights visualizations for your GitHub profile README"
+author: "urmzd"
 branding:
   icon: "bar-chart-2"
   color: "blue"
+
 inputs:
   github-token:
     description: "GitHub token (needs repo read + models:read for AI domain analysis)"
