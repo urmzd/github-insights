@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.3.2 (2026-04-01)
+
+### Documentation
+
+- clean up legacy references and add branch protection note ([a0f0a03](https://github.com/urmzd/github-insights/commit/a0f0a03e182913d322058e31f29a513eb4fe8e56))
+
+### Refactoring
+
+- normalize action.yml metadata field order ([556dbbc](https://github.com/urmzd/github-insights/commit/556dbbc9d2f5c78d8a3b34a0b68b8c8ac5658d1e))
+
+### Miscellaneous
+
+- upgrade node version from 22 to 24 (#13) ([567f95b](https://github.com/urmzd/github-insights/commit/567f95b55afdd64b0b950af18908bd06b42bed3c))
+- update sr action from v2 to v3 ([2336aa3](https://github.com/urmzd/github-insights/commit/2336aa3cd28d8792ef1515e19882725ce0a3812a))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.3.1...v3.3.2)
+
+
 ## 3.3.1 (2026-03-29)
 
 ### Refactoring
