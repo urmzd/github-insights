@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import * as toml from "smol-toml";
 import * as yaml from "yaml";
 import { z } from "zod";
+import type { AIConfig } from "./prompts.js";
 import type { ShowcaseSection, TemplateName } from "./types.js";
 
 // ── Zod schema ────────────────────────────────────────────────────────────
@@ -47,6 +48,25 @@ const lenientTemplate = z
   })
   .optional();
 
+/** Lenient prompt valves — accepts partial overrides, drops unknowns. */
+const promptValvesSchema = z
+  .object({
+    model: optionalTrimmedString,
+    temperature: z.number().min(0).max(2).optional(),
+    system: optionalTrimmedString,
+    user: optionalTrimmedString,
+  })
+  .strip()
+  .optional();
+
+const aiConfigSchema = z
+  .object({
+    preamble: promptValvesSchema,
+    classification: promptValvesSchema,
+  })
+  .strip()
+  .optional();
+
 /** Filters array to valid section strings, returns undefined if empty. */
 const lenientSections = z
   .array(z.unknown())
@@ -70,6 +90,7 @@ export const UserConfigSchema = z
     template: lenientTemplate,
     sections: lenientSections,
     exclude_archived: z.boolean().optional(),
+    ai: aiConfigSchema,
   })
   .strip()
   .transform((obj) => {
@@ -91,6 +112,7 @@ export type UserConfig = {
   template?: (typeof VALID_TEMPLATES)[number];
   sections?: (typeof VALID_SECTIONS)[number][];
   exclude_archived?: boolean;
+  ai?: AIConfig;
 };
 
 export const SectionSchema = z.enum(VALID_SECTIONS);

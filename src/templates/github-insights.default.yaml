@@ -19,3 +19,17 @@ sections:
   - impact
 
 exclude_archived: true
+
+# AI prompt valves — override model, temperature, or prompt text per task.
+# Values can be inline strings or paths to .txt/.md files.
+# ai:
+#   preamble:
+#     model: gpt-4.1
+#     temperature: 0.5
+#     system: prompts/preamble-system.txt
+#     user: prompts/preamble-user.txt
+#   classification:
+#     model: gpt-4.1
+#     temperature: 0.15
+#     system: prompts/classification-system.txt
+#     user: prompts/classification-user.txt

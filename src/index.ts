@@ -26,6 +26,7 @@ import {
   SVG_SECTION_KEYS,
   splitProjectsByRecency,
 } from "./metrics.js";
+import { resolvePrompts } from "./prompts.js";
 import { loadPreamble } from "./readme.js";
 import {
   buildSocialBadges,
@@ -54,6 +55,7 @@ async function run(): Promise<void> {
     const readmePath =
       core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
     const userConfig = loadUserConfig(configPath);
+    const prompts = resolvePrompts(userConfig.ai);
 
     // Template and sections from action inputs or config
     const templateName: TemplateName =
@@ -117,6 +119,7 @@ async function run(): Promise<void> {
     const aiClassifications = await fetchProjectClassifications(
       token,
       classificationInputs,
+      prompts.classification,
     );
     core.info(
       `Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`,
@@ -177,18 +180,30 @@ async function run(): Promise<void> {
     if (readmePath && readmePath !== "none") {
       const svgDir = relative(dirname(readmePath), outputDir) || ".";
 
+      const displayName = userConfig.name || userProfile.name || username;
+      const socialBadges = buildSocialBadges(userProfile);
+      const spotlightProjects = computeSpotlightProjects(
+        repos,
+        contributionData,
+        aiClassifications,
+      );
+
       let preamble = loadPreamble(userConfig.preamble);
 
       if (!preamble) {
         core.info("No PREAMBLE.md found, generating with AI...");
-        preamble = await fetchAIPreamble(token, {
-          username,
-          profile: userProfile,
-          userConfig,
-          languages,
-          activeProjects,
-          complexProjects,
-        });
+        preamble = await fetchAIPreamble(
+          token,
+          {
+            username,
+            profile: userProfile,
+            userConfig,
+            languages,
+            spotlightProjects,
+            complexProjects,
+          },
+          prompts.preamble,
+        );
       }
 
       const svgs = activeSections.map((s) => ({
@@ -196,23 +211,12 @@ async function run(): Promise<void> {
         path: `${svgDir}/${s.filename}`,
       }));
 
-      // Build section SVG path map for templates
       const sectionSvgs: Record<string, string> = {};
       for (const [key, filename] of Object.entries(SECTION_KEYS)) {
         if (activeSections.some((s) => s.filename === filename)) {
           sectionSvgs[key] = `${svgDir}/${filename}`;
         }
       }
-
-      const displayName = userConfig.name || userProfile.name || username;
-      const socialBadges = buildSocialBadges(userProfile);
-
-      // Compute spotlight projects
-      const spotlightProjects = computeSpotlightProjects(
-        repos,
-        contributionData,
-        aiClassifications,
-      );
 
       // Build categorized projects map
       const includeArchived = userConfig.exclude_archived === false;

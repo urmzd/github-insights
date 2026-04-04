@@ -25,6 +25,7 @@ import {
   SVG_SECTION_KEYS,
   splitProjectsByRecency,
 } from "./metrics.js";
+import { resolvePrompts } from "./prompts.js";
 import { loadPreamble } from "./readme.js";
 import {
   buildSocialBadges,
@@ -109,6 +110,8 @@ export async function runPipeline(
     ),
   );
 
+  const prompts = resolvePrompts(userConfig.ai);
+
   if (!config.token) throw new Error("github-token is required");
   if (!config.username) throw new Error("username is required");
 
@@ -140,6 +143,7 @@ export async function runPipeline(
   const aiClassifications = await fetchProjectClassifications(
     config.token,
     classificationInputs,
+    prompts.classification,
   );
   cb.onPhaseComplete(
     "classify",
@@ -213,17 +217,29 @@ export async function runPipeline(
     const svgDir =
       relative(dirname(config.readmePath), config.outputDir) || ".";
 
+    const displayName = userConfig.name || userProfile.name || config.username;
+    const socialBadges = buildSocialBadges(userProfile);
+    const spotlightProjects = computeSpotlightProjects(
+      repos,
+      contributionData,
+      aiClassifications,
+    );
+
     let preamble = loadPreamble(userConfig.preamble);
     if (!preamble) {
       cb.onProgress("Generating preamble with AI...");
-      preamble = await fetchAIPreamble(config.token, {
-        username: config.username,
-        profile: userProfile,
-        userConfig,
-        languages,
-        activeProjects,
-        complexProjects,
-      });
+      preamble = await fetchAIPreamble(
+        config.token,
+        {
+          username: config.username,
+          profile: userProfile,
+          userConfig,
+          languages,
+          spotlightProjects,
+          complexProjects,
+        },
+        prompts.preamble,
+      );
     }
 
     const svgs = activeSections.map((s) => ({
@@ -237,14 +253,6 @@ export async function runPipeline(
         sectionSvgs[key] = `${svgDir}/${filename}`;
       }
     }
-
-    const displayName = userConfig.name || userProfile.name || config.username;
-    const socialBadges = buildSocialBadges(userProfile);
-    const spotlightProjects = computeSpotlightProjects(
-      repos,
-      contributionData,
-      aiClassifications,
-    );
 
     const includeArchived = userConfig.exclude_archived === false;
     const allProjectItems = [

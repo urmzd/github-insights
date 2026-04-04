@@ -240,6 +240,7 @@ export interface RepoClassificationOutput {
   status: ProjectStatus;
   summary: string;
   category?: string;
+  spotlight_rank?: number | null;
 }
 
 export interface TemplateContext {

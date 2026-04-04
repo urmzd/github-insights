@@ -665,41 +665,45 @@ describe("buildSections", () => {
 // ── computeSpotlightProjects ──────────────────────────────────────────────
 
 describe("computeSpotlightProjects", () => {
-  it("returns top N projects sorted by heat score", () => {
+  it("returns LLM-ranked projects sorted by spotlight_rank", () => {
     const repos = [
-      makeRepo({
-        name: "active-repo",
-        stargazerCount: 5,
-        pushedAt: new Date().toISOString(),
-      }),
-      makeRepo({
-        name: "stale-repo",
-        stargazerCount: 100,
-        pushedAt: new Date(
-          Date.now() - 180 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-      }),
+      makeRepo({ name: "second", pushedAt: new Date().toISOString() }),
+      makeRepo({ name: "first", pushedAt: new Date().toISOString() }),
+      makeRepo({ name: "unranked", pushedAt: new Date().toISOString() }),
     ];
-    const contribData = makeContributionData({
-      commitContributionsByRepository: [
-        {
-          repository: {
-            name: "active-repo",
-            nameWithOwner: "user/active-repo",
-          },
-          contributions: { totalCount: 30 },
-        },
-        {
-          repository: { name: "stale-repo", nameWithOwner: "user/stale-repo" },
-          contributions: { totalCount: 0 },
-        },
-      ],
-    });
+    const contribData = makeContributionData();
+    const classifications = [
+      {
+        name: "second",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: 2,
+      },
+      {
+        name: "first",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: 1,
+      },
+      {
+        name: "unranked",
+        status: "maintained" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: null,
+      },
+    ];
 
-    const result = computeSpotlightProjects(repos, contribData, undefined, 5);
+    const result = computeSpotlightProjects(
+      repos,
+      contribData,
+      classifications,
+    );
     expect(result.length).toBe(2);
-    expect(result[0].name).toBe("active-repo");
-    expect(result[0].heatScore).toBeGreaterThan(result[1].heatScore);
+    expect(result[0].name).toBe("first");
+    expect(result[1].name).toBe("second");
   });
 
   it("assigns Active label for high commit repos pushed recently", () => {
@@ -714,8 +718,21 @@ describe("computeSpotlightProjects", () => {
         },
       ],
     });
+    const classifications = [
+      {
+        name: "hot",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: 1,
+      },
+    ];
 
-    const result = computeSpotlightProjects(repos, contribData);
+    const result = computeSpotlightProjects(
+      repos,
+      contribData,
+      classifications,
+    );
     expect(result[0].activityLabel).toBe("Active");
   });
 
@@ -731,56 +748,85 @@ describe("computeSpotlightProjects", () => {
         },
       ],
     });
+    const classifications = [
+      {
+        name: "new",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: 1,
+      },
+    ];
 
-    const result = computeSpotlightProjects(repos, contribData);
+    const result = computeSpotlightProjects(
+      repos,
+      contribData,
+      classifications,
+    );
     expect(result[0].activityLabel).toBe("Building");
   });
 
-  it("excludes archived repos", () => {
+  it("excludes archived repos even if LLM ranked them", () => {
     const repos = [
       makeRepo({ name: "archived", isArchived: true }),
       makeRepo({ name: "active" }),
     ];
-    const contribData = makeContributionData({
-      commitContributionsByRepository: [
-        {
-          repository: { name: "archived", nameWithOwner: "user/archived" },
-          contributions: { totalCount: 50 },
-        },
-        {
-          repository: { name: "active", nameWithOwner: "user/active" },
-          contributions: { totalCount: 5 },
-        },
-      ],
-    });
+    const contribData = makeContributionData();
+    const classifications = [
+      {
+        name: "archived",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: 1,
+      },
+      {
+        name: "active",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: 2,
+      },
+    ];
 
-    const result = computeSpotlightProjects(repos, contribData);
+    const result = computeSpotlightProjects(
+      repos,
+      contribData,
+      classifications,
+    );
     expect(result.every((p) => p.name !== "archived")).toBe(true);
   });
 
-  it("handles repos with zero commits but recent push", () => {
+  it("returns empty when no classifications have spotlight_rank", () => {
     const repos = [
-      makeRepo({
-        name: "fresh",
-        stargazerCount: 0,
-        pushedAt: new Date().toISOString(),
-      }),
+      makeRepo({ name: "repo-a", pushedAt: new Date().toISOString() }),
+    ];
+    const contribData = makeContributionData();
+    const classifications = [
+      {
+        name: "repo-a",
+        status: "active" as const,
+        summary: "s",
+        category: "SDKs",
+        spotlight_rank: null,
+      },
+    ];
+
+    const result = computeSpotlightProjects(
+      repos,
+      contribData,
+      classifications,
+    );
+    expect(result.length).toBe(0);
+  });
+
+  it("returns empty when no AI classifications provided", () => {
+    const repos = [
+      makeRepo({ name: "repo-a", pushedAt: new Date().toISOString() }),
     ];
     const contribData = makeContributionData();
 
     const result = computeSpotlightProjects(repos, contribData);
-    expect(result.length).toBe(1);
-    expect(result[0].heatScore).toBeGreaterThan(0);
-    expect(result[0].activityLabel).toBe("Building");
-  });
-
-  it("respects topN limit", () => {
-    const repos = Array.from({ length: 10 }, (_, i) =>
-      makeRepo({ name: `repo-${i}`, pushedAt: new Date().toISOString() }),
-    );
-    const contribData = makeContributionData();
-
-    const result = computeSpotlightProjects(repos, contribData, undefined, 3);
-    expect(result.length).toBe(3);
+    expect(result.length).toBe(0);
   });
 });
