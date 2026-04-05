@@ -65,20 +65,28 @@ describe("aggregateLanguages", () => {
     expect(result[1].percent).toBe("25.0");
   });
 
-  it("excludes Jupyter Notebook", () => {
+  it("excludes non-code languages", () => {
     const repos = [
       makeRepo({
         languages: {
-          totalSize: 200,
+          totalSize: 500,
           edges: [
             { size: 100, node: { name: "Jupyter Notebook", color: "#DA5B0B" } },
+            { size: 100, node: { name: "HTML", color: "#e34c26" } },
+            { size: 100, node: { name: "CSS", color: "#563d7c" } },
+            { size: 100, node: { name: "Markdown", color: "#083fa1" } },
             { size: 100, node: { name: "Python", color: "#3572A5" } },
           ],
         },
       }),
     ];
     const result = aggregateLanguages(repos);
-    expect(result.map((l) => l.name)).not.toContain("Jupyter Notebook");
+    const names = result.map((l) => l.name);
+    expect(names).not.toContain("Jupyter Notebook");
+    expect(names).not.toContain("HTML");
+    expect(names).not.toContain("CSS");
+    expect(names).not.toContain("Markdown");
+    expect(result[0].name).toBe("Python");
     expect(result[0].percent).toBe("100.0");
   });
 

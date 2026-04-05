@@ -21,7 +21,20 @@ import type {
 
 // ── Category Sets ───────────────────────────────────────────────────────────
 
-const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
+const EXCLUDED_LANGUAGES = new Set([
+  "Jupyter Notebook",
+  "HTML",
+  "CSS",
+  "Markdown",
+  "Shell",
+  "Makefile",
+  "Dockerfile",
+  "Nix",
+  "Just",
+  "TeX",
+  "SCSS",
+  "Less",
+]);
 
 // ── Section keys ────────────────────────────────────────────────────────────
 
@@ -430,7 +443,7 @@ export const computeLanguageVelocity = (
   // Build a map of repo name → primary language + color
   const repoLangMap = new Map<string, { name: string; color: string }>();
   for (const repo of repos) {
-    if (repo.primaryLanguage) {
+    if (repo.primaryLanguage && !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
       repoLangMap.set(repo.name, {
         name: repo.primaryLanguage.name,
         color: repo.primaryLanguage.color,
@@ -572,6 +585,36 @@ export const computeContributionRhythm = (
   return { dayTotals, longestStreak, stats };
 };
 
+// ── Language helpers ────────────────────────────────────────────────────────
+
+function pickPrimaryLanguage(
+  languages: string[] | undefined,
+  repo: RepoNode | undefined,
+): string {
+  const candidates = (languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l));
+  if (candidates.length > 0) return candidates[0];
+  if (repo?.primaryLanguage && !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
+    return repo.primaryLanguage.name;
+  }
+  return "Other";
+}
+
+function pickPrimaryColor(
+  languages: string[] | undefined,
+  repo: RepoNode | undefined,
+): string {
+  const primary = pickPrimaryLanguage(languages, repo);
+  if (primary !== "Other" && repo?.primaryLanguage?.name === primary) {
+    return repo.primaryLanguage.color;
+  }
+  // Try matching from repo language edges
+  if (repo?.languages?.edges) {
+    const edge = repo.languages.edges.find((e) => e.node.name === primary);
+    if (edge) return edge.node.color;
+  }
+  return repo?.primaryLanguage?.color || "#8b949e";
+}
+
 // ── Project Constellation ───────────────────────────────────────────────────
 
 export const computeConstellationLayout = (
@@ -592,9 +635,9 @@ export const computeConstellationLayout = (
       name: p.name,
       url: p.url,
       complexity: repo ? complexityScore(repo) : 0,
-      primaryLanguage: p.languages?.[0] || "Other",
-      primaryColor: repo?.primaryLanguage?.color || "#8b949e",
-      languages: p.languages || [],
+      primaryLanguage: pickPrimaryLanguage(p.languages, repo),
+      primaryColor: pickPrimaryColor(p.languages, repo),
+      languages: (p.languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l)),
       stars: p.stars,
     };
   });
@@ -663,6 +706,7 @@ export const buildSections = ({
       title: "Language Velocity",
       subtitle: "How language usage has evolved over the past year",
       renderBody: (y: number) => renderLanguageVelocity(velocity, y),
+      data: velocity,
     });
   }
 
@@ -672,6 +716,7 @@ export const buildSections = ({
     title: "Contribution Rhythm",
     subtitle: "Activity patterns and statistics over the past year",
     renderBody: (y: number) => renderContributionRhythm(rhythm, y),
+    data: rhythm,
   });
 
   // 3. Project Constellation
@@ -682,19 +727,19 @@ export const buildSections = ({
       subtitle:
         "Top projects ranked by complexity, grouped by primary language",
       renderBody: (y: number) => renderProjectConstellation(constellation, y),
+      data: constellation,
     });
   }
 
   // 4. Impact Trail
   if (contributionData.externalRepos.nodes.length > 0) {
+    const impactRepos = contributionData.externalRepos.nodes.slice(0, 8);
     sections.push({
       filename: "metrics-impact.svg",
       title: "Open Source Impact",
       subtitle: "External repositories contributed to",
-      renderBody: (y: number) => {
-        const repos = contributionData.externalRepos.nodes.slice(0, 8);
-        return renderImpactTrail(repos, y);
-      },
+      renderBody: (y: number) => renderImpactTrail(impactRepos, y),
+      data: impactRepos,
     });
   }
 

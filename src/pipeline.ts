@@ -67,6 +67,7 @@ export interface PipelineConfig {
   templateName: TemplateName;
   requestedSections: string[];
   failFast: boolean;
+  exportJson: boolean;
 }
 
 // ── Git helper ──────────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ export async function runPipeline(
 
   // ── Classify ──────────────────────────────────────────────────────────────
   const failFast = config.failFast || userConfig.fail_fast || false;
+  const exportJson = config.exportJson || userConfig.export_json || false;
 
   cb.onPhaseStart("classify", "Classifying projects");
   const languages = aggregateLanguages(repos);
@@ -214,6 +216,14 @@ export async function runPipeline(
       `${config.outputDir}/${section.filename}`,
       wrapSectionSvg(svg, height),
     );
+    if (exportJson && section.data !== undefined) {
+      const jsonFilename = section.filename.replace(/\.svg$/, ".json");
+      writeFileSync(
+        `${config.outputDir}/${jsonFilename}`,
+        JSON.stringify(section.data, null, 2),
+      );
+      cb.onProgress(`Wrote ${jsonFilename}`);
+    }
     cb.onProgress(`Wrote ${section.filename}`);
   }
 
