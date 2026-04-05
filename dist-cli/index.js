@@ -36521,406 +36521,6 @@ if (process.env.NODE_ENV === 'production') {
 
 /***/ }),
 
-/***/ 775:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-/**
- * @license React
- * react-jsx-runtime.development.js
- *
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
-
-"production" !== process.env.NODE_ENV &&
-  (function () {
-    function getComponentNameFromType(type) {
-      if (null == type) return null;
-      if ("function" === typeof type)
-        return type.$$typeof === REACT_CLIENT_REFERENCE
-          ? null
-          : type.displayName || type.name || null;
-      if ("string" === typeof type) return type;
-      switch (type) {
-        case REACT_FRAGMENT_TYPE:
-          return "Fragment";
-        case REACT_PROFILER_TYPE:
-          return "Profiler";
-        case REACT_STRICT_MODE_TYPE:
-          return "StrictMode";
-        case REACT_SUSPENSE_TYPE:
-          return "Suspense";
-        case REACT_SUSPENSE_LIST_TYPE:
-          return "SuspenseList";
-        case REACT_ACTIVITY_TYPE:
-          return "Activity";
-      }
-      if ("object" === typeof type)
-        switch (
-          ("number" === typeof type.tag &&
-            console.error(
-              "Received an unexpected object in getComponentNameFromType(). This is likely a bug in React. Please file an issue."
-            ),
-          type.$$typeof)
-        ) {
-          case REACT_PORTAL_TYPE:
-            return "Portal";
-          case REACT_CONTEXT_TYPE:
-            return type.displayName || "Context";
-          case REACT_CONSUMER_TYPE:
-            return (type._context.displayName || "Context") + ".Consumer";
-          case REACT_FORWARD_REF_TYPE:
-            var innerType = type.render;
-            type = type.displayName;
-            type ||
-              ((type = innerType.displayName || innerType.name || ""),
-              (type = "" !== type ? "ForwardRef(" + type + ")" : "ForwardRef"));
-            return type;
-          case REACT_MEMO_TYPE:
-            return (
-              (innerType = type.displayName || null),
-              null !== innerType
-                ? innerType
-                : getComponentNameFromType(type.type) || "Memo"
-            );
-          case REACT_LAZY_TYPE:
-            innerType = type._payload;
-            type = type._init;
-            try {
-              return getComponentNameFromType(type(innerType));
-            } catch (x) {}
-        }
-      return null;
-    }
-    function testStringCoercion(value) {
-      return "" + value;
-    }
-    function checkKeyStringCoercion(value) {
-      try {
-        testStringCoercion(value);
-        var JSCompiler_inline_result = !1;
-      } catch (e) {
-        JSCompiler_inline_result = !0;
-      }
-      if (JSCompiler_inline_result) {
-        JSCompiler_inline_result = console;
-        var JSCompiler_temp_const = JSCompiler_inline_result.error;
-        var JSCompiler_inline_result$jscomp$0 =
-          ("function" === typeof Symbol &&
-            Symbol.toStringTag &&
-            value[Symbol.toStringTag]) ||
-          value.constructor.name ||
-          "Object";
-        JSCompiler_temp_const.call(
-          JSCompiler_inline_result,
-          "The provided key is an unsupported type %s. This value must be coerced to a string before using it here.",
-          JSCompiler_inline_result$jscomp$0
-        );
-        return testStringCoercion(value);
-      }
-    }
-    function getTaskName(type) {
-      if (type === REACT_FRAGMENT_TYPE) return "<>";
-      if (
-        "object" === typeof type &&
-        null !== type &&
-        type.$$typeof === REACT_LAZY_TYPE
-      )
-        return "<...>";
-      try {
-        var name = getComponentNameFromType(type);
-        return name ? "<" + name + ">" : "<...>";
-      } catch (x) {
-        return "<...>";
-      }
-    }
-    function getOwner() {
-      var dispatcher = ReactSharedInternals.A;
-      return null === dispatcher ? null : dispatcher.getOwner();
-    }
-    function UnknownOwner() {
-      return Error("react-stack-top-frame");
-    }
-    function hasValidKey(config) {
-      if (hasOwnProperty.call(config, "key")) {
-        var getter = Object.getOwnPropertyDescriptor(config, "key").get;
-        if (getter && getter.isReactWarning) return !1;
-      }
-      return void 0 !== config.key;
-    }
-    function defineKeyPropWarningGetter(props, displayName) {
-      function warnAboutAccessingKey() {
-        specialPropKeyWarningShown ||
-          ((specialPropKeyWarningShown = !0),
-          console.error(
-            "%s: `key` is not a prop. Trying to access it will result in `undefined` being returned. If you need to access the same value within the child component, you should pass it as a different prop. (https://react.dev/link/special-props)",
-            displayName
-          ));
-      }
-      warnAboutAccessingKey.isReactWarning = !0;
-      Object.defineProperty(props, "key", {
-        get: warnAboutAccessingKey,
-        configurable: !0
-      });
-    }
-    function elementRefGetterWithDeprecationWarning() {
-      var componentName = getComponentNameFromType(this.type);
-      didWarnAboutElementRef[componentName] ||
-        ((didWarnAboutElementRef[componentName] = !0),
-        console.error(
-          "Accessing element.ref was removed in React 19. ref is now a regular prop. It will be removed from the JSX Element type in a future release."
-        ));
-      componentName = this.props.ref;
-      return void 0 !== componentName ? componentName : null;
-    }
-    function ReactElement(type, key, props, owner, debugStack, debugTask) {
-      var refProp = props.ref;
-      type = {
-        $$typeof: REACT_ELEMENT_TYPE,
-        type: type,
-        key: key,
-        props: props,
-        _owner: owner
-      };
-      null !== (void 0 !== refProp ? refProp : null)
-        ? Object.defineProperty(type, "ref", {
-            enumerable: !1,
-            get: elementRefGetterWithDeprecationWarning
-          })
-        : Object.defineProperty(type, "ref", { enumerable: !1, value: null });
-      type._store = {};
-      Object.defineProperty(type._store, "validated", {
-        configurable: !1,
-        enumerable: !1,
-        writable: !0,
-        value: 0
-      });
-      Object.defineProperty(type, "_debugInfo", {
-        configurable: !1,
-        enumerable: !1,
-        writable: !0,
-        value: null
-      });
-      Object.defineProperty(type, "_debugStack", {
-        configurable: !1,
-        enumerable: !1,
-        writable: !0,
-        value: debugStack
-      });
-      Object.defineProperty(type, "_debugTask", {
-        configurable: !1,
-        enumerable: !1,
-        writable: !0,
-        value: debugTask
-      });
-      Object.freeze && (Object.freeze(type.props), Object.freeze(type));
-      return type;
-    }
-    function jsxDEVImpl(
-      type,
-      config,
-      maybeKey,
-      isStaticChildren,
-      debugStack,
-      debugTask
-    ) {
-      var children = config.children;
-      if (void 0 !== children)
-        if (isStaticChildren)
-          if (isArrayImpl(children)) {
-            for (
-              isStaticChildren = 0;
-              isStaticChildren < children.length;
-              isStaticChildren++
-            )
-              validateChildKeys(children[isStaticChildren]);
-            Object.freeze && Object.freeze(children);
-          } else
-            console.error(
-              "React.jsx: Static children should always be an array. You are likely explicitly calling React.jsxs or React.jsxDEV. Use the Babel transform instead."
-            );
-        else validateChildKeys(children);
-      if (hasOwnProperty.call(config, "key")) {
-        children = getComponentNameFromType(type);
-        var keys = Object.keys(config).filter(function (k) {
-          return "key" !== k;
-        });
-        isStaticChildren =
-          0 < keys.length
-            ? "{key: someKey, " + keys.join(": ..., ") + ": ...}"
-            : "{key: someKey}";
-        didWarnAboutKeySpread[children + isStaticChildren] ||
-          ((keys =
-            0 < keys.length ? "{" + keys.join(": ..., ") + ": ...}" : "{}"),
-          console.error(
-            'A props object containing a "key" prop is being spread into JSX:\n  let props = %s;\n  <%s {...props} />\nReact keys must be passed directly to JSX without using spread:\n  let props = %s;\n  <%s key={someKey} {...props} />',
-            isStaticChildren,
-            children,
-            keys,
-            children
-          ),
-          (didWarnAboutKeySpread[children + isStaticChildren] = !0));
-      }
-      children = null;
-      void 0 !== maybeKey &&
-        (checkKeyStringCoercion(maybeKey), (children = "" + maybeKey));
-      hasValidKey(config) &&
-        (checkKeyStringCoercion(config.key), (children = "" + config.key));
-      if ("key" in config) {
-        maybeKey = {};
-        for (var propName in config)
-          "key" !== propName && (maybeKey[propName] = config[propName]);
-      } else maybeKey = config;
-      children &&
-        defineKeyPropWarningGetter(
-          maybeKey,
-          "function" === typeof type
-            ? type.displayName || type.name || "Unknown"
-            : type
-        );
-      return ReactElement(
-        type,
-        children,
-        maybeKey,
-        getOwner(),
-        debugStack,
-        debugTask
-      );
-    }
-    function validateChildKeys(node) {
-      isValidElement(node)
-        ? node._store && (node._store.validated = 1)
-        : "object" === typeof node &&
-          null !== node &&
-          node.$$typeof === REACT_LAZY_TYPE &&
-          ("fulfilled" === node._payload.status
-            ? isValidElement(node._payload.value) &&
-              node._payload.value._store &&
-              (node._payload.value._store.validated = 1)
-            : node._store && (node._store.validated = 1));
-    }
-    function isValidElement(object) {
-      return (
-        "object" === typeof object &&
-        null !== object &&
-        object.$$typeof === REACT_ELEMENT_TYPE
-      );
-    }
-    var React = __nccwpck_require__(7919),
-      REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"),
-      REACT_PORTAL_TYPE = Symbol.for("react.portal"),
-      REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"),
-      REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"),
-      REACT_PROFILER_TYPE = Symbol.for("react.profiler"),
-      REACT_CONSUMER_TYPE = Symbol.for("react.consumer"),
-      REACT_CONTEXT_TYPE = Symbol.for("react.context"),
-      REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"),
-      REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"),
-      REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"),
-      REACT_MEMO_TYPE = Symbol.for("react.memo"),
-      REACT_LAZY_TYPE = Symbol.for("react.lazy"),
-      REACT_ACTIVITY_TYPE = Symbol.for("react.activity"),
-      REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"),
-      ReactSharedInternals =
-        React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,
-      hasOwnProperty = Object.prototype.hasOwnProperty,
-      isArrayImpl = Array.isArray,
-      createTask = console.createTask
-        ? console.createTask
-        : function () {
-            return null;
-          };
-    React = {
-      react_stack_bottom_frame: function (callStackForError) {
-        return callStackForError();
-      }
-    };
-    var specialPropKeyWarningShown;
-    var didWarnAboutElementRef = {};
-    var unknownOwnerDebugStack = React.react_stack_bottom_frame.bind(
-      React,
-      UnknownOwner
-    )();
-    var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
-    var didWarnAboutKeySpread = {};
-    exports.Fragment = REACT_FRAGMENT_TYPE;
-    exports.jsx = function (type, config, maybeKey) {
-      var trackActualOwner =
-        1e4 > ReactSharedInternals.recentlyCreatedOwnerStacks++;
-      return jsxDEVImpl(
-        type,
-        config,
-        maybeKey,
-        !1,
-        trackActualOwner
-          ? Error("react-stack-top-frame")
-          : unknownOwnerDebugStack,
-        trackActualOwner ? createTask(getTaskName(type)) : unknownOwnerDebugTask
-      );
-    };
-    exports.jsxs = function (type, config, maybeKey) {
-      var trackActualOwner =
-        1e4 > ReactSharedInternals.recentlyCreatedOwnerStacks++;
-      return jsxDEVImpl(
-        type,
-        config,
-        maybeKey,
-        !0,
-        trackActualOwner
-          ? Error("react-stack-top-frame")
-          : unknownOwnerDebugStack,
-        trackActualOwner ? createTask(getTaskName(type)) : unknownOwnerDebugTask
-      );
-    };
-  })();
-
-
-/***/ }),
-
-/***/ 4179:
-/***/ ((__unused_webpack_module, exports) => {
-
-/**
- * @license React
- * react-jsx-runtime.production.js
- *
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
-
-var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"),
-  REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
-function jsxProd(type, config, maybeKey) {
-  var key = null;
-  void 0 !== maybeKey && (key = "" + maybeKey);
-  void 0 !== config.key && (key = "" + config.key);
-  if ("key" in config) {
-    maybeKey = {};
-    for (var propName in config)
-      "key" !== propName && (maybeKey[propName] = config[propName]);
-  } else maybeKey = config;
-  config = maybeKey.ref;
-  return {
-    $$typeof: REACT_ELEMENT_TYPE,
-    type: type,
-    key: key,
-    ref: void 0 !== config ? config : null,
-    props: maybeKey
-  };
-}
-exports.Fragment = REACT_FRAGMENT_TYPE;
-exports.jsx = jsxProd;
-exports.jsxs = jsxProd;
-
-
-/***/ }),
-
 /***/ 4102:
 /***/ ((module, exports, __nccwpck_require__) => {
 
@@ -38771,20 +38371,6 @@ if (process.env.NODE_ENV === 'production') {
   module.exports = __nccwpck_require__(6204);
 } else {
   module.exports = __nccwpck_require__(4102);
-}
-
-
-/***/ }),
-
-/***/ 3687:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-
-
-if (process.env.NODE_ENV === 'production') {
-  module.exports = __nccwpck_require__(4179);
-} else {
-  module.exports = __nccwpck_require__(775);
 }
 
 
@@ -62586,24 +62172,19 @@ function wrappy (fn, cb) {
 /***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
 
 __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(3687);
-/* harmony import */ var commander__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8179);
-/* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8518);
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7919);
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__nccwpck_require__.n(react__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(765);
-/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(3979);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_5__]);
-([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_5__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
-
-
+/* harmony import */ var commander__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(8179);
+/* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8518);
+/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(7306);
+/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3979);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_3__]);
+([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_3__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
 
 
 
 // Hardcoded at build time — update via `npm version`
 const version = "3.1.0";
-const program = new commander__WEBPACK_IMPORTED_MODULE_1__/* .Command */ .uB()
+const program = new commander__WEBPACK_IMPORTED_MODULE_0__/* .Command */ .uB()
     .name("github-insights")
     .description("Generate GitHub profile insights and visualizations")
     .version(version);
@@ -62611,11 +62192,11 @@ program
     .command("init")
     .description("Create a github-insights.yml config file")
     .action(() => {
-    if ((0,_config_js__WEBPACK_IMPORTED_MODULE_4__/* .configExists */ .fi)()) {
+    if ((0,_config_js__WEBPACK_IMPORTED_MODULE_2__/* .configExists */ .fi)()) {
         console.log("github-insights.yml already exists, skipping.");
     }
     else {
-        const path = (0,_config_js__WEBPACK_IMPORTED_MODULE_4__/* .initConfig */ .pw)();
+        const path = (0,_config_js__WEBPACK_IMPORTED_MODULE_2__/* .initConfig */ .pw)();
         console.log(`Created ${path} — edit it to customize your profile.`);
     }
 });
@@ -62657,7 +62238,7 @@ program
                 .filter(Boolean)
             : [],
     };
-    (0,ink__WEBPACK_IMPORTED_MODULE_2__/* .render */ .XX)((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(_tui_App_js__WEBPACK_IMPORTED_MODULE_5__/* .App */ .q, { config: config }));
+    (0,ink__WEBPACK_IMPORTED_MODULE_1__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_3__/* .App */ .q, { config: config }));
 });
 program.parse();
 
@@ -62666,7 +62247,7 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 765:
+/***/ 7306:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 
@@ -62967,8 +62548,8 @@ __nccwpck_require__.d(classic_schemas_namespaceObject, {
 var external_node_fs_ = __nccwpck_require__(3024);
 // EXTERNAL MODULE: external "node:path"
 var external_node_path_ = __nccwpck_require__(6760);
-;// CONCATENATED MODULE: external "node:url"
-const external_node_url_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
+// EXTERNAL MODULE: external "node:url"
+var external_node_url_ = __nccwpck_require__(3136);
 // EXTERNAL MODULE: ./node_modules/smol-toml/dist/index.js + 8 modules
 var dist = __nccwpck_require__(3292);
 // EXTERNAL MODULE: ./node_modules/yaml/dist/index.js
@@ -76735,6 +76316,21 @@ const lenientTemplate = schemas_string()
         : undefined;
 })
     .optional();
+/** Lenient prompt valves — accepts partial overrides, drops unknowns. */
+const promptValvesSchema = object({
+    model: optionalTrimmedString,
+    temperature: schemas_number().min(0).max(2).optional(),
+    system: optionalTrimmedString,
+    user: optionalTrimmedString,
+})
+    .strip()
+    .optional();
+const aiConfigSchema = object({
+    preamble: promptValvesSchema,
+    classification: promptValvesSchema,
+})
+    .strip()
+    .optional();
 /** Filters array to valid section strings, returns undefined if empty. */
 const lenientSections = array(unknown())
     .transform((arr) => {
@@ -76755,6 +76351,7 @@ const UserConfigSchema = object({
     template: lenientTemplate,
     sections: lenientSections,
     exclude_archived: schemas_boolean().optional(),
+    ai: aiConfigSchema,
 })
     .strip()
     .transform((obj) => {
@@ -76790,7 +76387,7 @@ const SECTION_PRESETS = {
     ],
 };
 const DEFAULT_SECTIONS = SECTION_PRESETS.showcase;
-const DEFAULT_CONFIG_ASSET = (0,external_node_path_.join)((0,external_node_path_.dirname)((0,external_node_url_namespaceObject.fileURLToPath)(import.meta.url)), "templates", "github-insights.default.yaml");
+const DEFAULT_CONFIG_ASSET = (0,external_node_path_.join)((0,external_node_path_.dirname)((0,external_node_url_.fileURLToPath)(import.meta.url)), "templates", "github-insights.default.yaml");
 // ── Public API ────────────────────────────────────────────────────────────
 function resolveTemplateSections(templateName, explicitSections) {
     if (explicitSections && explicitSections.length > 0) {
@@ -76861,7 +76458,7 @@ function resolveConfigPath() {
 
 /***/ }),
 
-/***/ 1560:
+/***/ 6536:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 
@@ -76878,7 +76475,71 @@ var external_node_fs_ = __nccwpck_require__(3024);
 var external_node_path_ = __nccwpck_require__(6760);
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
 var github = __nccwpck_require__(3228);
+// EXTERNAL MODULE: external "node:url"
+var external_node_url_ = __nccwpck_require__(3136);
+;// CONCATENATED MODULE: ./src/prompts.ts
+
+
+
+// ── Default prompt loading ─────────────────────────────────────────────────
+const PROMPTS_DIR = (0,external_node_path_.join)((0,external_node_path_.dirname)((0,external_node_url_.fileURLToPath)(import.meta.url)), "prompts");
+function loadDefault(filename) {
+    return (0,external_node_fs_.readFileSync)((0,external_node_path_.join)(PROMPTS_DIR, filename), "utf-8").trim();
+}
+const DEFAULTS = {
+    preamble: {
+        model: "gpt-4.1",
+        temperature: 0.5,
+        system: loadDefault("preamble-system.txt"),
+        user: loadDefault("preamble-user.txt"),
+    },
+    classification: {
+        model: "gpt-4.1",
+        temperature: 0.15,
+        system: loadDefault("classification-system.txt"),
+        user: loadDefault("classification-user.txt"),
+    },
+};
+// ── Resolution ─────────────────────────────────────────────────────────────
+/** Load a prompt value — if it looks like a file path, read the file; otherwise use as-is. */
+function resolvePromptValue(value, fallback) {
+    if (!value)
+        return fallback;
+    const trimmed = value.trim();
+    // Heuristic: if it ends with .txt/.md or is an absolute/relative path, treat as file
+    if (trimmed.endsWith(".txt") ||
+        trimmed.endsWith(".md") ||
+        (0,external_node_path_.isAbsolute)(trimmed)) {
+        if ((0,external_node_fs_.existsSync)(trimmed)) {
+            return (0,external_node_fs_.readFileSync)(trimmed, "utf-8").trim();
+        }
+        console.warn(`Prompt file not found: ${trimmed}, using default`);
+        return fallback;
+    }
+    return trimmed;
+}
+function resolveValves(overrides, defaults) {
+    return {
+        model: overrides?.model || defaults.model,
+        temperature: overrides?.temperature ?? defaults.temperature,
+        system: resolvePromptValue(overrides?.system, defaults.system),
+        user: resolvePromptValue(overrides?.user, defaults.user),
+    };
+}
+function resolvePrompts(aiConfig) {
+    return {
+        preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble),
+        classification: resolveValves(aiConfig?.classification, DEFAULTS.classification),
+    };
+}
+// ── Template interpolation ─────────────────────────────────────────────────
+/** Replace `{{key}}` placeholders with values from the vars map. */
+function interpolate(template, vars) {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
+}
+
 ;// CONCATENATED MODULE: ./src/api.ts
+
 
 const MAX_RETRIES = 3;
 const fetchWithRetry = async (url, init, label) => {
@@ -77115,51 +76776,38 @@ const fetchUserProfile = async (graphql, username) => {
         };
     }
 };
-const fetchAIPreamble = async (token, context) => {
+const fetchAIPreamble = async (token, context, valves) => {
     try {
-        const { profile, userConfig, languages, activeProjects, complexProjects } = context;
+        const { profile, userConfig, languages, spotlightProjects, complexProjects, } = context;
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
             .join("\n");
         const formatProject = (p) => {
             const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
             const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
-            return `- ${p.name} (${p.stars} stars${size})${langs}: ${p.description}`;
+            const desc = p.summary || p.description;
+            return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
         };
-        const activeProjectLines = activeProjects.map(formatProject).join("\n");
+        const spotlightLines = spotlightProjects.map(formatProject).join("\n");
         const complexProjectLines = complexProjects.map(formatProject).join("\n");
         const profileLines = [
             profile.name ? `Name: ${profile.name}` : null,
             profile.bio ? `Bio: ${profile.bio}` : null,
             profile.company ? `Company: ${profile.company}` : null,
             profile.location ? `Location: ${profile.location}` : null,
-            userConfig.title ? `Title: ${userConfig.title}` : null,
+            userConfig.title ? `Current title: ${userConfig.title}` : null,
+            userConfig.desired_title
+                ? `Desired title: ${userConfig.desired_title}`
+                : null,
         ]
             .filter(Boolean)
             .join("\n");
-        const prompt = `You are generating a very short tagline for a developer's GitHub profile README.
-
-Profile:
-${profileLines}
-
-Languages (by code volume):
-${langLines}
-
-Most technically complex projects (by language diversity, codebase size, and depth):
-${complexProjectLines || "None"}
-
-Active projects (recently committed to):
-${activeProjectLines || "None"}
-
-Generate 1-2 sentences that:
-- Write in first person (use I/my). Describe what you work on
-- Lead with the most technically impressive or complex work — projects with multiple languages, large codebases, or deep domain expertise
-- Reference their top 2-3 languages or technologies naturally
-- Keep tone professional but friendly
-- Do NOT include social links, badges, or contact info
-- Do NOT include a heading — the README already has one
-- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
+        const prompt = interpolate(valves.user, {
+            profile: profileLines,
+            languages: langLines,
+            complexProjects: complexProjectLines || "None",
+            activeProjects: spotlightLines || "None",
+        });
         const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
@@ -77167,18 +76815,12 @@ Generate 1-2 sentences that:
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "gpt-4.1",
+                model: valves.model,
                 messages: [
-                    {
-                        role: "system",
-                        content: "You are a markdown content generator. Output ONLY the requested markdown content. " +
-                            "Never include conversational text, confirmations, or commentary like " +
-                            '"Certainly", "Here\'s", "Sure", "Of course", etc. ' +
-                            "Start directly with the substantive content.",
-                    },
+                    { role: "system", content: valves.system },
                     { role: "user", content: prompt },
                 ],
-                temperature: 0.3,
+                temperature: valves.temperature,
                 response_format: {
                     type: "json_schema",
                     json_schema: {
@@ -77226,44 +76868,10 @@ Generate 1-2 sentences that:
         return undefined;
     }
 };
-const fetchProjectClassifications = async (token, repos) => {
+const fetchProjectClassifications = async (token, repos, valves) => {
     try {
         const repoData = JSON.stringify(repos, null, 2);
-        const prompt = `You are classifying GitHub repositories by their maintenance status, purpose category, and generating a brief summary for each.
-
-For each repository, determine its status, category, and write a 1-2 sentence summary:
-
-Status (project lifecycle — pick exactly one):
-- "active": The project is young and under active development. It was created or significantly reworked recently, AND has frequent, sustained commits indicating ongoing feature work or rapid iteration. A mature project with a recent burst of commits is NOT active — it's maintained.
-- "maintained": The project is established and functional. It may receive occasional updates — bug fixes, dependency bumps, documentation, or even periodic feature additions — but the core is stable. Most working projects fall here. An old project with recent commits is maintained, not active.
-- "inactive": The project has no meaningful recent activity. It may be a completed experiment, archived, or abandoned.
-
-Category (project purpose — pick exactly one):
-- "Developer Tools": CLIs, build tools, code generators, automation utilities, GitHub Actions
-- "SDKs": Libraries and SDKs meant to be imported by other projects
-- "Applications": End-user applications, desktop apps, web apps, APIs
-- "Research & Experiments": Academic projects, ML experiments, algorithm research, educational repos, game clones
-
-Repository data:
-${repoData}
-
-Classification guidelines:
-- commitsLastYear is the number of commits in the past 12 months
-- pushedAt is the last push date (any git push, not just commits)
-- The key distinction between active and maintained is project MATURITY, not just commit recency
-- A project created in the last ~6 months with sustained commits → active
-- A project older than ~1 year with any level of recent commits → maintained (unless it was clearly rearchitected/rewritten recently)
-- commitsLastYear alone does NOT determine active vs maintained — a 3-year-old project with 50 commits/year is maintained, not active
-- A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
-- Profile READMEs (e.g. repos named after the username) should be "maintained" (they get auto-generated updates but aren't actively developed)
-- SDKs and tools that are stable and working are "maintained" even with frequent commits — unless they're brand new
-- For category, judge by what the repo IS, not by its activity level. A game clone is "Research & Experiments" even if actively developed. A CLI tool is "Developer Tools" even if inactive.
-
-Summary guidelines:
-- Write 1-2 factual sentences describing what the project IS and what technologies it uses
-- Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
-- Do NOT hallucinate features or details not present in the input data
-- Base the summary only on: name, description, languages, stars, and disk usage`;
+        const prompt = interpolate(valves.user, { repoData });
         const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
@@ -77271,9 +76879,12 @@ Summary guidelines:
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "gpt-4.1",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.1,
+                model: valves.model,
+                messages: [
+                    { role: "system", content: valves.system },
+                    { role: "user", content: prompt },
+                ],
+                temperature: valves.temperature,
                 response_format: {
                     type: "json_schema",
                     json_schema: {
@@ -77302,8 +76913,17 @@ Summary guidelines:
                                                     "Research & Experiments",
                                                 ],
                                             },
+                                            spotlight_rank: {
+                                                type: ["integer", "null"],
+                                            },
                                         },
-                                        required: ["name", "status", "summary", "category"],
+                                        required: [
+                                            "name",
+                                            "status",
+                                            "summary",
+                                            "category",
+                                            "spotlight_rank",
+                                        ],
                                         additionalProperties: false,
                                     },
                                 },
@@ -77337,8 +76957,6 @@ Summary guidelines:
     }
 };
 
-// EXTERNAL MODULE: ./node_modules/react/jsx-runtime.js
-var jsx_runtime = __nccwpck_require__(3687);
 ;// CONCATENATED MODULE: ./src/jsx-factory.ts
 const SELF_CLOSING = new Set([
     "circle",
@@ -77355,7 +76973,7 @@ const escapeAttr = (s) => s
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-function h(tag, props, ...children) {
+function jsx_factory_h(tag, props, ...children) {
     if (typeof tag === "function")
         return tag({ ...props, children: children.flat() });
     const attrs = Object.entries(props || {})
@@ -77452,22 +77070,23 @@ const wrapText = (text, maxChars) => {
 };
 
 ;// CONCATENATED MODULE: ./src/components/section.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
 
 
 function renderSectionHeader(title, subtitle, y) {
-    const svg = ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [(0,jsx_runtime.jsx)("text", { x: theme_LAYOUT.padX, y: y + 16, className: "t t-h", children: svg_utils_escapeXml(title.toUpperCase()) }), subtitle ? ((0,jsx_runtime.jsx)("text", { x: theme_LAYOUT.padX, y: y + 32, className: "t t-sub", children: svg_utils_escapeXml(subtitle) })) : ("")] }));
+    const svg = (jsx_factory_h(Fragment, null,
+        jsx_factory_h("text", { x: theme_LAYOUT.padX, y: y + 16, className: "t t-h" }, svg_utils_escapeXml(title.toUpperCase())),
+        subtitle ? (jsx_factory_h("text", { x: theme_LAYOUT.padX, y: y + 32, className: "t t-sub" }, svg_utils_escapeXml(subtitle))) : ("")));
     return { svg, height: subtitle ? 42 : 24 };
 }
 function renderSubHeader(text, y) {
-    const svg = (_jsx("text", { x: LAYOUT.padX, y: y + 11, className: "t t-subhdr", children: escapeXml(text.toUpperCase()) }));
+    const svg = (h("text", { x: LAYOUT.padX, y: y + 11, className: "t t-subhdr" }, escapeXml(text.toUpperCase())));
     return { svg, height: 14 };
 }
 function renderDivider(y) {
-    const svg = (_jsx("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
+    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
     return { svg, height: 1 };
 }
 function renderSection(title, subtitle, renderBody) {
@@ -77484,13 +77103,13 @@ function renderSection(title, subtitle, renderBody) {
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/style-defs.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
 
 function StyleDefs() {
-    return ((0,jsx_runtime.jsx)("defs", { children: (0,jsx_runtime.jsx)("style", { children: `
+    return (jsx_factory_h("defs", null,
+        jsx_factory_h("style", null, `
   .t { font-family: ${FONT}; font-variant-numeric: tabular-lining; }
   .t-h { font-size: 14px; fill: ${theme_THEME.text}; letter-spacing: 2px; font-weight: 600; }
   .t-sub { font-size: 11px; fill: ${theme_THEME.muted}; }
@@ -77544,12 +77163,11 @@ function StyleDefs() {
   .fade-4 { animation: fadeIn 0.6s ease-out 0.55s both; }
   .fade-5 { animation: fadeIn 0.6s ease-out 0.7s both; }
   .fade-6 { animation: fadeIn 0.6s ease-out 0.85s both; }
-` }) }));
+`)));
 }
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/full-svg.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
@@ -77558,7 +77176,10 @@ void Fragment;
 
 function wrapSectionSvg(bodySvg, height) {
     const { width } = theme_LAYOUT;
-    return ((0,jsx_runtime.jsxs)("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}`, children: [(0,jsx_runtime.jsx)(StyleDefs, {}), (0,jsx_runtime.jsx)("rect", { width: width, height: height, rx: "12", className: "bg-fill", fill: theme_THEME.bg }), bodySvg] }));
+    return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
+        jsx_factory_h(StyleDefs, null),
+        jsx_factory_h("rect", { width: width, height: height, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
+        bodySvg));
 }
 function generateFullSvg(sections) {
     const { width, padY, sectionGap } = theme_LAYOUT;
@@ -77575,13 +77196,15 @@ function generateFullSvg(sections) {
         }
     }
     const totalHeight = y + padY;
-    return ((0,jsx_runtime.jsxs)("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}`, children: [(0,jsx_runtime.jsx)(StyleDefs, {}), (0,jsx_runtime.jsx)("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill", fill: theme_THEME.bg }), bodySvg] }));
+    return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
+        jsx_factory_h(StyleDefs, null),
+        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
+        bodySvg));
 }
 
-// EXTERNAL MODULE: ./src/config.ts + 75 modules
-var src_config = __nccwpck_require__(765);
+// EXTERNAL MODULE: ./src/config.ts + 74 modules
+var src_config = __nccwpck_require__(7306);
 ;// CONCATENATED MODULE: ./src/components/contribution-rhythm.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
@@ -77597,13 +77220,13 @@ function renderContributionRhythm(rhythm, y) {
     const maxVal = Math.max(...rhythm.dayTotals, 1);
     // Guide circles
     const guides = [0.25, 0.5, 0.75, 1.0];
-    const guidesSvg = guides.map((pct) => ((0,jsx_runtime.jsx)("circle", { cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" }, pct)));
+    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { key: pct, cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" })));
     // Spoke lines
     const spokesSvg = DAY_NAMES.map((dayName, i) => {
         const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
         const x2 = radarCx + radarR * Math.cos(angle);
         const y2 = radarCy + radarR * Math.sin(angle);
-        return ((0,jsx_runtime.jsx)("line", { x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }, dayName));
+        return (jsx_factory_h("line", { key: dayName, x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }));
     });
     // Day labels
     const labelsSvg = DAY_NAMES.map((name, i) => {
@@ -77611,7 +77234,7 @@ function renderContributionRhythm(rhythm, y) {
         const labelR = radarR + 16;
         const lx = radarCx + labelR * Math.cos(angle);
         const ly = radarCy + labelR * Math.sin(angle) + 4;
-        return ((0,jsx_runtime.jsx)("text", { x: lx, y: ly, className: "t t-value", "text-anchor": "middle", children: svg_utils_escapeXml(name) }, name));
+        return (jsx_factory_h("text", { key: name, x: lx, y: ly, className: "t t-value", "text-anchor": "middle" }, svg_utils_escapeXml(name)));
     });
     // Data polygon
     const points = rhythm.dayTotals
@@ -77636,22 +77259,29 @@ function renderContributionRhythm(rhythm, y) {
     const statsSvg = rhythm.stats.map((stat, i) => {
         const sy = statsStartY + i * 42;
         const color = statColors[i % statColors.length];
-        return ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [(0,jsx_runtime.jsx)("text", { x: statsX, y: sy, className: "t t-stat-label", children: svg_utils_escapeXml(stat.label) }), (0,jsx_runtime.jsx)("text", { x: statsX, y: sy + 22, fill: color, className: "t t-stat-value", children: svg_utils_escapeXml(stat.value) })] }));
+        return (jsx_factory_h(Fragment, null,
+            jsx_factory_h("text", { x: statsX, y: sy, className: "t t-stat-label" }, svg_utils_escapeXml(stat.label)),
+            jsx_factory_h("text", { x: statsX, y: sy + 22, fill: color, className: "t t-stat-value" }, svg_utils_escapeXml(stat.value))));
     });
     const height = 250;
-    const svg = ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [guidesSvg.join(""), spokesSvg.join(""), (0,jsx_runtime.jsx)("polygon", { points: points, fill: BAR_COLORS[0], "fill-opacity": "0.2", stroke: BAR_COLORS[0], "stroke-width": "2", "stroke-opacity": "0.8", className: "fade-2", style: `transform-origin: ${radarCx}px ${radarCy}px` }), rhythm.dayTotals.map((val, i) => {
-                const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
-                const r = (val / maxVal) * radarR;
-                const px = radarCx + r * Math.cos(angle);
-                const py = radarCy + r * Math.sin(angle);
-                return ((0,jsx_runtime.jsx)("circle", { cx: px, cy: py, r: "3", fill: BAR_COLORS[0], className: `fade-${Math.min(i + 1, 6)}` }, DAY_NAMES[i]));
-            }), labelsSvg.join(""), statsSvg.join("")] }));
+    const svg = (jsx_factory_h(Fragment, null,
+        guidesSvg.join(""),
+        spokesSvg.join(""),
+        jsx_factory_h("polygon", { points: points, fill: BAR_COLORS[0], "fill-opacity": "0.2", stroke: BAR_COLORS[0], "stroke-width": "2", "stroke-opacity": "0.8", className: "fade-2", style: `transform-origin: ${radarCx}px ${radarCy}px` }),
+        rhythm.dayTotals.map((val, i) => {
+            const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
+            const r = (val / maxVal) * radarR;
+            const px = radarCx + r * Math.cos(angle);
+            const py = radarCy + r * Math.sin(angle);
+            return (jsx_factory_h("circle", { key: DAY_NAMES[i], cx: px, cy: py, r: "3", fill: BAR_COLORS[0], className: `fade-${Math.min(i + 1, 6)}` }));
+        }),
+        labelsSvg.join(""),
+        statsSvg.join("")));
     return { svg, height };
 }
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/impact-trail.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
@@ -77682,7 +77312,11 @@ function renderImpactTrail(repos, y) {
         const barWidth = Math.max(4, (logStars / maxLog) * barMaxWidth);
         // Language dot
         const langName = repo.primaryLanguage?.name || "";
-        svg += ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [(0,jsx_runtime.jsx)("text", { x: padX, y: ry + rowHeight / 2 + 4, className: `t t-card-title fade-${delay}`, children: svg_utils_escapeXml(truncate(repo.nameWithOwner, 38)) }), (0,jsx_runtime.jsx)("rect", { x: padX + nameWidth, y: ry + rowHeight / 2 - 6, width: barWidth, height: "12", rx: "3", fill: color, "fill-opacity": "0.7", className: `fade-${delay}` }), (0,jsx_runtime.jsx)("text", { x: starsX, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}`, children: `\u2605 ${repo.stargazerCount.toLocaleString()}` }), langName ? ((0,jsx_runtime.jsx)("text", { x: langX, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}`, children: svg_utils_escapeXml(langName) })) : ("")] }));
+        svg += (jsx_factory_h(Fragment, null,
+            jsx_factory_h("text", { x: padX, y: ry + rowHeight / 2 + 4, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(repo.nameWithOwner, 38))),
+            jsx_factory_h("rect", { x: padX + nameWidth, y: ry + rowHeight / 2 - 6, width: barWidth, height: "12", rx: "3", fill: color, "fill-opacity": "0.7", className: `fade-${delay}` }),
+            jsx_factory_h("text", { x: starsX, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, `\u2605 ${repo.stargazerCount.toLocaleString()}`),
+            langName ? (jsx_factory_h("text", { x: langX, y: ry + rowHeight / 2 + 4, className: `t t-value fade-${delay}` }, svg_utils_escapeXml(langName))) : ("")));
     }
     const totalHeight = sorted.length * (rowHeight + gap) - gap;
     return { svg, height: totalHeight };
@@ -77690,7 +77324,6 @@ function renderImpactTrail(repos, y) {
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/language-velocity.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
@@ -77788,54 +77421,98 @@ function renderLanguageVelocity(velocity, y) {
         const monthName = new Date(`${bucket.month}-01`).toLocaleDateString("en", { month: "short" });
         return { x, label: monthName };
     });
-    const svg = ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [paths.map((p, i) => ((0,jsx_runtime.jsx)("path", { d: p.path, fill: p.color, "fill-opacity": "0.75", className: `fade-${Math.min(i + 1, 6)}` }, p.name))), (() => {
-                let legendX = padX;
-                return topLangs.map((name) => {
-                    const color = langSet.get(name) || "#8b949e";
-                    const x = legendX;
-                    legendX += name.length * 7 + 28;
-                    return ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [(0,jsx_runtime.jsx)("rect", { x: x, y: y + chartHeight + 6, width: "8", height: "8", rx: "2", fill: color, opacity: "0.85" }), (0,jsx_runtime.jsx)("text", { x: x + 12, y: y + chartHeight + 14, className: "t t-value", children: svg_utils_escapeXml(name) })] }));
-                });
-            })(), monthLabels.map((m) => ((0,jsx_runtime.jsx)("text", { x: m.x, y: y + chartHeight + 14, className: "t t-value", "text-anchor": "start", opacity: "0", children: svg_utils_escapeXml(m.label) }, m.label)))] }));
+    const svg = (jsx_factory_h(Fragment, null,
+        paths.map((p, i) => (jsx_factory_h("path", { key: p.name, d: p.path, fill: p.color, "fill-opacity": "0.75", className: `fade-${Math.min(i + 1, 6)}` }))),
+        (() => {
+            let legendX = padX;
+            return topLangs.map((name) => {
+                const color = langSet.get(name) || "#8b949e";
+                const x = legendX;
+                legendX += name.length * 7 + 28;
+                return (jsx_factory_h(Fragment, null,
+                    jsx_factory_h("rect", { x: x, y: y + chartHeight + 6, width: "8", height: "8", rx: "2", fill: color, opacity: "0.85" }),
+                    jsx_factory_h("text", { x: x + 12, y: y + chartHeight + 14, className: "t t-value" }, svg_utils_escapeXml(name))));
+            });
+        })(),
+        monthLabels.map((m) => (jsx_factory_h("text", { key: m.label, x: m.x, y: y + chartHeight + 14, className: "t t-value", "text-anchor": "start", opacity: "0" }, svg_utils_escapeXml(m.label))))));
     return { svg, height: totalHeight };
 }
 void Fragment;
 
 ;// CONCATENATED MODULE: ./src/components/project-constellation.tsx
-
 /** @jsx h */
 /** @jsxFrag Fragment */
 
 
 
-function renderProjectConstellation(nodes, y) {
-    if (nodes.length === 0)
+function renderProjectConstellation(bars, y) {
+    if (bars.length === 0)
         return { svg: "", height: 0 };
     const { padX } = theme_LAYOUT;
-    const height = 380;
-    // Draw connection lines first (behind nodes)
-    const drawnConnections = new Set();
-    const connectionsSvg = nodes.flatMap((node, i) => node.connections
-        .filter((j) => {
-        const key = [Math.min(i, j), Math.max(i, j)].join("-");
-        if (drawnConnections.has(key))
-            return false;
-        drawnConnections.add(key);
-        return true;
-    })
-        .map((j) => {
-        const other = nodes[j];
-        return ((0,jsx_runtime.jsx)("line", { x1: padX + node.x, y1: y + node.y, x2: padX + other.x, y2: y + other.y, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.15", "stroke-dasharray": "4 4" }, `${i}-${j}`));
-    }));
-    // Draw nodes
-    const nodesSvg = nodes.map((node, i) => {
-        const cx = padX + node.x;
-        const cy = y + node.y;
-        const delay = Math.min(i + 1, 6);
-        return ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [(0,jsx_runtime.jsx)("circle", { cx: cx, cy: cy, r: node.radius + 4, fill: node.color, "fill-opacity": "0.08", className: `fade-${delay}` }), (0,jsx_runtime.jsx)("circle", { cx: cx, cy: cy, r: node.radius, fill: node.color, "fill-opacity": "0.7", stroke: node.color, "stroke-width": "1.5", "stroke-opacity": "0.9", className: `fade-${delay}` }), (0,jsx_runtime.jsx)("text", { x: cx, y: cy + node.radius + 14, className: `t t-value fade-${delay}`, "text-anchor": "middle", children: svg_utils_escapeXml(truncate(node.name, 18)) })] }));
-    });
-    const svg = ((0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [connectionsSvg.join(""), nodesSvg.join("")] }));
-    return { svg, height };
+    const nameColWidth = 180;
+    const barStartX = padX + nameColWidth;
+    const barMaxWidth = 380;
+    const starX = barStartX + barMaxWidth + 20;
+    const groupHeaderHeight = 32;
+    const groupGap = 16;
+    const rowBaseHeight = 36;
+    const langDotsHeight = 18;
+    const rowGap = 6;
+    const maxComplexity = Math.max(...bars.map((b) => b.complexity), 1);
+    // Build a color map from all bars so language dots can use real colors
+    const langColorMap = new Map();
+    for (const bar of bars) {
+        if (!langColorMap.has(bar.languages[0] || "")) {
+            langColorMap.set(bar.languages[0] || "", bar.primaryColor);
+        }
+    }
+    let currentLang = "";
+    let svg = "";
+    let curY = y;
+    let itemIndex = 0;
+    for (let i = 0; i < bars.length; i++) {
+        const bar = bars[i];
+        // Group header when language changes
+        if (bar.primaryLanguage !== currentLang) {
+            if (currentLang !== "")
+                curY += groupGap;
+            currentLang = bar.primaryLanguage;
+            const delay = Math.min(itemIndex + 1, 6);
+            // For "Other" group, use a neutral color
+            const headerColor = currentLang === "Other" ? theme_THEME.secondary : bar.primaryColor;
+            svg += (jsx_factory_h(Fragment, null,
+                jsx_factory_h("circle", { cx: padX + 5, cy: curY + groupHeaderHeight / 2, r: "5", fill: headerColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
+                jsx_factory_h("text", { x: padX + 16, y: curY + groupHeaderHeight / 2 + 4, className: `t t-subhdr fade-${delay}` }, svg_utils_escapeXml(currentLang)),
+                jsx_factory_h("line", { x1: barStartX, y1: curY + groupHeaderHeight / 2, x2: starX + 40, y2: curY + groupHeaderHeight / 2, stroke: theme_THEME.border, "stroke-opacity": "0.3", "stroke-width": "1" })));
+            curY += groupHeaderHeight;
+        }
+        const delay = Math.min(itemIndex + 1, 6);
+        const barWidth = Math.max(4, (bar.complexity / maxComplexity) * barMaxWidth);
+        const secondaryLangs = bar.languages.slice(1);
+        const hasSecondary = secondaryLangs.length > 0;
+        const totalRowHeight = rowBaseHeight + (hasSecondary ? langDotsHeight : 0);
+        // Project name
+        svg += (jsx_factory_h("text", { x: padX + 8, y: curY + 16, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(bar.name, 24))));
+        // Complexity bar
+        svg += (jsx_factory_h("rect", { x: barStartX, y: curY + 8, width: barWidth, height: "14", rx: "4", fill: bar.primaryColor, "fill-opacity": "0.7", className: `fade-${delay}` }));
+        // Star count
+        svg += (jsx_factory_h("text", { x: starX, y: curY + 16, className: `t t-value fade-${delay}` }, `\u2605 ${bar.stars.toLocaleString()}`));
+        // Secondary language tags
+        if (hasSecondary) {
+            let dotX = padX + 8;
+            for (const lang of secondaryLangs.slice(0, 5)) {
+                const dotColor = langColorMap.get(lang) || theme_THEME.muted;
+                svg += (jsx_factory_h(Fragment, null,
+                    jsx_factory_h("circle", { cx: dotX + 4, cy: curY + rowBaseHeight + 4, r: "3", fill: dotColor, "fill-opacity": "0.6", className: `fade-${delay}` }),
+                    jsx_factory_h("text", { x: dotX + 10, y: curY + rowBaseHeight + 7, className: `t fade-${delay}`, "font-size": "9", fill: theme_THEME.muted }, svg_utils_escapeXml(truncate(lang, 10)))));
+                dotX += Math.min(lang.length * 6 + 20, 80);
+            }
+        }
+        curY += totalRowHeight + rowGap;
+        itemIndex++;
+    }
+    const totalHeight = curY - y;
+    return { svg, height: totalHeight };
 }
 void Fragment;
 
@@ -78173,29 +77850,35 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
         .map(toProjectItemWithSummary);
     return { active, maintained, inactive, archived };
 };
-// ── Spotlight (Heat Score) ────────────────────────────────────────────────────
-const computeSpotlightProjects = (repos, contributionData, aiClassifications, topN = 5) => {
-    const commitMap = new Map();
-    for (const entry of contributionData.commitContributionsByRepository || []) {
-        commitMap.set(entry.repository.name, entry.contributions.totalCount);
-    }
+// ── Spotlight (LLM-ranked) ────────────────────────────────────────────────────
+const computeSpotlightProjects = (repos, contributionData, aiClassifications) => {
     const aiMap = new Map();
     if (aiClassifications) {
         for (const c of aiClassifications) {
             aiMap.set(c.name, c);
         }
     }
+    const commitMap = new Map();
+    for (const entry of contributionData.commitContributionsByRepository || []) {
+        commitMap.set(entry.repository.name, entry.contributions.totalCount);
+    }
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const scored = repos
-        .filter((repo) => !repo.isArchived)
+    // Collect repos that the LLM ranked for spotlight
+    const ranked = repos
+        .filter((repo) => {
+        const ai = aiMap.get(repo.name);
+        return (ai?.spotlight_rank != null && ai.spotlight_rank >= 1 && !repo.isArchived);
+    })
+        .sort((a, b) => {
+        const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
+        const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
+        return rankA - rankB;
+    })
         .map((repo) => {
+        const ai = aiMap.get(repo.name);
         const commits = commitMap.get(repo.name) || 0;
         const daysSincePush = Math.max(0, (now - new Date(repo.pushedAt).getTime()) / DAY_MS);
-        const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
-        const commitBoost = Math.min(commits, 50) * 2;
-        const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
-        const heatScore = commitBoost + recencyBonus + starBoost;
         const pushedInLast30 = daysSincePush <= 30;
         const pushedInLast90 = daysSincePush <= 90;
         let activityLabel;
@@ -78205,16 +77888,15 @@ const computeSpotlightProjects = (repos, contributionData, aiClassifications, to
         else if (commits >= 1 || pushedInLast90) {
             activityLabel = "Building";
         }
-        const ai = aiMap.get(repo.name);
         return {
             ...toProjectItem(repo),
             summary: ai?.summary || undefined,
             category: ai?.category || undefined,
-            heatScore,
+            heatScore: ai?.spotlight_rank ?? 0,
             activityLabel,
         };
     });
-    return scored.sort((a, b) => b.heatScore - a.heatScore).slice(0, topN);
+    return ranked;
 };
 // ── Language Velocity ────────────────────────────────────────────────────────
 const computeLanguageVelocity = (contributionData, repos) => {
@@ -78348,70 +78030,57 @@ const computeContributionRhythm = (contributionData) => {
 const computeConstellationLayout = (projects, repos) => {
     if (projects.length === 0)
         return [];
-    const chartWidth = 760;
-    const chartHeight = 340;
-    const padX = 60;
-    const padY = 30;
-    // Build repo lookup for disk usage
     const repoMap = new Map();
     for (const repo of repos) {
         repoMap.set(repo.name, repo);
     }
-    // Group projects by primary language
-    const langGroups = new Map();
-    for (let i = 0; i < projects.length; i++) {
-        const p = projects[i];
-        const lang = p.languages?.[0] || "Other";
-        if (!langGroups.has(lang))
-            langGroups.set(lang, []);
-        langGroups.get(lang)?.push(i);
+    // Build bars with complexity scores
+    const bars = projects.map((p) => {
+        const repo = repoMap.get(p.name);
+        return {
+            name: p.name,
+            url: p.url,
+            complexity: repo ? complexityScore(repo) : 0,
+            primaryLanguage: p.languages?.[0] || "Other",
+            primaryColor: repo?.primaryLanguage?.color || "#8b949e",
+            languages: p.languages || [],
+            stars: p.stars,
+        };
+    });
+    // Group by primary language
+    const groups = new Map();
+    for (const bar of bars) {
+        const lang = bar.primaryLanguage;
+        if (!groups.has(lang))
+            groups.set(lang, []);
+        groups.get(lang)?.push(bar);
     }
-    const langKeys = [...langGroups.keys()].sort();
-    const bandWidth = (chartWidth - 2 * padX) / Math.max(langKeys.length, 1);
-    // Compute complexity range for y-axis normalization
-    const complexities = projects.map((p) => {
-        const repo = repoMap.get(p.name);
-        return repo ? complexityScore(repo) : 0;
-    });
-    const minC = Math.min(...complexities);
-    const maxC = Math.max(...complexities);
-    const rangeC = maxC - minC || 1;
-    const nodes = projects.map((p, i) => {
-        const lang = p.languages?.[0] || "Other";
-        const bandIndex = langKeys.indexOf(lang);
-        const groupIndices = langGroups.get(lang) || [];
-        const indexInGroup = groupIndices.indexOf(i);
-        // X: center of language band with jitter
-        const bandCenter = padX + bandIndex * bandWidth + bandWidth / 2;
-        const jitter = groupIndices.length > 1
-            ? ((indexInGroup - (groupIndices.length - 1) / 2) * bandWidth * 0.4) /
-                Math.max(groupIndices.length - 1, 1)
-            : 0;
-        const x = Math.max(padX, Math.min(chartWidth - padX, bandCenter + jitter));
-        // Y: complexity score (inverted so higher complexity = higher on chart)
-        const normC = (complexities[i] - minC) / rangeC;
-        const y = padY + (1 - normC) * (chartHeight - 2 * padY);
-        // Radius: based on disk usage
-        const repo = repoMap.get(p.name);
-        const diskKb = repo?.diskUsage || 100;
-        const radius = Math.max(6, Math.min(22, 3 + Math.log2(diskKb / 100) * 3));
-        // Color: primary language color
-        const color = repo?.primaryLanguage?.color || "#8b949e";
-        return { name: p.name, url: p.url, x, y, radius, color, connections: [] };
-    });
-    // Connect projects that share 2+ languages
-    for (let i = 0; i < projects.length; i++) {
-        for (let j = i + 1; j < projects.length; j++) {
-            const langsA = new Set(projects[i].languages || []);
-            const langsB = projects[j].languages || [];
-            const shared = langsB.filter((l) => langsA.has(l)).length;
-            if (shared >= 2) {
-                nodes[i].connections.push(j);
-                nodes[j].connections.push(i);
-            }
+    // Sort within each group by complexity (descending)
+    for (const group of groups.values()) {
+        group.sort((a, b) => b.complexity - a.complexity);
+    }
+    // Collapse single-project groups into "Other"
+    const multiGroups = [];
+    const otherBars = [];
+    for (const [lang, group] of groups) {
+        if (group.length === 1) {
+            otherBars.push({ ...group[0], primaryLanguage: "Other" });
+        }
+        else {
+            multiGroups.push([lang, group]);
         }
     }
-    return nodes;
+    if (otherBars.length > 0) {
+        otherBars.sort((a, b) => b.complexity - a.complexity);
+        multiGroups.push(["Other", otherBars]);
+    }
+    // Sort groups by max complexity (descending)
+    multiGroups.sort((a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0));
+    // Cap each group at 3, then cap total at 12
+    const MAX_PER_GROUP = 3;
+    const MAX_BARS = 12;
+    const flat = multiGroups.flatMap(([, group]) => group.slice(0, MAX_PER_GROUP));
+    return flat.slice(0, MAX_BARS);
 };
 // ── Section definitions ─────────────────────────────────────────────────────
 const buildSections = ({ velocity, rhythm, constellation, contributionData, }) => {
@@ -78437,7 +78106,7 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
         sections.push({
             filename: "metrics-constellation.svg",
             title: "Project Constellation",
-            subtitle: "Projects mapped by language ecosystem and complexity",
+            subtitle: "Top projects ranked by complexity, grouped by primary language",
             renderBody: (y) => renderProjectConstellation(constellation, y),
         });
     }
@@ -78729,6 +78398,7 @@ function getTemplate(_name) {
 
 
 
+
 // ── Git helper ──────────────────────────────────────────────────────────────
 function git(args) {
     return new Promise((resolve, reject) => {
@@ -78756,6 +78426,7 @@ async function runPipeline(config, cb) {
         : userConfig.sections || [];
     const resolvedSections = (0,src_config/* resolveTemplateSections */.jt)(templateName, requestedSections);
     const svgSectionsNeeded = new Set(resolvedSections.filter((s) => SVG_SECTION_KEYS.includes(s)));
+    const prompts = resolvePrompts(userConfig.ai);
     if (!config.token)
         throw new Error("github-token is required");
     if (!config.username)
@@ -78776,7 +78447,7 @@ async function runPipeline(config, cb) {
     const languages = aggregateLanguages(repos);
     const complexProjects = getTopProjectsByComplexity(repos);
     const classificationInputs = buildClassificationInputs(repos, contributionData);
-    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs);
+    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
     cb.onPhaseComplete("classify", `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`);
     // ── Transform ─────────────────────────────────────────────────────────────
     cb.onPhaseStart("transform", "Computing metrics");
@@ -78820,6 +78491,9 @@ async function runPipeline(config, cb) {
     if (config.readmePath && config.readmePath !== "none") {
         cb.onPhaseStart("generate-readme", "Generating README");
         const svgDir = (0,external_node_path_.relative)((0,external_node_path_.dirname)(config.readmePath), config.outputDir) || ".";
+        const displayName = userConfig.name || userProfile.name || config.username;
+        const socialBadges = buildSocialBadges(userProfile);
+        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
         let preamble = loadPreamble(userConfig.preamble);
         if (!preamble) {
             cb.onProgress("Generating preamble with AI...");
@@ -78828,9 +78502,9 @@ async function runPipeline(config, cb) {
                 profile: userProfile,
                 userConfig,
                 languages,
-                activeProjects,
+                spotlightProjects,
                 complexProjects,
-            });
+            }, prompts.preamble);
         }
         const svgs = activeSections.map((s) => ({
             label: s.title,
@@ -78842,9 +78516,6 @@ async function runPipeline(config, cb) {
                 sectionSvgs[key] = `${svgDir}/${filename}`;
             }
         }
-        const displayName = userConfig.name || userProfile.name || config.username;
-        const socialBadges = buildSocialBadges(userProfile);
-        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
         const includeArchived = userConfig.exclude_archived === false;
         const allProjectItems = [
             ...activeProjects,
@@ -78972,15 +78643,13 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
 /* harmony export */   q: () => (/* binding */ App)
 /* harmony export */ });
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(3687);
-/* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8518);
-/* harmony import */ var ink_spinner__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8078);
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7919);
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__nccwpck_require__.n(react__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(1560);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_1__, ink_spinner__WEBPACK_IMPORTED_MODULE_2__]);
-([ink__WEBPACK_IMPORTED_MODULE_1__, ink_spinner__WEBPACK_IMPORTED_MODULE_2__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
-
+/* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(8518);
+/* harmony import */ var ink_spinner__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8078);
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(7919);
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__nccwpck_require__.n(react__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(6536);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_0__, ink_spinner__WEBPACK_IMPORTED_MODULE_1__]);
+([ink__WEBPACK_IMPORTED_MODULE_0__, ink_spinner__WEBPACK_IMPORTED_MODULE_1__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
 
 
@@ -79008,38 +78677,69 @@ const PHASE_LABELS = {
 function PhaseRow({ state }) {
     const elapsed = state.elapsed != null ? ` ${(state.elapsed / 1000).toFixed(1)}s` : "";
     if (state.status === "active") {
-        return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "cyan", children: (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink_spinner__WEBPACK_IMPORTED_MODULE_2__/* ["default"] */ .A, { type: "dots" }) }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { children: [" ", state.label] }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { dimColor: true, children: elapsed })] }));
+        return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, null,
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "cyan" },
+                h(ink_spinner__WEBPACK_IMPORTED_MODULE_1__/* ["default"] */ .A, { type: "dots" })),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, null,
+                " ",
+                state.label),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { dimColor: true }, elapsed)));
     }
     if (state.status === "done") {
-        return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "green", children: "\u2714" }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { children: [" ", state.label] }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { dimColor: true, children: [" ", "\u2014 ", state.summary, elapsed] })] }));
+        return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, null,
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "green" }, "\u2714"),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, null,
+                " ",
+                state.label),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { dimColor: true },
+                " ",
+                "\u2014 ",
+                state.summary,
+                elapsed)));
     }
     if (state.status === "error") {
-        return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "red", children: "\u2718" }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { children: [" ", state.label] }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "red", children: [" \u2014 ", state.summary] })] }));
+        return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, null,
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "red" }, "\u2718"),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, null,
+                " ",
+                state.label),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "red" },
+                " \u2014 ",
+                state.summary)));
     }
     // pending
-    return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { children: (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { dimColor: true, children: ["\u25CB ", state.label] }) }));
+    return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, null,
+        h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { dimColor: true },
+            "\u25CB ",
+            state.label)));
 }
 function Header({ username }) {
-    return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { flexDirection: "column", marginBottom: 1, children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { bold: true, color: "magenta", children: "\u25C6 GitHub Insights" }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { dimColor: true, children: [" Generating metrics for ", username] })] }));
+    return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, { flexDirection: "column", marginBottom: 1 },
+        h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { bold: true, color: "magenta" }, "\u25C6 GitHub Insights"),
+        h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { dimColor: true },
+            " Generating metrics for ",
+            username)));
 }
 function ProgressLog({ messages }) {
     if (messages.length === 0)
         return null;
-    return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { flexDirection: "column", marginTop: 1, children: messages.slice(-3).map((msg) => ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { dimColor: true, children: ["\u2502 ", msg] }, msg))) }));
+    return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, { flexDirection: "column", marginTop: 1 }, messages.slice(-3).map((msg) => (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { key: msg, dimColor: true },
+        "\u2502 ",
+        msg)))));
 }
 function App({ config }) {
-    const { exit } = (0,ink__WEBPACK_IMPORTED_MODULE_1__/* .useApp */ .nm)();
-    const [phases, setPhases] = (0,react__WEBPACK_IMPORTED_MODULE_3__.useState)(PHASE_ORDER.map((p) => ({
+    const { exit } = (0,ink__WEBPACK_IMPORTED_MODULE_0__/* .useApp */ .nm)();
+    const [phases, setPhases] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(PHASE_ORDER.map((p) => ({
         phase: p,
         label: PHASE_LABELS[p],
         status: "pending",
     })));
-    const [progressMessages, setProgressMessages] = (0,react__WEBPACK_IMPORTED_MODULE_3__.useState)([]);
-    const [done, setDone] = (0,react__WEBPACK_IMPORTED_MODULE_3__.useState)(false);
-    const [error, setError] = (0,react__WEBPACK_IMPORTED_MODULE_3__.useState)(null);
-    const [startTime] = (0,react__WEBPACK_IMPORTED_MODULE_3__.useState)(Date.now());
-    const [totalElapsed, setTotalElapsed] = (0,react__WEBPACK_IMPORTED_MODULE_3__.useState)(0);
-    (0,react__WEBPACK_IMPORTED_MODULE_3__.useEffect)(() => {
+    const [progressMessages, setProgressMessages] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)([]);
+    const [done, setDone] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(false);
+    const [error, setError] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(null);
+    const [startTime] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(Date.now());
+    const [totalElapsed, setTotalElapsed] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(0);
+    (0,react__WEBPACK_IMPORTED_MODULE_2__.useEffect)(() => {
         const callbacks = {
             onPhaseStart(phase, label) {
                 setPhases((prev) => prev.map((p) => p.phase === phase
@@ -79068,7 +78768,7 @@ function App({ config }) {
                 setError(err.message);
             },
         };
-        (0,_pipeline_js__WEBPACK_IMPORTED_MODULE_4__/* .runPipeline */ .a)(config, callbacks)
+        (0,_pipeline_js__WEBPACK_IMPORTED_MODULE_3__/* .runPipeline */ .a)(config, callbacks)
             .then(() => {
             setTotalElapsed(Date.now() - startTime);
             setDone(true);
@@ -79079,7 +78779,7 @@ function App({ config }) {
             setDone(true);
         });
     }, [config, startTime]);
-    (0,react__WEBPACK_IMPORTED_MODULE_3__.useEffect)(() => {
+    (0,react__WEBPACK_IMPORTED_MODULE_2__.useEffect)(() => {
         if (done) {
             setTimeout(() => exit(), 100);
         }
@@ -79088,7 +78788,19 @@ function App({ config }) {
     const visiblePhases = done
         ? phases.filter((p) => p.status !== "pending")
         : phases;
-    return ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { flexDirection: "column", paddingX: 1, children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(Header, { username: config.username }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { flexDirection: "column", children: visiblePhases.map((p) => ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(PhaseRow, { state: p }, p.phase))) }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ProgressLog, { messages: progressMessages }), done && !error && ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { marginTop: 1, children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "green", bold: true, children: "\u2714 Done" }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { dimColor: true, children: [" in ", (totalElapsed / 1000).toFixed(1), "s"] })] })), error && ((0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxs)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Box */ .az, { marginTop: 1, flexDirection: "column", children: [(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "red", bold: true, children: "\u2718 Failed" }), (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__.jsx)(ink__WEBPACK_IMPORTED_MODULE_1__/* .Text */ .EY, { color: "red", children: error })] }))] }));
+    return (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, { flexDirection: "column", paddingX: 1 },
+        h(Header, { username: config.username }),
+        h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, { flexDirection: "column" }, visiblePhases.map((p) => (h(PhaseRow, { key: p.phase, state: p })))),
+        h(ProgressLog, { messages: progressMessages }),
+        done && !error && (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, { marginTop: 1 },
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "green", bold: true }, "\u2714 Done"),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { dimColor: true },
+                " in ",
+                (totalElapsed / 1000).toFixed(1),
+                "s"))),
+        error && (h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Box */ .az, { marginTop: 1, flexDirection: "column" },
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "red", bold: true }, "\u2718 Failed"),
+            h(ink__WEBPACK_IMPORTED_MODULE_0__/* .Text */ .EY, { color: "red" }, error)))));
 }
 
 __webpack_async_result__();
@@ -79247,6 +78959,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:stream"
 /***/ ((module) => {
 
 module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:tty");
+
+/***/ }),
+
+/***/ 3136:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
 
 /***/ }),
 
@@ -97150,7 +96869,7 @@ const useIsScreenReaderEnabled = () => {
 
 /***/ }),
 
-/***/ 6068:
+/***/ 3687:
 /***/ ((__unused_webpack___webpack_module__, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
 
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(7919);
@@ -97220,7 +96939,7 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony import */ var _hooks_use_app_js__WEBPACK_IMPORTED_MODULE_9__ = __nccwpck_require__(520);
 /* harmony import */ var _hooks_use_stdin_js__WEBPACK_IMPORTED_MODULE_10__ = __nccwpck_require__(8253);
 /* harmony import */ var _hooks_use_stdout_js__WEBPACK_IMPORTED_MODULE_11__ = __nccwpck_require__(5904);
-/* harmony import */ var _hooks_use_stderr_js__WEBPACK_IMPORTED_MODULE_12__ = __nccwpck_require__(6068);
+/* harmony import */ var _hooks_use_stderr_js__WEBPACK_IMPORTED_MODULE_12__ = __nccwpck_require__(3687);
 /* harmony import */ var _hooks_use_focus_js__WEBPACK_IMPORTED_MODULE_13__ = __nccwpck_require__(2215);
 /* harmony import */ var _hooks_use_focus_manager_js__WEBPACK_IMPORTED_MODULE_14__ = __nccwpck_require__(8649);
 /* harmony import */ var _hooks_use_is_screen_reader_enabled_js__WEBPACK_IMPORTED_MODULE_15__ = __nccwpck_require__(2834);
