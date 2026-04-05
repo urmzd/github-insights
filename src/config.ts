@@ -91,6 +91,7 @@ export const UserConfigSchema = z
     sections: lenientSections,
     exclude_archived: z.boolean().optional(),
     fail_fast: z.boolean().optional(),
+    export_json: z.boolean().optional(),
     ai: aiConfigSchema,
   })
   .strip()
@@ -114,6 +115,7 @@ export type UserConfig = {
   sections?: (typeof VALID_SECTIONS)[number][];
   exclude_archived?: boolean;
   fail_fast?: boolean;
+  export_json?: boolean;
   ai?: AIConfig;
 };
 

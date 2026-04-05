@@ -57,6 +57,11 @@ program
     "Exit with an error instead of falling back to heuristics when AI is unavailable",
     false,
   )
+  .option(
+    "--export-json",
+    "Export underlying JSON data alongside SVGs for auditing",
+    false,
+  )
   .action((opts) => {
     const token = opts.token || "";
     const username = opts.username || "";
@@ -90,6 +95,7 @@ program
             .filter(Boolean)
         : [],
       failFast: opts.failFast,
+      exportJson: opts.exportJson,
     };
 
     render(

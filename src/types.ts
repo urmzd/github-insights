@@ -62,6 +62,7 @@ export interface SectionDef {
   title: string;
   subtitle: string;
   renderBody?: (y: number) => RenderResult;
+  data?: unknown;
 }
 
 // ── GitHub API types ────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ async function run(): Promise<void> {
   const readmePath =
     core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
   const failFast = (core.getInput("fail-fast") || "false") === "true";
+  const exportJson = (core.getInput("export-json") || "false") === "true";
 
   const templateName: TemplateName =
     (core.getInput("template") as TemplateName) || "showcase";
@@ -47,6 +48,7 @@ async function run(): Promise<void> {
     templateName,
     requestedSections,
     failFast,
+    exportJson,
   };
 
   const callbacks: PipelineCallbacks = {

@@ -42,6 +42,9 @@ inputs:
   fail-fast:
     description: "Exit with an error instead of falling back to heuristics when AI is unavailable"
     default: "false"
+  export-json:
+    description: "Export underlying JSON data alongside SVGs for auditing"
+    default: "false"
 runs:
   using: "node24"
   main: "dist/index.js"
