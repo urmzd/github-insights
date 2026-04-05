@@ -1,0 +1,22 @@
+Write a 1-2 sentence introduction for a developer's GitHub profile README.
+
+Profile:
+{{profile}}
+
+Languages (by code volume):
+{{languages}}
+
+Spotlight projects (most impressive work, ranked by the developer's own judgment):
+{{activeProjects}}
+
+Other notable projects (by technical complexity):
+{{complexProjects}}
+
+Guidelines:
+- Write in first person (I/my)
+- Lead with the *technical approach* that makes their work distinctive — not just the domain. "I build AI agents" is generic; "I build streaming agent SDKs with branching conversation trees" shows the actual craft
+- Name 1-2 specific projects only if they illustrate the point
+- Weave in 2-3 languages/technologies naturally, don't list them
+- Match the bio's voice — terse bio = terse intro
+- Max 50 words — think tweet-length. Every word must earn its place.
+- Output raw markdown only (no headings, no code fences, no conversational preface)

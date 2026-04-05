@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.4.0 (2026-04-05)
+
+### Features
+
+- configurable AI prompts with template files (#15) ([a982e34](https://github.com/urmzd/github-insights/commit/a982e346eff567a24bb283151863b01e52cc1d55))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.3.2...v3.4.0)
+
+
 ## 3.3.2 (2026-04-01)
 
 ### Documentation
