@@ -303,9 +303,7 @@ export const computeSpotlightProjects = (
     .filter((repo) => {
       const ai = aiMap.get(repo.name);
       return (
-        ai?.spotlight_rank != null &&
-        ai.spotlight_rank >= 1 &&
-        !repo.isArchived
+        ai?.spotlight_rank != null && ai.spotlight_rank >= 1 && !repo.isArchived
       );
     })
     .sort((a, b) => {
