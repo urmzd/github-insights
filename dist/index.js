@@ -56220,6 +56220,7 @@ const UserConfigSchema = object({
     sections: lenientSections,
     exclude_archived: schemas_boolean().optional(),
     fail_fast: schemas_boolean().optional(),
+    export_json: schemas_boolean().optional(),
     ai: aiConfigSchema,
 })
     .strip()
@@ -56781,7 +56782,20 @@ const parsers_parseManifest = (filename, text) => PARSER_MAP.get(filename)?.pars
 
 
 // ── Category Sets ───────────────────────────────────────────────────────────
-const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
+const EXCLUDED_LANGUAGES = new Set([
+    "Jupyter Notebook",
+    "HTML",
+    "CSS",
+    "Markdown",
+    "Shell",
+    "Makefile",
+    "Dockerfile",
+    "Nix",
+    "Just",
+    "TeX",
+    "SCSS",
+    "Less",
+]);
 // ── Section keys ────────────────────────────────────────────────────────────
 const SECTION_KEYS = {
     velocity: "metrics-velocity.svg",
@@ -57085,7 +57099,8 @@ const computeLanguageVelocity = (contributionData, repos) => {
     // Build a map of repo name → primary language + color
     const repoLangMap = new Map();
     for (const repo of repos) {
-        if (repo.primaryLanguage) {
+        if (repo.primaryLanguage &&
+            !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
             repoLangMap.set(repo.name, {
                 name: repo.primaryLanguage.name,
                 color: repo.primaryLanguage.color,
@@ -57208,6 +57223,30 @@ const computeContributionRhythm = (contributionData) => {
     ];
     return { dayTotals, longestStreak, stats };
 };
+// ── Language helpers ────────────────────────────────────────────────────────
+function pickPrimaryLanguage(languages, repo) {
+    const candidates = (languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l));
+    if (candidates.length > 0)
+        return candidates[0];
+    if (repo?.primaryLanguage &&
+        !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
+        return repo.primaryLanguage.name;
+    }
+    return "Other";
+}
+function pickPrimaryColor(languages, repo) {
+    const primary = pickPrimaryLanguage(languages, repo);
+    if (primary !== "Other" && repo?.primaryLanguage?.name === primary) {
+        return repo.primaryLanguage.color;
+    }
+    // Try matching from repo language edges
+    if (repo?.languages?.edges) {
+        const edge = repo.languages.edges.find((e) => e.node.name === primary);
+        if (edge)
+            return edge.node.color;
+    }
+    return repo?.primaryLanguage?.color || "#8b949e";
+}
 // ── Project Constellation ───────────────────────────────────────────────────
 const computeConstellationLayout = (projects, repos) => {
     if (projects.length === 0)
@@ -57223,9 +57262,9 @@ const computeConstellationLayout = (projects, repos) => {
             name: p.name,
             url: p.url,
             complexity: repo ? complexityScore(repo) : 0,
-            primaryLanguage: p.languages?.[0] || "Other",
-            primaryColor: repo?.primaryLanguage?.color || "#8b949e",
-            languages: p.languages || [],
+            primaryLanguage: pickPrimaryLanguage(p.languages, repo),
+            primaryColor: pickPrimaryColor(p.languages, repo),
+            languages: (p.languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l)),
             stars: p.stars,
         };
     });
@@ -57274,6 +57313,7 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
             title: "Language Velocity",
             subtitle: "How language usage has evolved over the past year",
             renderBody: (y) => renderLanguageVelocity(velocity, y),
+            data: velocity,
         });
     }
     // 2. Contribution Rhythm
@@ -57282,6 +57322,7 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
         title: "Contribution Rhythm",
         subtitle: "Activity patterns and statistics over the past year",
         renderBody: (y) => renderContributionRhythm(rhythm, y),
+        data: rhythm,
     });
     // 3. Project Constellation
     if (constellation.length > 0) {
@@ -57290,18 +57331,18 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
             title: "Project Constellation",
             subtitle: "Top projects ranked by complexity, grouped by primary language",
             renderBody: (y) => renderProjectConstellation(constellation, y),
+            data: constellation,
         });
     }
     // 4. Impact Trail
     if (contributionData.externalRepos.nodes.length > 0) {
+        const impactRepos = contributionData.externalRepos.nodes.slice(0, 8);
         sections.push({
             filename: "metrics-impact.svg",
             title: "Open Source Impact",
             subtitle: "External repositories contributed to",
-            renderBody: (y) => {
-                const repos = contributionData.externalRepos.nodes.slice(0, 8);
-                return renderImpactTrail(repos, y);
-            },
+            renderBody: (y) => renderImpactTrail(impactRepos, y),
+            data: impactRepos,
         });
     }
     return sections;
@@ -57627,6 +57668,7 @@ async function runPipeline(config, cb) {
     cb.onPhaseComplete("fetch-profile", `${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
     // ── Classify ──────────────────────────────────────────────────────────────
     const failFast = config.failFast || userConfig.fail_fast || false;
+    const exportJson = config.exportJson || userConfig.export_json || false;
     cb.onPhaseStart("classify", "Classifying projects");
     const languages = aggregateLanguages(repos);
     const complexProjects = getTopProjectsByComplexity(repos);
@@ -57670,6 +57712,11 @@ async function runPipeline(config, cb) {
             continue;
         const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody);
         (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
+        if (exportJson && section.data !== undefined) {
+            const jsonFilename = section.filename.replace(/\.svg$/, ".json");
+            (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${jsonFilename}`, JSON.stringify(section.data, null, 2));
+            cb.onProgress(`Wrote ${jsonFilename}`);
+        }
         cb.onProgress(`Wrote ${section.filename}`);
     }
     const combinedSvg = generateFullSvg(activeSections);
@@ -57855,6 +57902,7 @@ async function run() {
     const configPath = lib_core.getInput("config-file") || undefined;
     const readmePath = lib_core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
     const failFast = (lib_core.getInput("fail-fast") || "false") === "true";
+    const exportJson = (lib_core.getInput("export-json") || "false") === "true";
     const templateName = lib_core.getInput("template") || "showcase";
     const sectionsInput = lib_core.getInput("sections") || "";
     const requestedSections = sectionsInput.length > 0
@@ -57876,6 +57924,7 @@ async function run() {
         templateName,
         requestedSections,
         failFast,
+        exportJson,
     };
     const callbacks = {
         onPhaseStart(_phase, label) {

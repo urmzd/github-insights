@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.7.0 (2026-04-05)
+
+### Features
+
+- exclude non-code languages and add JSON export option (#21) ([1569f22](https://github.com/urmzd/github-insights/commit/1569f2299ac8ee3a1a19dee52a2cb1fb228d0486))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.6.0...v3.7.0)
+
+
 ## 3.6.0 (2026-04-05)
 
 ### Features
