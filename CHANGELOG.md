@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.6.0 (2026-04-05)
+
+### Features
+
+- add fail-fast option and typed error codes (#18) ([2d111d9](https://github.com/urmzd/github-insights/commit/2d111d9ba86fe94b44e6a2a67da35bc789565a55))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.5.0...v3.6.0)
+
+
 ## 3.5.0 (2026-04-05)
 
 ### Features

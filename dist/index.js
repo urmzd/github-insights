@@ -40534,6 +40534,37 @@ __nccwpck_require__.d(classic_schemas_namespaceObject, {
 
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var lib_core = __nccwpck_require__(7484);
+;// CONCATENATED MODULE: ./src/errors.ts
+var ErrorCode;
+(function (ErrorCode) {
+    ErrorCode["RATE_LIMITED"] = "RATE_LIMITED";
+    ErrorCode["AI_UNAVAILABLE"] = "AI_UNAVAILABLE";
+    ErrorCode["AUTH_FAILED"] = "AUTH_FAILED";
+    ErrorCode["API_ERROR"] = "API_ERROR";
+})(ErrorCode || (ErrorCode = {}));
+class InsightsError extends Error {
+    code;
+    constructor(message, code) {
+        super(message);
+        this.code = code;
+        this.name = "InsightsError";
+    }
+}
+/** Process exit codes by error type. */
+const EXIT_CODES = {
+    [ErrorCode.RATE_LIMITED]: 2,
+    [ErrorCode.AI_UNAVAILABLE]: 3,
+    [ErrorCode.AUTH_FAILED]: 4,
+    [ErrorCode.API_ERROR]: 5,
+    UNKNOWN: 1,
+};
+function getExitCode(error) {
+    if (error instanceof InsightsError) {
+        return EXIT_CODES[error.code];
+    }
+    return EXIT_CODES.UNKNOWN;
+}
+
 ;// CONCATENATED MODULE: external "node:child_process"
 const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
 ;// CONCATENATED MODULE: external "node:fs"
@@ -40608,22 +40639,29 @@ function interpolate(template, vars) {
 ;// CONCATENATED MODULE: ./src/api.ts
 
 
+
 const MAX_RETRIES = 3;
 const fetchWithRetry = async (url, init, label) => {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        const res = await fetch(url, init);
+        let res;
+        try {
+            res = await fetch(url, init);
+        }
+        catch (err) {
+            throw new InsightsError(`${label}: network error: ${err instanceof Error ? err.message : String(err)}`, ErrorCode.AI_UNAVAILABLE);
+        }
         if (res.status !== 429)
             return res;
         if (attempt === MAX_RETRIES) {
-            console.warn(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`);
-            return null;
+            throw new InsightsError(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`, ErrorCode.RATE_LIMITED);
         }
         const retryAfter = res.headers.get("retry-after");
         const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
         console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((r) => setTimeout(r, waitSec * 1000));
     }
-    return null;
+    /* istanbul ignore next — unreachable, loop always returns or throws */
+    throw new InsightsError(`${label}: rate limited`, ErrorCode.RATE_LIMITED);
 };
 const MANIFEST_FILES = (/* unused pure expression or super */ null && ([
     "package.json",
@@ -40844,184 +40882,172 @@ const fetchUserProfile = async (graphql, username) => {
     }
 };
 const fetchAIPreamble = async (token, context, valves) => {
-    try {
-        const { profile, userConfig, languages, spotlightProjects, complexProjects, } = context;
-        const langLines = languages
-            .map((l) => `- ${l.name}: ${l.percent}%`)
-            .join("\n");
-        const formatProject = (p) => {
-            const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
-            const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
-            const desc = p.summary || p.description;
-            return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
-        };
-        const spotlightLines = spotlightProjects.map(formatProject).join("\n");
-        const complexProjectLines = complexProjects.map(formatProject).join("\n");
-        const profileLines = [
-            profile.name ? `Name: ${profile.name}` : null,
-            profile.bio ? `Bio: ${profile.bio}` : null,
-            profile.company ? `Company: ${profile.company}` : null,
-            profile.location ? `Location: ${profile.location}` : null,
-            userConfig.title ? `Current title: ${userConfig.title}` : null,
-            userConfig.desired_title
-                ? `Desired title: ${userConfig.desired_title}`
-                : null,
-        ]
-            .filter(Boolean)
-            .join("\n");
-        const prompt = interpolate(valves.user, {
-            profile: profileLines,
-            languages: langLines,
-            complexProjects: complexProjectLines || "None",
-            activeProjects: spotlightLines || "None",
-        });
-        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: valves.model,
-                messages: [
-                    { role: "system", content: valves.system },
-                    { role: "user", content: prompt },
-                ],
-                temperature: valves.temperature,
-                response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                        name: "preamble",
-                        strict: true,
-                        schema: {
-                            type: "object",
-                            properties: { preamble: { type: "string" } },
-                            required: ["preamble"],
-                            additionalProperties: false,
-                        },
+    const { profile, userConfig, languages, spotlightProjects, complexProjects } = context;
+    const langLines = languages
+        .map((l) => `- ${l.name}: ${l.percent}%`)
+        .join("\n");
+    const formatProject = (p) => {
+        const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
+        const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
+        const desc = p.summary || p.description;
+        return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
+    };
+    const spotlightLines = spotlightProjects.map(formatProject).join("\n");
+    const complexProjectLines = complexProjects.map(formatProject).join("\n");
+    const profileLines = [
+        profile.name ? `Name: ${profile.name}` : null,
+        profile.bio ? `Bio: ${profile.bio}` : null,
+        profile.company ? `Company: ${profile.company}` : null,
+        profile.location ? `Location: ${profile.location}` : null,
+        userConfig.title ? `Current title: ${userConfig.title}` : null,
+        userConfig.desired_title
+            ? `Desired title: ${userConfig.desired_title}`
+            : null,
+    ]
+        .filter(Boolean)
+        .join("\n");
+    const prompt = interpolate(valves.user, {
+        profile: profileLines,
+        languages: langLines,
+        complexProjects: complexProjectLines || "None",
+        activeProjects: spotlightLines || "None",
+    });
+    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
+        method: "POST",
+        headers: {
+            Authorization: `bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model: valves.model,
+            messages: [
+                { role: "system", content: valves.system },
+                { role: "user", content: prompt },
+            ],
+            temperature: valves.temperature,
+            response_format: {
+                type: "json_schema",
+                json_schema: {
+                    name: "preamble",
+                    strict: true,
+                    schema: {
+                        type: "object",
+                        properties: { preamble: { type: "string" } },
+                        required: ["preamble"],
+                        additionalProperties: false,
                     },
                 },
-            }),
-        }, "Preamble");
-        if (!res?.ok) {
-            if (res)
-                console.warn(`GitHub Models API error (preamble): ${res.status}`);
-            return undefined;
-        }
-        const json = (await res.json());
-        const content = json.choices?.[0]?.message?.content || "{}";
-        const parsed = JSON.parse(content);
-        const raw = parsed.preamble || undefined;
-        if (!raw)
-            return undefined;
-        const cleaned = raw
-            // Strip conversational preface (safety net)
-            .replace(/^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i, "")
-            // Strip wrapping code fences
-            .replace(/^```(?:markdown|md)?\s*\n?/, "")
-            .replace(/\n?```\s*$/, "")
-            .trim();
-        // Reject degenerate output (conversational filler with no real content)
-        const minLength = 20;
-        if (cleaned.length < minLength) {
-            console.warn(`AI preamble too short after cleaning (${cleaned.length} chars), discarding`);
-            return undefined;
-        }
-        return cleaned;
+            },
+        }),
+    }, "Preamble");
+    if (res.status === 401 || res.status === 403) {
+        throw new InsightsError(`GitHub Models API auth error (preamble): ${res.status}`, ErrorCode.AUTH_FAILED);
     }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
-        return undefined;
+    if (!res.ok) {
+        throw new InsightsError(`GitHub Models API error (preamble): ${res.status}`, ErrorCode.AI_UNAVAILABLE);
     }
+    const json = (await res.json());
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content);
+    const raw = parsed.preamble;
+    if (!raw) {
+        throw new InsightsError("AI preamble response contained no preamble field", ErrorCode.AI_UNAVAILABLE);
+    }
+    const cleaned = raw
+        // Strip conversational preface (safety net)
+        .replace(/^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i, "")
+        // Strip wrapping code fences
+        .replace(/^```(?:markdown|md)?\s*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
+    // Reject degenerate output (conversational filler with no real content)
+    const minLength = 20;
+    if (cleaned.length < minLength) {
+        throw new InsightsError(`AI preamble too short after cleaning (${cleaned.length} chars)`, ErrorCode.AI_UNAVAILABLE);
+    }
+    return cleaned;
 };
 const fetchProjectClassifications = async (token, repos, valves) => {
-    try {
-        const repoData = JSON.stringify(repos, null, 2);
-        const prompt = interpolate(valves.user, { repoData });
-        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: valves.model,
-                messages: [
-                    { role: "system", content: valves.system },
-                    { role: "user", content: prompt },
-                ],
-                temperature: valves.temperature,
-                response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                        name: "project_classifications",
-                        strict: true,
-                        schema: {
-                            type: "object",
-                            properties: {
-                                classifications: {
-                                    type: "array",
-                                    items: {
-                                        type: "object",
-                                        properties: {
-                                            name: { type: "string" },
-                                            status: {
-                                                type: "string",
-                                                enum: ["active", "maintained", "inactive"],
-                                            },
-                                            summary: { type: "string" },
-                                            category: {
-                                                type: "string",
-                                                enum: [
-                                                    "Developer Tools",
-                                                    "SDKs",
-                                                    "Applications",
-                                                    "Research & Experiments",
-                                                ],
-                                            },
-                                            spotlight_rank: {
-                                                type: ["integer", "null"],
-                                            },
+    const repoData = JSON.stringify(repos, null, 2);
+    const prompt = interpolate(valves.user, { repoData });
+    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
+        method: "POST",
+        headers: {
+            Authorization: `bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model: valves.model,
+            messages: [
+                { role: "system", content: valves.system },
+                { role: "user", content: prompt },
+            ],
+            temperature: valves.temperature,
+            response_format: {
+                type: "json_schema",
+                json_schema: {
+                    name: "project_classifications",
+                    strict: true,
+                    schema: {
+                        type: "object",
+                        properties: {
+                            classifications: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        name: { type: "string" },
+                                        status: {
+                                            type: "string",
+                                            enum: ["active", "maintained", "inactive"],
                                         },
-                                        required: [
-                                            "name",
-                                            "status",
-                                            "summary",
-                                            "category",
-                                            "spotlight_rank",
-                                        ],
-                                        additionalProperties: false,
+                                        summary: { type: "string" },
+                                        category: {
+                                            type: "string",
+                                            enum: [
+                                                "Developer Tools",
+                                                "SDKs",
+                                                "Applications",
+                                                "Research & Experiments",
+                                            ],
+                                        },
+                                        spotlight_rank: {
+                                            type: ["integer", "null"],
+                                        },
                                     },
+                                    required: [
+                                        "name",
+                                        "status",
+                                        "summary",
+                                        "category",
+                                        "spotlight_rank",
+                                    ],
+                                    additionalProperties: false,
                                 },
                             },
-                            required: ["classifications"],
-                            additionalProperties: false,
                         },
+                        required: ["classifications"],
+                        additionalProperties: false,
                     },
                 },
-            }),
-        }, "Classifications");
-        if (!res?.ok) {
-            if (res)
-                console.warn(`GitHub Models API error (classifications): ${res.status}`);
-            return [];
-        }
-        const json = (await res.json());
-        const content = json.choices?.[0]?.message?.content || "{}";
-        const parsed = JSON.parse(content);
-        return (parsed.classifications || [])
-            .filter((c) => c.name &&
-            (c.status === "active" ||
-                c.status === "maintained" ||
-                c.status === "inactive"))
-            .map((c) => ({ ...c, summary: c.summary || "" }));
+            },
+        }),
+    }, "Classifications");
+    if (res.status === 401 || res.status === 403) {
+        throw new InsightsError(`GitHub Models API auth error (classifications): ${res.status}`, ErrorCode.AUTH_FAILED);
     }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`Project classification failed (non-fatal): ${msg}`);
-        return [];
+    if (!res.ok) {
+        throw new InsightsError(`GitHub Models API error (classifications): ${res.status}`, ErrorCode.AI_UNAVAILABLE);
     }
+    const json = (await res.json());
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content);
+    return (parsed.classifications || [])
+        .filter((c) => c.name &&
+        (c.status === "active" ||
+            c.status === "maintained" ||
+            c.status === "inactive"))
+        .map((c) => ({ ...c, summary: c.summary || "" }));
 };
 
 ;// CONCATENATED MODULE: ./src/jsx-factory.ts
@@ -56193,6 +56219,7 @@ const UserConfigSchema = object({
     template: lenientTemplate,
     sections: lenientSections,
     exclude_archived: schemas_boolean().optional(),
+    fail_fast: schemas_boolean().optional(),
     ai: aiConfigSchema,
 })
     .strip()
@@ -57554,6 +57581,7 @@ function getTemplate(_name) {
 
 
 
+
 // ── Git helper ──────────────────────────────────────────────────────────────
 function git(args) {
     return new Promise((resolve, reject) => {
@@ -57598,11 +57626,23 @@ async function runPipeline(config, cb) {
     ]);
     cb.onPhaseComplete("fetch-profile", `${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
     // ── Classify ──────────────────────────────────────────────────────────────
+    const failFast = config.failFast || userConfig.fail_fast || false;
     cb.onPhaseStart("classify", "Classifying projects");
     const languages = aggregateLanguages(repos);
     const complexProjects = getTopProjectsByComplexity(repos);
     const classificationInputs = buildClassificationInputs(repos, contributionData);
-    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
+    let aiClassifications = [];
+    try {
+        aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
+    }
+    catch (err) {
+        if (failFast)
+            throw err;
+        const msg = err instanceof InsightsError
+            ? `${err.message} [${err.code}]`
+            : String(err);
+        cb.onProgress(`AI classification unavailable (${msg}), using heuristics`);
+    }
     cb.onPhaseComplete("classify", `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`);
     // ── Transform ─────────────────────────────────────────────────────────────
     cb.onPhaseStart("transform", "Computing metrics");
@@ -57652,14 +57692,24 @@ async function runPipeline(config, cb) {
         let preamble = loadPreamble(userConfig.preamble);
         if (!preamble) {
             cb.onProgress("Generating preamble with AI...");
-            preamble = await fetchAIPreamble(config.token, {
-                username: config.username,
-                profile: userProfile,
-                userConfig,
-                languages,
-                spotlightProjects,
-                complexProjects,
-            }, prompts.preamble);
+            try {
+                preamble = await fetchAIPreamble(config.token, {
+                    username: config.username,
+                    profile: userProfile,
+                    userConfig,
+                    languages,
+                    spotlightProjects,
+                    complexProjects,
+                }, prompts.preamble);
+            }
+            catch (err) {
+                if (failFast)
+                    throw err;
+                const msg = err instanceof InsightsError
+                    ? `${err.message} [${err.code}]`
+                    : String(err);
+                cb.onProgress(`AI preamble unavailable (${msg}), skipping`);
+            }
         }
         const svgs = activeSections.map((s) => ({
             label: s.title,
@@ -57791,6 +57841,7 @@ async function runPipeline(config, cb) {
 ;// CONCATENATED MODULE: ./src/action.ts
 
 
+
 async function run() {
     const token = lib_core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
     const username = lib_core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
@@ -57803,6 +57854,7 @@ async function run() {
         "41898282+github-actions[bot]@users.noreply.github.com";
     const configPath = lib_core.getInput("config-file") || undefined;
     const readmePath = lib_core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
+    const failFast = (lib_core.getInput("fail-fast") || "false") === "true";
     const templateName = lib_core.getInput("template") || "showcase";
     const sectionsInput = lib_core.getInput("sections") || "";
     const requestedSections = sectionsInput.length > 0
@@ -57823,6 +57875,7 @@ async function run() {
         readmePath,
         templateName,
         requestedSections,
+        failFast,
     };
     const callbacks = {
         onPhaseStart(_phase, label) {
@@ -57842,8 +57895,10 @@ async function run() {
         await runPipeline(config, callbacks);
     }
     catch (error) {
+        const code = error instanceof InsightsError ? error.code : undefined;
         const msg = error instanceof Error ? error.message : String(error);
-        lib_core.setFailed(msg);
+        lib_core.setFailed(code ? `[${code}] ${msg}` : msg);
+        process.exitCode = getExitCode(error);
     }
 }
 run();
