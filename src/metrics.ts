@@ -443,7 +443,10 @@ export const computeLanguageVelocity = (
   // Build a map of repo name → primary language + color
   const repoLangMap = new Map<string, { name: string; color: string }>();
   for (const repo of repos) {
-    if (repo.primaryLanguage && !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
+    if (
+      repo.primaryLanguage &&
+      !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)
+    ) {
       repoLangMap.set(repo.name, {
         name: repo.primaryLanguage.name,
         color: repo.primaryLanguage.color,
@@ -591,9 +594,14 @@ function pickPrimaryLanguage(
   languages: string[] | undefined,
   repo: RepoNode | undefined,
 ): string {
-  const candidates = (languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l));
+  const candidates = (languages || []).filter(
+    (l) => !EXCLUDED_LANGUAGES.has(l),
+  );
   if (candidates.length > 0) return candidates[0];
-  if (repo?.primaryLanguage && !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
+  if (
+    repo?.primaryLanguage &&
+    !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)
+  ) {
     return repo.primaryLanguage.name;
   }
   return "Other";
