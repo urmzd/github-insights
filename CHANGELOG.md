@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.5.0 (2026-04-05)
+
+### Features
+
+- add heuristic fallbacks for spotlight and portfolio when AI is unavailable (#17) ([528d890](https://github.com/urmzd/github-insights/commit/528d8901577353af29607fc666d50f602a0971d7))
+
+### Documentation
+
+- sync README and metadata with current source code (#16) ([44abc5f](https://github.com/urmzd/github-insights/commit/44abc5fda7d8be764c661c80987af20588c87385))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.4.0...v3.5.0)
+
+
 ## 3.4.0 (2026-04-05)
 
 ### Features
