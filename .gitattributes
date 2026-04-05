@@ -16,6 +16,10 @@
 *.tsx text eol=lf
 *.jsx text eol=lf
 
+# Linguist overrides
+dist/** linguist-generated
+dist-cli/** linguist-generated
+
 # Binary files
 *.png binary
 *.jpg binary
