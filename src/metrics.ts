@@ -522,7 +522,7 @@ export const computeConstellationLayout = (
   for (const bar of bars) {
     const lang = bar.primaryLanguage;
     if (!groups.has(lang)) groups.set(lang, []);
-    groups.get(lang)!.push(bar);
+    groups.get(lang)?.push(bar);
   }
 
   // Sort within each group by complexity (descending)
