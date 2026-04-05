@@ -1,5 +1,6 @@
 import * as github from "@actions/github";
 import type { UserConfig } from "./config.js";
+import { interpolate, type PromptValves } from "./prompts.js";
 import type {
   ContributionData,
   ManifestMap,
@@ -319,17 +320,23 @@ export interface PreambleContext {
   profile: UserProfile;
   userConfig: UserConfig;
   languages: { name: string; percent: string }[];
-  activeProjects: ProjectItem[];
+  spotlightProjects: ProjectItem[];
   complexProjects: ProjectItem[];
 }
 
 export const fetchAIPreamble = async (
   token: string,
   context: PreambleContext,
+  valves: PromptValves,
 ): Promise<string | undefined> => {
   try {
-    const { profile, userConfig, languages, activeProjects, complexProjects } =
-      context;
+    const {
+      profile,
+      userConfig,
+      languages,
+      spotlightProjects,
+      complexProjects,
+    } = context;
 
     const langLines = languages
       .map((l) => `- ${l.name}: ${l.percent}%`)
@@ -338,10 +345,11 @@ export const fetchAIPreamble = async (
     const formatProject = (p: ProjectItem): string => {
       const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
       const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
-      return `- ${p.name} (${p.stars} stars${size})${langs}: ${p.description}`;
+      const desc = p.summary || p.description;
+      return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
     };
 
-    const activeProjectLines = activeProjects.map(formatProject).join("\n");
+    const spotlightLines = spotlightProjects.map(formatProject).join("\n");
     const complexProjectLines = complexProjects.map(formatProject).join("\n");
 
     const profileLines = [
@@ -349,34 +357,20 @@ export const fetchAIPreamble = async (
       profile.bio ? `Bio: ${profile.bio}` : null,
       profile.company ? `Company: ${profile.company}` : null,
       profile.location ? `Location: ${profile.location}` : null,
-      userConfig.title ? `Title: ${userConfig.title}` : null,
+      userConfig.title ? `Current title: ${userConfig.title}` : null,
+      userConfig.desired_title
+        ? `Desired title: ${userConfig.desired_title}`
+        : null,
     ]
       .filter(Boolean)
       .join("\n");
 
-    const prompt = `You are generating a very short tagline for a developer's GitHub profile README.
-
-Profile:
-${profileLines}
-
-Languages (by code volume):
-${langLines}
-
-Most technically complex projects (by language diversity, codebase size, and depth):
-${complexProjectLines || "None"}
-
-Active projects (recently committed to):
-${activeProjectLines || "None"}
-
-Generate 1-2 sentences that:
-- Write in first person (use I/my). Describe what you work on
-- Lead with the most technically impressive or complex work — projects with multiple languages, large codebases, or deep domain expertise
-- Reference their top 2-3 languages or technologies naturally
-- Keep tone professional but friendly
-- Do NOT include social links, badges, or contact info
-- Do NOT include a heading — the README already has one
-- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
+    const prompt = interpolate(valves.user, {
+      profile: profileLines,
+      languages: langLines,
+      complexProjects: complexProjectLines || "None",
+      activeProjects: spotlightLines || "None",
+    });
 
     const res = await fetchWithRetry(
       "https://models.github.ai/inference/chat/completions",
@@ -387,19 +381,12 @@ Generate 1-2 sentences that:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4.1",
+          model: valves.model,
           messages: [
-            {
-              role: "system",
-              content:
-                "You are a markdown content generator. Output ONLY the requested markdown content. " +
-                "Never include conversational text, confirmations, or commentary like " +
-                '"Certainly", "Here\'s", "Sure", "Of course", etc. ' +
-                "Start directly with the substantive content.",
-            },
+            { role: "system", content: valves.system },
             { role: "user", content: prompt },
           ],
-          temperature: 0.3,
+          temperature: valves.temperature,
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -463,45 +450,12 @@ Generate 1-2 sentences that:
 export const fetchProjectClassifications = async (
   token: string,
   repos: RepoClassificationInput[],
+  valves: PromptValves,
 ): Promise<RepoClassificationOutput[]> => {
   try {
     const repoData = JSON.stringify(repos, null, 2);
 
-    const prompt = `You are classifying GitHub repositories by their maintenance status, purpose category, and generating a brief summary for each.
-
-For each repository, determine its status, category, and write a 1-2 sentence summary:
-
-Status (project lifecycle — pick exactly one):
-- "active": The project is young and under active development. It was created or significantly reworked recently, AND has frequent, sustained commits indicating ongoing feature work or rapid iteration. A mature project with a recent burst of commits is NOT active — it's maintained.
-- "maintained": The project is established and functional. It may receive occasional updates — bug fixes, dependency bumps, documentation, or even periodic feature additions — but the core is stable. Most working projects fall here. An old project with recent commits is maintained, not active.
-- "inactive": The project has no meaningful recent activity. It may be a completed experiment, archived, or abandoned.
-
-Category (project purpose — pick exactly one):
-- "Developer Tools": CLIs, build tools, code generators, automation utilities, GitHub Actions
-- "SDKs": Libraries and SDKs meant to be imported by other projects
-- "Applications": End-user applications, desktop apps, web apps, APIs
-- "Research & Experiments": Academic projects, ML experiments, algorithm research, educational repos, game clones
-
-Repository data:
-${repoData}
-
-Classification guidelines:
-- commitsLastYear is the number of commits in the past 12 months
-- pushedAt is the last push date (any git push, not just commits)
-- The key distinction between active and maintained is project MATURITY, not just commit recency
-- A project created in the last ~6 months with sustained commits → active
-- A project older than ~1 year with any level of recent commits → maintained (unless it was clearly rearchitected/rewritten recently)
-- commitsLastYear alone does NOT determine active vs maintained — a 3-year-old project with 50 commits/year is maintained, not active
-- A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
-- Profile READMEs (e.g. repos named after the username) should be "maintained" (they get auto-generated updates but aren't actively developed)
-- SDKs and tools that are stable and working are "maintained" even with frequent commits — unless they're brand new
-- For category, judge by what the repo IS, not by its activity level. A game clone is "Research & Experiments" even if actively developed. A CLI tool is "Developer Tools" even if inactive.
-
-Summary guidelines:
-- Write 1-2 factual sentences describing what the project IS and what technologies it uses
-- Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
-- Do NOT hallucinate features or details not present in the input data
-- Base the summary only on: name, description, languages, stars, and disk usage`;
+    const prompt = interpolate(valves.user, { repoData });
 
     const res = await fetchWithRetry(
       "https://models.github.ai/inference/chat/completions",
@@ -512,9 +466,12 @@ Summary guidelines:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4.1",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
+          model: valves.model,
+          messages: [
+            { role: "system", content: valves.system },
+            { role: "user", content: prompt },
+          ],
+          temperature: valves.temperature,
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -543,8 +500,17 @@ Summary guidelines:
                             "Research & Experiments",
                           ],
                         },
+                        spotlight_rank: {
+                          type: ["integer", "null"],
+                        },
                       },
-                      required: ["name", "status", "summary", "category"],
+                      required: [
+                        "name",
+                        "status",
+                        "summary",
+                        "category",
+                        "spotlight_rank",
+                      ],
                       additionalProperties: false,
                     },
                   },

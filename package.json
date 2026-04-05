@@ -6,6 +6,7 @@
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
+    "commander": "^14.0.3",
     "ink": "^6.8.0",
     "ink-spinner": "^5.0.0",
     "react": "^19.2.4",

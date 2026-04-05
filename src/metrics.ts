@@ -276,19 +276,13 @@ export const splitProjectsByRecency = (
   return { active, maintained, inactive, archived };
 };
 
-// ── Spotlight (Heat Score) ────────────────────────────────────────────────────
+// ── Spotlight (LLM-ranked) ────────────────────────────────────────────────────
 
 export const computeSpotlightProjects = (
   repos: RepoNode[],
   contributionData: ContributionData,
   aiClassifications?: RepoClassificationOutput[],
-  topN = 5,
 ): SpotlightProject[] => {
-  const commitMap = new Map<string, number>();
-  for (const entry of contributionData.commitContributionsByRepository || []) {
-    commitMap.set(entry.repository.name, entry.contributions.totalCount);
-  }
-
   const aiMap = new Map<string, RepoClassificationOutput>();
   if (aiClassifications) {
     for (const c of aiClassifications) {
@@ -296,23 +290,34 @@ export const computeSpotlightProjects = (
     }
   }
 
+  const commitMap = new Map<string, number>();
+  for (const entry of contributionData.commitContributionsByRepository || []) {
+    commitMap.set(entry.repository.name, entry.contributions.totalCount);
+  }
+
   const now = Date.now();
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const scored: SpotlightProject[] = repos
-    .filter((repo) => !repo.isArchived)
+  // Collect repos that the LLM ranked for spotlight
+  const ranked = repos
+    .filter((repo) => {
+      const ai = aiMap.get(repo.name);
+      return (
+        ai?.spotlight_rank != null && ai.spotlight_rank >= 1 && !repo.isArchived
+      );
+    })
+    .sort((a, b) => {
+      const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
+      const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
+      return rankA - rankB;
+    })
     .map((repo) => {
+      const ai = aiMap.get(repo.name);
       const commits = commitMap.get(repo.name) || 0;
       const daysSincePush = Math.max(
         0,
         (now - new Date(repo.pushedAt).getTime()) / DAY_MS,
       );
-
-      const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
-      const commitBoost = Math.min(commits, 50) * 2;
-      const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
-      const heatScore = commitBoost + recencyBonus + starBoost;
-
       const pushedInLast30 = daysSincePush <= 30;
       const pushedInLast90 = daysSincePush <= 90;
       let activityLabel: string | undefined;
@@ -322,17 +327,16 @@ export const computeSpotlightProjects = (
         activityLabel = "Building";
       }
 
-      const ai = aiMap.get(repo.name);
       return {
         ...toProjectItem(repo),
         summary: ai?.summary || undefined,
         category: ai?.category || undefined,
-        heatScore,
+        heatScore: ai?.spotlight_rank ?? 0,
         activityLabel,
       };
     });
 
-  return scored.sort((a, b) => b.heatScore - a.heatScore).slice(0, topN);
+  return ranked;
 };
 
 // ── Language Velocity ────────────────────────────────────────────────────────
@@ -518,7 +522,7 @@ export const computeConstellationLayout = (
   for (const bar of bars) {
     const lang = bar.primaryLanguage;
     if (!groups.has(lang)) groups.set(lang, []);
-    groups.get(lang)!.push(bar);
+    groups.get(lang)?.push(bar);
   }
 
   // Sort within each group by complexity (descending)

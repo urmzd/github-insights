@@ -6,8 +6,12 @@ VERSION=$(node -p "require('./package.json').version")
 echo "Building action bundle..."
 ncc build src/action.ts -o dist --source-map --license licenses.txt -t
 
+echo "Copying prompt templates..."
+cp -r src/prompts dist/prompts
+
 echo "Building CLI bundle..."
 ncc build src/cli.tsx -o dist-cli --source-map --license licenses.txt -t
+cp -r src/prompts dist-cli/prompts
 
 # Prepend shebang to CLI entry point
 CLI=dist-cli/index.js

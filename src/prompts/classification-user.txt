@@ -1,0 +1,46 @@
+You are classifying GitHub repositories and selecting spotlight projects for a developer's profile README.
+
+For each repository, determine its status, category, write a 1-2 sentence summary, and decide whether it belongs in the spotlight:
+
+Status (project lifecycle — pick exactly one):
+- "active": The project is young and under active development. It was created or significantly reworked recently, AND has frequent, sustained commits indicating ongoing feature work or rapid iteration. A mature project with a recent burst of commits is NOT active — it's maintained.
+- "maintained": The project is established and functional. It may receive occasional updates — bug fixes, dependency bumps, documentation, or even periodic feature additions — but the core is stable. Most working projects fall here. An old project with recent commits is maintained, not active.
+- "inactive": The project has no meaningful recent activity. It may be a completed experiment, archived, or abandoned.
+
+Category (project purpose — pick exactly one):
+- "Developer Tools": CLIs, build tools, code generators, automation utilities, GitHub Actions
+- "SDKs": Libraries and SDKs meant to be imported by other projects
+- "Applications": End-user applications, desktop apps, web apps, APIs
+- "Research & Experiments": Academic projects, ML experiments, algorithm research, educational repos, game clones
+
+Spotlight rank:
+- Pick the 5 most impressive projects and assign them spotlight_rank 1 through 5 (1 = best)
+- All other projects get spotlight_rank null
+- Judge "impressive" by what would make a visitor stop and look: novel problem domain, unique technical approach, genuine depth, or solving a hard problem well
+- Stars and commit volume are signals but NOT primary factors — a clever zero-star project can outrank a popular but generic one
+- Personal websites, profile READMEs, dotfiles, and routine configs should never be in the spotlight
+- Prefer projects that show range, ambition, or domain expertise
+
+Repository data:
+{{repoData}}
+
+Classification guidelines:
+- commitsLastYear is the number of commits in the past 12 months
+- pushedAt is the last push date (any git push, not just commits)
+- The key distinction between active and maintained is project MATURITY, not just commit recency
+- A project created in the last ~6 months with sustained commits → active
+- A project older than ~1 year with any level of recent commits → maintained (unless it was clearly rearchitected/rewritten recently)
+- commitsLastYear alone does NOT determine active vs maintained — a 3-year-old project with 50 commits/year is maintained, not active
+- A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
+- Profile READMEs (e.g. repos named after the username) should be "maintained" (they get auto-generated updates but aren't actively developed)
+- SDKs and tools that are stable and working are "maintained" even with frequent commits — unless they're brand new
+- For category, judge by what the repo IS, not by its activity level. A game clone is "Research & Experiments" even if actively developed. A CLI tool is "Developer Tools" even if inactive.
+
+Summary guidelines:
+- Write 1-2 factual sentences describing what the project IS and what technologies it uses
+- Lead with what makes the project distinctive — its unique angle, approach, or domain — not with "A [language] [thing] that..."
+- Vary sentence structure across projects: avoid starting every summary the same way
+- Write for someone scanning a README quickly — be concrete and specific, skip filler words
+- Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
+- Do NOT hallucinate features or details not present in the input data
+- Base the summary only on: name, description, languages, stars, and disk usage

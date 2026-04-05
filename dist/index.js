@@ -40542,7 +40542,71 @@ const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
 var github = __nccwpck_require__(3228);
+;// CONCATENATED MODULE: external "node:url"
+const external_node_url_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
+;// CONCATENATED MODULE: ./src/prompts.ts
+
+
+
+// ── Default prompt loading ─────────────────────────────────────────────────
+const PROMPTS_DIR = (0,external_node_path_namespaceObject.join)((0,external_node_path_namespaceObject.dirname)((0,external_node_url_namespaceObject.fileURLToPath)(import.meta.url)), "prompts");
+function loadDefault(filename) {
+    return (0,external_node_fs_namespaceObject.readFileSync)((0,external_node_path_namespaceObject.join)(PROMPTS_DIR, filename), "utf-8").trim();
+}
+const DEFAULTS = {
+    preamble: {
+        model: "gpt-4.1",
+        temperature: 0.5,
+        system: loadDefault("preamble-system.txt"),
+        user: loadDefault("preamble-user.txt"),
+    },
+    classification: {
+        model: "gpt-4.1",
+        temperature: 0.15,
+        system: loadDefault("classification-system.txt"),
+        user: loadDefault("classification-user.txt"),
+    },
+};
+// ── Resolution ─────────────────────────────────────────────────────────────
+/** Load a prompt value — if it looks like a file path, read the file; otherwise use as-is. */
+function resolvePromptValue(value, fallback) {
+    if (!value)
+        return fallback;
+    const trimmed = value.trim();
+    // Heuristic: if it ends with .txt/.md or is an absolute/relative path, treat as file
+    if (trimmed.endsWith(".txt") ||
+        trimmed.endsWith(".md") ||
+        (0,external_node_path_namespaceObject.isAbsolute)(trimmed)) {
+        if ((0,external_node_fs_namespaceObject.existsSync)(trimmed)) {
+            return (0,external_node_fs_namespaceObject.readFileSync)(trimmed, "utf-8").trim();
+        }
+        console.warn(`Prompt file not found: ${trimmed}, using default`);
+        return fallback;
+    }
+    return trimmed;
+}
+function resolveValves(overrides, defaults) {
+    return {
+        model: overrides?.model || defaults.model,
+        temperature: overrides?.temperature ?? defaults.temperature,
+        system: resolvePromptValue(overrides?.system, defaults.system),
+        user: resolvePromptValue(overrides?.user, defaults.user),
+    };
+}
+function resolvePrompts(aiConfig) {
+    return {
+        preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble),
+        classification: resolveValves(aiConfig?.classification, DEFAULTS.classification),
+    };
+}
+// ── Template interpolation ─────────────────────────────────────────────────
+/** Replace `{{key}}` placeholders with values from the vars map. */
+function interpolate(template, vars) {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
+}
+
 ;// CONCATENATED MODULE: ./src/api.ts
+
 
 const MAX_RETRIES = 3;
 const fetchWithRetry = async (url, init, label) => {
@@ -40779,51 +40843,38 @@ const fetchUserProfile = async (graphql, username) => {
         };
     }
 };
-const fetchAIPreamble = async (token, context) => {
+const fetchAIPreamble = async (token, context, valves) => {
     try {
-        const { profile, userConfig, languages, activeProjects, complexProjects } = context;
+        const { profile, userConfig, languages, spotlightProjects, complexProjects, } = context;
         const langLines = languages
             .map((l) => `- ${l.name}: ${l.percent}%`)
             .join("\n");
         const formatProject = (p) => {
             const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
             const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
-            return `- ${p.name} (${p.stars} stars${size})${langs}: ${p.description}`;
+            const desc = p.summary || p.description;
+            return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
         };
-        const activeProjectLines = activeProjects.map(formatProject).join("\n");
+        const spotlightLines = spotlightProjects.map(formatProject).join("\n");
         const complexProjectLines = complexProjects.map(formatProject).join("\n");
         const profileLines = [
             profile.name ? `Name: ${profile.name}` : null,
             profile.bio ? `Bio: ${profile.bio}` : null,
             profile.company ? `Company: ${profile.company}` : null,
             profile.location ? `Location: ${profile.location}` : null,
-            userConfig.title ? `Title: ${userConfig.title}` : null,
+            userConfig.title ? `Current title: ${userConfig.title}` : null,
+            userConfig.desired_title
+                ? `Desired title: ${userConfig.desired_title}`
+                : null,
         ]
             .filter(Boolean)
             .join("\n");
-        const prompt = `You are generating a very short tagline for a developer's GitHub profile README.
-
-Profile:
-${profileLines}
-
-Languages (by code volume):
-${langLines}
-
-Most technically complex projects (by language diversity, codebase size, and depth):
-${complexProjectLines || "None"}
-
-Active projects (recently committed to):
-${activeProjectLines || "None"}
-
-Generate 1-2 sentences that:
-- Write in first person (use I/my). Describe what you work on
-- Lead with the most technically impressive or complex work — projects with multiple languages, large codebases, or deep domain expertise
-- Reference their top 2-3 languages or technologies naturally
-- Keep tone professional but friendly
-- Do NOT include social links, badges, or contact info
-- Do NOT include a heading — the README already has one
-- Do NOT wrap your response in code fences or backtick blocks — output raw markdown only
-- Do NOT include any conversational preface (e.g., "Certainly!", "Here's...", "Sure!") — start directly with the tagline`;
+        const prompt = interpolate(valves.user, {
+            profile: profileLines,
+            languages: langLines,
+            complexProjects: complexProjectLines || "None",
+            activeProjects: spotlightLines || "None",
+        });
         const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
@@ -40831,18 +40882,12 @@ Generate 1-2 sentences that:
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "gpt-4.1",
+                model: valves.model,
                 messages: [
-                    {
-                        role: "system",
-                        content: "You are a markdown content generator. Output ONLY the requested markdown content. " +
-                            "Never include conversational text, confirmations, or commentary like " +
-                            '"Certainly", "Here\'s", "Sure", "Of course", etc. ' +
-                            "Start directly with the substantive content.",
-                    },
+                    { role: "system", content: valves.system },
                     { role: "user", content: prompt },
                 ],
-                temperature: 0.3,
+                temperature: valves.temperature,
                 response_format: {
                     type: "json_schema",
                     json_schema: {
@@ -40890,44 +40935,10 @@ Generate 1-2 sentences that:
         return undefined;
     }
 };
-const fetchProjectClassifications = async (token, repos) => {
+const fetchProjectClassifications = async (token, repos, valves) => {
     try {
         const repoData = JSON.stringify(repos, null, 2);
-        const prompt = `You are classifying GitHub repositories by their maintenance status, purpose category, and generating a brief summary for each.
-
-For each repository, determine its status, category, and write a 1-2 sentence summary:
-
-Status (project lifecycle — pick exactly one):
-- "active": The project is young and under active development. It was created or significantly reworked recently, AND has frequent, sustained commits indicating ongoing feature work or rapid iteration. A mature project with a recent burst of commits is NOT active — it's maintained.
-- "maintained": The project is established and functional. It may receive occasional updates — bug fixes, dependency bumps, documentation, or even periodic feature additions — but the core is stable. Most working projects fall here. An old project with recent commits is maintained, not active.
-- "inactive": The project has no meaningful recent activity. It may be a completed experiment, archived, or abandoned.
-
-Category (project purpose — pick exactly one):
-- "Developer Tools": CLIs, build tools, code generators, automation utilities, GitHub Actions
-- "SDKs": Libraries and SDKs meant to be imported by other projects
-- "Applications": End-user applications, desktop apps, web apps, APIs
-- "Research & Experiments": Academic projects, ML experiments, algorithm research, educational repos, game clones
-
-Repository data:
-${repoData}
-
-Classification guidelines:
-- commitsLastYear is the number of commits in the past 12 months
-- pushedAt is the last push date (any git push, not just commits)
-- The key distinction between active and maintained is project MATURITY, not just commit recency
-- A project created in the last ~6 months with sustained commits → active
-- A project older than ~1 year with any level of recent commits → maintained (unless it was clearly rearchitected/rewritten recently)
-- commitsLastYear alone does NOT determine active vs maintained — a 3-year-old project with 50 commits/year is maintained, not active
-- A repo with 0 commits but a very recent pushedAt might still be maintained (rebases, CI fixes)
-- Profile READMEs (e.g. repos named after the username) should be "maintained" (they get auto-generated updates but aren't actively developed)
-- SDKs and tools that are stable and working are "maintained" even with frequent commits — unless they're brand new
-- For category, judge by what the repo IS, not by its activity level. A game clone is "Research & Experiments" even if actively developed. A CLI tool is "Developer Tools" even if inactive.
-
-Summary guidelines:
-- Write 1-2 factual sentences describing what the project IS and what technologies it uses
-- Do NOT mention commit counts, activity status, maintenance status, or how recently it was updated — that information is already conveyed by the section heading
-- Do NOT hallucinate features or details not present in the input data
-- Base the summary only on: name, description, languages, stars, and disk usage`;
+        const prompt = interpolate(valves.user, { repoData });
         const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
             method: "POST",
             headers: {
@@ -40935,9 +40946,12 @@ Summary guidelines:
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "gpt-4.1",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.1,
+                model: valves.model,
+                messages: [
+                    { role: "system", content: valves.system },
+                    { role: "user", content: prompt },
+                ],
+                temperature: valves.temperature,
                 response_format: {
                     type: "json_schema",
                     json_schema: {
@@ -40966,8 +40980,17 @@ Summary guidelines:
                                                     "Research & Experiments",
                                                 ],
                                             },
+                                            spotlight_rank: {
+                                                type: ["integer", "null"],
+                                            },
                                         },
-                                        required: ["name", "status", "summary", "category"],
+                                        required: [
+                                            "name",
+                                            "status",
+                                            "summary",
+                                            "category",
+                                            "spotlight_rank",
+                                        ],
                                         additionalProperties: false,
                                     },
                                 },
@@ -41246,8 +41269,6 @@ function generateFullSvg(sections) {
         bodySvg));
 }
 
-;// CONCATENATED MODULE: external "node:url"
-const external_node_url_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
 ;// CONCATENATED MODULE: ./node_modules/smol-toml/dist/error.js
 /*!
  * Copyright (c) Squirrel Chat et al., All rights reserved.
@@ -56137,6 +56158,21 @@ const lenientTemplate = schemas_string()
         : undefined;
 })
     .optional();
+/** Lenient prompt valves — accepts partial overrides, drops unknowns. */
+const promptValvesSchema = object({
+    model: optionalTrimmedString,
+    temperature: schemas_number().min(0).max(2).optional(),
+    system: optionalTrimmedString,
+    user: optionalTrimmedString,
+})
+    .strip()
+    .optional();
+const aiConfigSchema = object({
+    preamble: promptValvesSchema,
+    classification: promptValvesSchema,
+})
+    .strip()
+    .optional();
 /** Filters array to valid section strings, returns undefined if empty. */
 const lenientSections = array(unknown())
     .transform((arr) => {
@@ -56157,6 +56193,7 @@ const UserConfigSchema = object({
     template: lenientTemplate,
     sections: lenientSections,
     exclude_archived: schemas_boolean().optional(),
+    ai: aiConfigSchema,
 })
     .strip()
     .transform((obj) => {
@@ -56904,29 +56941,35 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
         .map(toProjectItemWithSummary);
     return { active, maintained, inactive, archived };
 };
-// ── Spotlight (Heat Score) ────────────────────────────────────────────────────
-const computeSpotlightProjects = (repos, contributionData, aiClassifications, topN = 5) => {
-    const commitMap = new Map();
-    for (const entry of contributionData.commitContributionsByRepository || []) {
-        commitMap.set(entry.repository.name, entry.contributions.totalCount);
-    }
+// ── Spotlight (LLM-ranked) ────────────────────────────────────────────────────
+const computeSpotlightProjects = (repos, contributionData, aiClassifications) => {
     const aiMap = new Map();
     if (aiClassifications) {
         for (const c of aiClassifications) {
             aiMap.set(c.name, c);
         }
     }
+    const commitMap = new Map();
+    for (const entry of contributionData.commitContributionsByRepository || []) {
+        commitMap.set(entry.repository.name, entry.contributions.totalCount);
+    }
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const scored = repos
-        .filter((repo) => !repo.isArchived)
+    // Collect repos that the LLM ranked for spotlight
+    const ranked = repos
+        .filter((repo) => {
+        const ai = aiMap.get(repo.name);
+        return (ai?.spotlight_rank != null && ai.spotlight_rank >= 1 && !repo.isArchived);
+    })
+        .sort((a, b) => {
+        const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
+        const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
+        return rankA - rankB;
+    })
         .map((repo) => {
+        const ai = aiMap.get(repo.name);
         const commits = commitMap.get(repo.name) || 0;
         const daysSincePush = Math.max(0, (now - new Date(repo.pushedAt).getTime()) / DAY_MS);
-        const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
-        const commitBoost = Math.min(commits, 50) * 2;
-        const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
-        const heatScore = commitBoost + recencyBonus + starBoost;
         const pushedInLast30 = daysSincePush <= 30;
         const pushedInLast90 = daysSincePush <= 90;
         let activityLabel;
@@ -56936,16 +56979,15 @@ const computeSpotlightProjects = (repos, contributionData, aiClassifications, to
         else if (commits >= 1 || pushedInLast90) {
             activityLabel = "Building";
         }
-        const ai = aiMap.get(repo.name);
         return {
             ...toProjectItem(repo),
             summary: ai?.summary || undefined,
             category: ai?.category || undefined,
-            heatScore,
+            heatScore: ai?.spotlight_rank ?? 0,
             activityLabel,
         };
     });
-    return scored.sort((a, b) => b.heatScore - a.heatScore).slice(0, topN);
+    return ranked;
 };
 // ── Language Velocity ────────────────────────────────────────────────────────
 const computeLanguageVelocity = (contributionData, repos) => {
@@ -57102,7 +57144,7 @@ const computeConstellationLayout = (projects, repos) => {
         const lang = bar.primaryLanguage;
         if (!groups.has(lang))
             groups.set(lang, []);
-        groups.get(lang).push(bar);
+        groups.get(lang)?.push(bar);
     }
     // Sort within each group by complexity (descending)
     for (const group of groups.values()) {
@@ -57447,6 +57489,7 @@ function getTemplate(_name) {
 
 
 
+
 // ── Git helper ──────────────────────────────────────────────────────────────
 function git(args) {
     return new Promise((resolve, reject) => {
@@ -57474,6 +57517,7 @@ async function runPipeline(config, cb) {
         : userConfig.sections || [];
     const resolvedSections = resolveTemplateSections(templateName, requestedSections);
     const svgSectionsNeeded = new Set(resolvedSections.filter((s) => SVG_SECTION_KEYS.includes(s)));
+    const prompts = resolvePrompts(userConfig.ai);
     if (!config.token)
         throw new Error("github-token is required");
     if (!config.username)
@@ -57494,7 +57538,7 @@ async function runPipeline(config, cb) {
     const languages = aggregateLanguages(repos);
     const complexProjects = getTopProjectsByComplexity(repos);
     const classificationInputs = buildClassificationInputs(repos, contributionData);
-    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs);
+    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
     cb.onPhaseComplete("classify", `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`);
     // ── Transform ─────────────────────────────────────────────────────────────
     cb.onPhaseStart("transform", "Computing metrics");
@@ -57538,6 +57582,9 @@ async function runPipeline(config, cb) {
     if (config.readmePath && config.readmePath !== "none") {
         cb.onPhaseStart("generate-readme", "Generating README");
         const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(config.readmePath), config.outputDir) || ".";
+        const displayName = userConfig.name || userProfile.name || config.username;
+        const socialBadges = buildSocialBadges(userProfile);
+        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
         let preamble = loadPreamble(userConfig.preamble);
         if (!preamble) {
             cb.onProgress("Generating preamble with AI...");
@@ -57546,9 +57593,9 @@ async function runPipeline(config, cb) {
                 profile: userProfile,
                 userConfig,
                 languages,
-                activeProjects,
+                spotlightProjects,
                 complexProjects,
-            });
+            }, prompts.preamble);
         }
         const svgs = activeSections.map((s) => ({
             label: s.title,
@@ -57560,9 +57607,6 @@ async function runPipeline(config, cb) {
                 sectionSvgs[key] = `${svgDir}/${filename}`;
             }
         }
-        const displayName = userConfig.name || userProfile.name || config.username;
-        const socialBadges = buildSocialBadges(userProfile);
-        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
         const includeArchived = userConfig.exclude_archived === false;
         const allProjectItems = [
             ...activeProjects,
