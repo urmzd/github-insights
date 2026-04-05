@@ -38,7 +38,7 @@ Run `github-insights generate` locally for a full TUI experience with live phase
 ## Features
 
 - **Composable sections** — pick and order sections (`spotlight`, `velocity`, `rhythm`, `constellation`, `portfolio`, `impact`) or use a preset
-- **Spotlight** — surfaces your most active projects using a composite heat score (commits, recency, stars)
+- **Spotlight** — surfaces your top projects ranked by AI analysis (activity, relevance, impact)
 - **Language Velocity** — streamgraph showing how your language usage has evolved over the past year
 - **Contribution Rhythm** — radar chart revealing day-of-week commit patterns, plus stats (commits, PRs, reviews, streak)
 - **Project Constellation** — visual map of projects positioned by language ecosystem and complexity, with connections between related repos
@@ -47,7 +47,8 @@ Run `github-insights generate` locally for a full TUI experience with live phase
 - **AI preamble generation** — auto-generated profile introduction (or supply your own `PREAMBLE.md`)
 - **AI project classification** — repos classified by status (active/maintained/inactive) and purpose (Developer Tools/SDKs/Applications/Research)
 - **CLI / TUI** — local generation with an interactive terminal UI (Ink-based), live progress, and phase timing; powered by [Commander](https://www.npmjs.com/package/commander) with `init` and `generate` subcommands
-- **Config validation** — `github-insights.yml` validated with [Zod](https://www.npmjs.com/package/zod); invalid values are silently ignored with sensible defaults
+- **Configurable AI prompts** — override model, temperature, and prompt text per AI task via the `ai:` config block; prompts can be inline strings or paths to `.txt`/`.md` files
+- **Config validation** — `github-insights.yml` (or `.yaml` / `.toml`) validated with [Zod](https://www.npmjs.com/package/zod); invalid values are silently ignored with sensible defaults
 - **Exclude archived repos** — archived repositories are excluded from the portfolio by default (`exclude_archived: true`)
 - **Social badges** — auto-detected from your GitHub profile (website, Twitter, LinkedIn, etc.)
 - **Dual theme** — SVGs automatically adapt to GitHub's light and dark mode via `prefers-color-scheme`
@@ -145,19 +146,19 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 |-------|-------------|---------|
 | `github-token` | GitHub token (needs `repo` read + `models:read` for AI) | `${{ github.token }}` |
 | `template` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) | `showcase` |
-| `sections` | Comma-separated ordered list of sections (overrides `template`) | _(all)_ |
-| `config-file` | Path to config file | `github-insights.yml` |
+| `sections` | Comma-separated ordered list of sections (overrides `template`) | _(empty — uses template)_ |
+| `config-file` | Path to config file (also accepts `.yaml` / `.toml`) | `github-insights.yml` |
 | `username` | GitHub username to generate metrics for | `${{ github.repository_owner }}` |
 | `output-dir` | Directory to write SVG files to | `assets/insights` |
-| `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` (CI) / `none` (local) |
-| `commit-push` | Whether to commit and push generated files | `true` (CI) / `false` (local) |
+| `readme-path` | Output path for the generated profile README (set to `none` to skip) | `README.md` |
+| `commit-push` | Whether to commit and push generated files | `true` |
 | `commit-message` | Commit message for generated files | `chore: update metrics` |
 | `commit-name` | Git user name for commits | `github-actions[bot]` |
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
 
 ## Configuration
 
-Create `github-insights.yml` (or `.yaml`) in your repo root, or run `github-insights init` to scaffold one:
+Create `github-insights.yml` (or `.yaml` / `.toml`) in your repo root, or run `github-insights init` to scaffold one:
 
 ```yaml
 name: Your Name
@@ -175,6 +176,20 @@ sections:                   # explicit section order (overrides template)
   - constellation
   - portfolio
   - impact
+
+# AI prompt valves — override model, temperature, or prompt text per task.
+# Values can be inline strings or paths to .txt/.md files.
+ai:
+  preamble:
+    model: gpt-4.1           # GitHub Models model ID
+    temperature: 0.5
+    system: prompts/preamble-system.txt
+    user: prompts/preamble-user.txt
+  classification:
+    model: gpt-4.1
+    temperature: 0.15
+    system: prompts/classification-system.txt
+    user: prompts/classification-user.txt
 ```
 
 All fields are optional and validated with Zod — invalid values are silently ignored with sensible defaults. The full schema is defined in `src/config.ts`.
@@ -183,13 +198,33 @@ All fields are optional and validated with Zod — invalid values are silently i
 
 ### Preamble Generation
 
-When no custom preamble is provided, the action uses AI to generate a profile introduction. The generated preamble consists of 1-2 sentences drawn from your profile bio, title, top languages, and notable projects. It uses a professional but friendly tone.
+When no custom preamble is provided, the action uses AI to generate a profile introduction (max 50 words) drawn from your profile bio, title, top languages, and notable projects. It uses a professional but friendly tone.
 
 To use your own text instead, create a `PREAMBLE.md` file in the repo root, or point to a custom file via the `preamble` field in `github-insights.yml`.
 
 ### Project Classification
 
-The action uses GitHub Models to classify repositories by maintenance status (active/maintained/inactive) and purpose category (Developer Tools, SDKs, Applications, Research & Experiments), with AI-generated summaries for each project.
+The action uses GitHub Models (default: `gpt-4.1`) to classify repositories by maintenance status (active/maintained/inactive) and purpose category (Developer Tools, SDKs, Applications, Research & Experiments), with AI-generated summaries for each project. The AI also ranks spotlight candidates.
+
+### Customizing AI Prompts
+
+You can override the model, temperature, system prompt, and user prompt for both AI tasks via the `ai:` block in `github-insights.yml`:
+
+```yaml
+ai:
+  preamble:
+    model: gpt-4.1        # any GitHub Models model ID
+    temperature: 0.5
+    system: prompts/my-system-prompt.txt   # file path or inline string
+    user: prompts/my-user-prompt.txt
+  classification:
+    model: gpt-4.1
+    temperature: 0.15
+    system: "You are a project classifier."  # inline string
+    user: prompts/classification-user.txt
+```
+
+Prompt values that end in `.txt` or `.md` (or are absolute paths) are read from disk; all other values are used as inline prompt text. If a file path is specified but the file is not found, the built-in default prompt is used with a warning.
 
 ### Token Permissions
 
@@ -207,7 +242,7 @@ The generated README is composed from configurable sections. Control which secti
 
 | Section | Type | Description |
 |---------|------|-------------|
-| `spotlight` | text | Top 3-5 projects ranked by activity heat score |
+| `spotlight` | text | Top projects ranked by AI analysis (activity, relevance, impact) |
 | `velocity` | svg | Language Velocity streamgraph |
 | `rhythm` | svg | Contribution Rhythm radar chart |
 | `constellation` | svg | Project Constellation map |
@@ -239,15 +274,9 @@ Or via the action input:
     sections: spotlight,velocity,rhythm
 ```
 
-### Spotlight Heat Score
+### Spotlight Ranking
 
-The spotlight section surfaces your most active projects using a composite score:
-
-- **Commit boost**: `min(commitsLastYear, 50) * 2` — rewards sustained activity, caps at 50
-- **Recency bonus**: `max(0, 90 - daysSincePush) / 3` — decays over 90 days
-- **Star boost**: `log2(stars + 1) * 5` — logarithmic, doesn't dominate
-
-This scoring is designed to be inclusive of entry-level developers — even a few recent commits will surface a project.
+The spotlight section surfaces your top projects using AI-based ranking. The LLM assigns a `spotlight_rank` to each repo during project classification, considering activity, relevance, and impact. Projects with recent commits (last 30 days) are labeled "Active"; those with commits in the last 90 days are labeled "Building".
 
 ### Template Presets
 
@@ -267,7 +296,7 @@ The `sections` input overrides `template` when both are specified.
 
 ### Prerequisites
 
-- Node.js 22+
+- Node.js 24+
 - `gh` CLI (authenticated) for local generation
 
 ### Commands
@@ -296,7 +325,7 @@ npm run fmt:fix     # format fix
 | `assets/insights/metrics-constellation.svg` | Project Constellation map |
 | `assets/insights/metrics-impact.svg` | Open Source Impact trail |
 | `README.md` | Generated profile README (CI only) |
-| `examples/default/README.md` | Local preview (generated by `github-insights generate`) |
+| `examples/default/README.md` | Local preview (generated when `--readme-path` is not `none`) |
 | `showcase/demo.gif` | Terminal demo recording (generated by `npm run showcase`) |
 
 ## Agent Skill
