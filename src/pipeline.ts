@@ -9,6 +9,7 @@ import {
   fetchUserProfile,
   makeGraphql,
 } from "./api.js";
+import { InsightsError } from "./errors.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
@@ -65,6 +66,7 @@ export interface PipelineConfig {
   readmePath: string;
   templateName: TemplateName;
   requestedSections: string[];
+  failFast: boolean;
 }
 
 // ── Git helper ──────────────────────────────────────────────────────────────
@@ -133,6 +135,8 @@ export async function runPipeline(
   );
 
   // ── Classify ──────────────────────────────────────────────────────────────
+  const failFast = config.failFast || userConfig.fail_fast || false;
+
   cb.onPhaseStart("classify", "Classifying projects");
   const languages = aggregateLanguages(repos);
   const complexProjects = getTopProjectsByComplexity(repos);
@@ -140,11 +144,22 @@ export async function runPipeline(
     repos,
     contributionData,
   );
-  const aiClassifications = await fetchProjectClassifications(
-    config.token,
-    classificationInputs,
-    prompts.classification,
-  );
+
+  let aiClassifications: Awaited<
+    ReturnType<typeof fetchProjectClassifications>
+  > = [];
+  try {
+    aiClassifications = await fetchProjectClassifications(
+      config.token,
+      classificationInputs,
+      prompts.classification,
+    );
+  } catch (err) {
+    if (failFast) throw err;
+    const msg = err instanceof InsightsError ? `${err.message} [${err.code}]` : String(err);
+    cb.onProgress(`AI classification unavailable (${msg}), using heuristics`);
+  }
+
   cb.onPhaseComplete(
     "classify",
     `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`,
@@ -228,18 +243,24 @@ export async function runPipeline(
     let preamble = loadPreamble(userConfig.preamble);
     if (!preamble) {
       cb.onProgress("Generating preamble with AI...");
-      preamble = await fetchAIPreamble(
-        config.token,
-        {
-          username: config.username,
-          profile: userProfile,
-          userConfig,
-          languages,
-          spotlightProjects,
-          complexProjects,
-        },
-        prompts.preamble,
-      );
+      try {
+        preamble = await fetchAIPreamble(
+          config.token,
+          {
+            username: config.username,
+            profile: userProfile,
+            userConfig,
+            languages,
+            spotlightProjects,
+            complexProjects,
+          },
+          prompts.preamble,
+        );
+      } catch (err) {
+        if (failFast) throw err;
+        const msg = err instanceof InsightsError ? `${err.message} [${err.code}]` : String(err);
+        cb.onProgress(`AI preamble unavailable (${msg}), skipping`);
+      }
     }
 
     const svgs = activeSections.map((s) => ({

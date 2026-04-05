@@ -39,6 +39,9 @@ inputs:
   sections:
     description: "Comma-separated ordered list of sections: spotlight, velocity, rhythm, constellation, impact, portfolio. Overrides 'template' preset."
     default: ""
+  fail-fast:
+    description: "Exit with an error instead of falling back to heuristics when AI is unavailable"
+    default: "false"
 runs:
   using: "node24"
   main: "dist/index.js"

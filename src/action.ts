@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { InsightsError, getExitCode } from "./errors.js";
 import type { PipelineCallbacks, PipelineConfig } from "./pipeline.js";
 import { runPipeline } from "./pipeline.js";
 import type { TemplateName } from "./types.js";
@@ -20,6 +21,8 @@ async function run(): Promise<void> {
   const configPath = core.getInput("config-file") || undefined;
   const readmePath =
     core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
+  const failFast =
+    (core.getInput("fail-fast") || "false") === "true";
 
   const templateName: TemplateName =
     (core.getInput("template") as TemplateName) || "showcase";
@@ -44,6 +47,7 @@ async function run(): Promise<void> {
     readmePath,
     templateName,
     requestedSections,
+    failFast,
   };
 
   const callbacks: PipelineCallbacks = {
@@ -64,8 +68,10 @@ async function run(): Promise<void> {
   try {
     await runPipeline(config, callbacks);
   } catch (error: unknown) {
+    const code = error instanceof InsightsError ? error.code : undefined;
     const msg = error instanceof Error ? error.message : String(error);
-    core.setFailed(msg);
+    core.setFailed(code ? `[${code}] ${msg}` : msg);
+    process.exitCode = getExitCode(error);
   }
 }
 

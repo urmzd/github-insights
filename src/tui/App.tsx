@@ -111,7 +111,12 @@ function ProgressLog({ messages }: { messages: string[] }) {
   );
 }
 
-export function App({ config }: { config: PipelineConfig }) {
+export interface AppProps {
+  config: PipelineConfig;
+  onExit?: (error: unknown | null) => void;
+}
+
+export function App({ config, onExit }: AppProps) {
   const { exit } = useApp();
   const [phases, setPhases] = useState<PhaseState[]>(
     PHASE_ORDER.map((p) => ({
@@ -123,6 +128,7 @@ export function App({ config }: { config: PipelineConfig }) {
   const [progressMessages, setProgressMessages] = useState<string[]>([]);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pipelineError, setPipelineError] = useState<unknown>(null);
   const [startTime] = useState(Date.now());
   const [totalElapsed, setTotalElapsed] = useState(0);
 
@@ -171,6 +177,7 @@ export function App({ config }: { config: PipelineConfig }) {
       })
       .catch((err) => {
         setTotalElapsed(Date.now() - startTime);
+        setPipelineError(err);
         setError(err instanceof Error ? err.message : String(err));
         setDone(true);
       });
@@ -178,9 +185,10 @@ export function App({ config }: { config: PipelineConfig }) {
 
   useEffect(() => {
     if (done) {
+      onExit?.(pipelineError);
       setTimeout(() => exit(), 100);
     }
-  }, [done, exit]);
+  }, [done, exit, onExit, pipelineError]);
 
   // Filter out phases that were never activated and are still pending at the end
   const visiblePhases = done

@@ -20,6 +20,10 @@ sections:
 
 exclude_archived: true
 
+# When true, the pipeline will fail instead of falling back to heuristics
+# when AI classification or preamble generation is unavailable.
+# fail_fast: false
+
 # AI prompt valves — override model, temperature, or prompt text per task.
 # Values can be inline strings or paths to .txt/.md files.
 # ai:

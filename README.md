@@ -110,6 +110,7 @@ github-insights generate \
 | `--readme-path <path>` | README output path (`none` to skip) | `none` (local) / `README.md` (CI) |
 | `--template <name>` | Template preset | `showcase` |
 | `--sections <list>` | Comma-separated section list (overrides template) | |
+| `--fail-fast` | Exit with error instead of falling back to heuristics when AI is unavailable | `false` |
 
 ### GitHub Action (CI)
 
@@ -155,6 +156,7 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 | `commit-message` | Commit message for generated files | `chore: update metrics` |
 | `commit-name` | Git user name for commits | `github-actions[bot]` |
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
+| `fail-fast` | Exit with error instead of falling back to heuristics when AI is unavailable | `false` |
 
 ## Configuration
 
@@ -169,6 +171,7 @@ bio: Building things on the internet.
 preamble: PREAMBLE.md      # path to custom preamble (optional)
 template: showcase          # section preset (optional)
 exclude_archived: true      # exclude archived repos from portfolio (default: true)
+fail_fast: false            # fail instead of falling back to heuristics (default: false)
 sections:                   # explicit section order (overrides template)
   - spotlight
   - velocity
@@ -235,6 +238,19 @@ permissions:
   contents: write  # to commit generated files
   models: read     # for AI project classification and preamble generation
 ```
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Rate limited (AI API) |
+| 3 | AI unavailable (network, bad response, empty output) |
+| 4 | Authentication failed (invalid or insufficient token permissions) |
+| 5 | API error |
+
+By default, AI failures are non-fatal — the pipeline falls back to heuristic classification and skips the AI preamble. Set `fail-fast: true` (action) or `--fail-fast` (CLI) to treat AI failures as errors with the appropriate exit code.
 
 ## Sections
 
