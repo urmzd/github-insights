@@ -11,6 +11,8 @@ import {
   collectAllTopics,
   computeSpotlightProjects,
   getTopProjectsByStars,
+  heuristicCategory,
+  heuristicHeatScore,
   SECTION_KEYS,
   splitProjectsByRecency,
 } from "./metrics.js";
@@ -820,13 +822,148 @@ describe("computeSpotlightProjects", () => {
     expect(result.length).toBe(0);
   });
 
-  it("returns empty when no AI classifications provided", () => {
+  it("returns heuristic spotlight when no AI classifications provided", () => {
     const repos = [
-      makeRepo({ name: "repo-a", pushedAt: new Date().toISOString() }),
+      makeRepo({
+        name: "repo-a",
+        stargazerCount: 10,
+        pushedAt: new Date().toISOString(),
+      }),
+      makeRepo({
+        name: "repo-b",
+        stargazerCount: 0,
+        pushedAt: new Date(
+          Date.now() - 100 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      }),
+    ];
+    const contribData = makeContributionData({
+      commitContributionsByRepository: [
+        {
+          repository: { name: "repo-a", nameWithOwner: "user/repo-a" },
+          contributions: { totalCount: 30 },
+        },
+        {
+          repository: { name: "repo-b", nameWithOwner: "user/repo-b" },
+          contributions: { totalCount: 1 },
+        },
+      ],
+    });
+
+    const result = computeSpotlightProjects(repos, contribData);
+    expect(result.length).toBe(2);
+    expect(result[0].name).toBe("repo-a");
+  });
+
+  it("heuristic spotlight excludes archived repos", () => {
+    const repos = [
+      makeRepo({ name: "archived", isArchived: true, stargazerCount: 100 }),
+      makeRepo({ name: "active", stargazerCount: 1 }),
     ];
     const contribData = makeContributionData();
 
     const result = computeSpotlightProjects(repos, contribData);
-    expect(result.length).toBe(0);
+    expect(result.every((p) => p.name !== "archived")).toBe(true);
+    expect(result.length).toBe(1);
+  });
+
+  it("heuristic spotlight caps at 5 repos", () => {
+    const repos = Array.from({ length: 8 }, (_, i) =>
+      makeRepo({ name: `repo-${i}` }),
+    );
+    const contribData = makeContributionData();
+
+    const result = computeSpotlightProjects(repos, contribData);
+    expect(result.length).toBe(5);
+  });
+});
+
+// ── heuristicHeatScore ────────────────────────────────────────────────────────
+
+describe("heuristicHeatScore", () => {
+  it("computes score from commits, recency, and stars", () => {
+    const repo = makeRepo({
+      stargazerCount: 100,
+      pushedAt: new Date().toISOString(),
+    });
+    const score = heuristicHeatScore(repo, 50);
+    // commitBoost = 100, recencyBonus = 30, starBoost = log2(101)*5 ≈ 33.3
+    expect(score).toBeGreaterThan(160);
+    expect(score).toBeLessThan(165);
+  });
+
+  it("caps commit boost at 50 commits", () => {
+    const repo = makeRepo({ pushedAt: new Date().toISOString() });
+    const score50 = heuristicHeatScore(repo, 50);
+    const score100 = heuristicHeatScore(repo, 100);
+    expect(score50).toBe(score100);
+  });
+
+  it("returns zero components for stale zero-star repo", () => {
+    const repo = makeRepo({
+      stargazerCount: 0,
+      pushedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const score = heuristicHeatScore(repo, 0);
+    // commitBoost=0, recencyBonus=0 (>90 days), starBoost=log2(1)*5=0
+    expect(score).toBe(0);
+  });
+});
+
+// ── heuristicCategory ─────────────────────────────────────────────────────────
+
+describe("heuristicCategory", () => {
+  it("classifies CLI tools as Developer Tools", () => {
+    const repo = makeRepo({ name: "my-cli-tool" });
+    expect(heuristicCategory(repo)).toBe("Developer Tools");
+  });
+
+  it("classifies SDKs from description", () => {
+    const repo = makeRepo({
+      name: "stripe-payments",
+      description: "A Python SDK for Stripe",
+    });
+    expect(heuristicCategory(repo)).toBe("SDKs");
+  });
+
+  it("classifies apps from name", () => {
+    const repo = makeRepo({ name: "weather-app" });
+    expect(heuristicCategory(repo)).toBe("Applications");
+  });
+
+  it("classifies research from topics", () => {
+    const repo = makeRepo({
+      name: "my-project",
+      description: "some project",
+      repositoryTopics: { nodes: [{ topic: { name: "machine-learning" } }] },
+    });
+    expect(heuristicCategory(repo)).toBe("Research & Experiments");
+  });
+
+  it("classifies Jupyter Notebook repos as Research", () => {
+    const repo = makeRepo({
+      name: "notebook-stuff",
+      description: "data analysis",
+      languages: {
+        totalSize: 5000,
+        edges: [
+          { size: 5000, node: { name: "Jupyter Notebook", color: "#DA5B0B" } },
+        ],
+      },
+    });
+    expect(heuristicCategory(repo)).toBe("Research & Experiments");
+  });
+
+  it("returns Other when no keywords match", () => {
+    const repo = makeRepo({
+      name: "foobar",
+      description: "does stuff",
+      repositoryTopics: { nodes: [] },
+      languages: {
+        totalSize: 5000,
+        edges: [{ size: 5000, node: { name: "TypeScript", color: "#3178c6" } }],
+      },
+    });
+    expect(heuristicCategory(repo)).toBe("Other");
   });
 });

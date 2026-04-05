@@ -193,6 +193,58 @@ const heuristicStatus = (
   return "inactive";
 };
 
+export const heuristicHeatScore = (
+  repo: RepoNode,
+  commitsLastYear: number,
+): number => {
+  const commitBoost = Math.min(commitsLastYear, 50) * 2;
+  const daysSincePush =
+    (Date.now() - new Date(repo.pushedAt).getTime()) / (24 * 60 * 60 * 1000);
+  const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
+  const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
+  return commitBoost + recencyBonus + starBoost;
+};
+
+const CATEGORY_KEYWORDS: [string, RegExp][] = [
+  [
+    "Developer Tools",
+    /\b(cli|command.?line|tool|build|generator|scaffold|lint|format|action|automation|devtool)\b/i,
+  ],
+  [
+    "SDKs",
+    /\b(sdk|lib|library|client|wrapper|binding|plugin|middleware|driver|adapter)\b/i,
+  ],
+  [
+    "Applications",
+    /\b(app|application|web|api|server|dashboard|frontend|backend|website|platform|service)\b/i,
+  ],
+  [
+    "Research & Experiments",
+    /\b(experiment|research|thesis|academic|ml|machine.?learning|deep.?learning|neural|algorithm|game|clone|learning|course)\b/i,
+  ],
+];
+
+export const heuristicCategory = (repo: RepoNode): string => {
+  const parts = [
+    repo.name.replace(/[-_]/g, " "),
+    repo.description || "",
+    ...repo.repositoryTopics.nodes.map((n) => n.topic.name),
+  ];
+  const text = parts.join(" ");
+
+  for (const [category, pattern] of CATEGORY_KEYWORDS) {
+    if (pattern.test(text)) return category;
+  }
+
+  const langs = new Set(
+    repo.languages.edges.map((e) => e.node.name.toLowerCase()),
+  );
+  if (langs.has("jupyter notebook") || langs.has("r"))
+    return "Research & Experiments";
+
+  return "Other";
+};
+
 export const splitProjectsByRecency = (
   repos: RepoNode[],
   contributionData: ContributionData,
@@ -254,11 +306,14 @@ export const splitProjectsByRecency = (
   const sortByComplexity = (a: RepoNode, b: RepoNode) =>
     complexityScore(b) - complexityScore(a);
 
-  const toProjectItemWithSummary = (repo: RepoNode): ProjectItem => ({
-    ...toProjectItem(repo),
-    summary: aiMap.get(repo.name)?.summary || undefined,
-    category: aiMap.get(repo.name)?.category || undefined,
-  });
+  const toProjectItemWithSummary = (repo: RepoNode): ProjectItem => {
+    const ai = aiMap.get(repo.name);
+    return {
+      ...toProjectItem(repo),
+      summary: ai?.summary || repo.description || undefined,
+      category: ai?.category || heuristicCategory(repo),
+    };
+  };
 
   const active: ProjectItem[] = activeRepos
     .sort(sortByComplexity)
@@ -276,7 +331,7 @@ export const splitProjectsByRecency = (
   return { active, maintained, inactive, archived };
 };
 
-// ── Spotlight (LLM-ranked) ────────────────────────────────────────────────────
+// ── Spotlight (LLM-ranked with heuristic fallback) ───────────────────────────
 
 export const computeSpotlightProjects = (
   repos: RepoNode[],
@@ -298,45 +353,72 @@ export const computeSpotlightProjects = (
   const now = Date.now();
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  // Collect repos that the LLM ranked for spotlight
-  const ranked = repos
-    .filter((repo) => {
-      const ai = aiMap.get(repo.name);
-      return (
-        ai?.spotlight_rank != null && ai.spotlight_rank >= 1 && !repo.isArchived
-      );
-    })
-    .sort((a, b) => {
-      const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
-      const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
-      return rankA - rankB;
-    })
+  const computeActivityLabel = (
+    commits: number,
+    daysSincePush: number,
+  ): string | undefined => {
+    if (commits >= 10 && daysSincePush <= 30) return "Active";
+    if (commits >= 1 || daysSincePush <= 90) return "Building";
+    return undefined;
+  };
+
+  // ── AI path: use LLM rankings when available ───────────────────────────
+  if (aiMap.size > 0) {
+    return repos
+      .filter((repo) => {
+        const ai = aiMap.get(repo.name);
+        return (
+          ai?.spotlight_rank != null &&
+          ai.spotlight_rank >= 1 &&
+          !repo.isArchived
+        );
+      })
+      .sort((a, b) => {
+        const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
+        const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
+        return rankA - rankB;
+      })
+      .map((repo) => {
+        const ai = aiMap.get(repo.name);
+        const commits = commitMap.get(repo.name) || 0;
+        const daysSincePush = Math.max(
+          0,
+          (now - new Date(repo.pushedAt).getTime()) / DAY_MS,
+        );
+
+        return {
+          ...toProjectItem(repo),
+          summary: ai?.summary || undefined,
+          category: ai?.category || undefined,
+          heatScore: ai?.spotlight_rank ?? 0,
+          activityLabel: computeActivityLabel(commits, daysSincePush),
+        };
+      });
+  }
+
+  // ── Heuristic fallback: rank by heat score ─────────────────────────────
+  return repos
+    .filter((repo) => !repo.isArchived)
     .map((repo) => {
-      const ai = aiMap.get(repo.name);
       const commits = commitMap.get(repo.name) || 0;
+      return { repo, commits, score: heuristicHeatScore(repo, commits) };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(({ repo, commits, score }) => {
       const daysSincePush = Math.max(
         0,
         (now - new Date(repo.pushedAt).getTime()) / DAY_MS,
       );
-      const pushedInLast30 = daysSincePush <= 30;
-      const pushedInLast90 = daysSincePush <= 90;
-      let activityLabel: string | undefined;
-      if (commits >= 10 && pushedInLast30) {
-        activityLabel = "Active";
-      } else if (commits >= 1 || pushedInLast90) {
-        activityLabel = "Building";
-      }
 
       return {
         ...toProjectItem(repo),
-        summary: ai?.summary || undefined,
-        category: ai?.category || undefined,
-        heatScore: ai?.spotlight_rank ?? 0,
-        activityLabel,
+        summary: repo.description || undefined,
+        category: heuristicCategory(repo),
+        heatScore: score,
+        activityLabel: computeActivityLabel(commits, daysSincePush),
       };
     });
-
-  return ranked;
 };
 
 // ── Language Velocity ────────────────────────────────────────────────────────
