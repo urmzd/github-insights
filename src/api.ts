@@ -330,8 +330,13 @@ export const fetchAIPreamble = async (
   valves: PromptValves,
 ): Promise<string | undefined> => {
   try {
-    const { profile, userConfig, languages, spotlightProjects, complexProjects } =
-      context;
+    const {
+      profile,
+      userConfig,
+      languages,
+      spotlightProjects,
+      complexProjects,
+    } = context;
 
     const langLines = languages
       .map((l) => `- ${l.name}: ${l.percent}%`)
