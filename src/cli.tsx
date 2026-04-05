@@ -7,7 +7,7 @@ import { App } from "./tui/App.js";
 import type { TemplateName } from "./types.js";
 
 // Hardcoded at build time — update via `npm version`
-const version = "3.1.0";
+const version = "3.4.0";
 
 const program = new Command()
   .name("github-insights")

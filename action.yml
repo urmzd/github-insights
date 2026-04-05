@@ -7,7 +7,7 @@ branding:
 
 inputs:
   github-token:
-    description: "GitHub token (needs repo read + models:read for AI domain analysis)"
+    description: "GitHub token (needs repo read + models:read for AI project classification and preamble generation)"
     default: ${{ github.token }}
   username:
     description: "GitHub username to generate metrics for"
@@ -31,7 +31,7 @@ inputs:
     description: "Path to github-insights.yml config file (also accepts .yaml)"
     default: "github-insights.yml"
   readme-path:
-    description: "Output path for the generated profile README (set to 'none' to skip; defaults to _README.md locally)"
+    description: "Output path for the generated profile README (set to 'none' to skip)"
     default: "README.md"
   template:
     description: "Section preset (classic, modern, minimal, ecosystem, showcase). Ignored if 'sections' is specified."
