@@ -10,10 +10,10 @@ import {
   fetchUserProfile,
   makeGraphql,
 } from "./api.js";
-import { InsightsError, getExitCode } from "./errors.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
+import { getExitCode, InsightsError } from "./errors.js";
 import {
   aggregateLanguages,
   buildClassificationInputs,
@@ -128,7 +128,10 @@ async function run(): Promise<void> {
         prompts.classification,
       );
     } catch (err) {
-      const msg = err instanceof InsightsError ? `${err.message} [${err.code}]` : String(err);
+      const msg =
+        err instanceof InsightsError
+          ? `${err.message} [${err.code}]`
+          : String(err);
       core.warning(`AI classification unavailable (${msg}), using heuristics`);
     }
     core.info(
@@ -216,7 +219,10 @@ async function run(): Promise<void> {
             prompts.preamble,
           );
         } catch (err) {
-          const msg = err instanceof InsightsError ? `${err.message} [${err.code}]` : String(err);
+          const msg =
+            err instanceof InsightsError
+              ? `${err.message} [${err.code}]`
+              : String(err);
           core.warning(`AI preamble unavailable (${msg}), skipping`);
         }
       }

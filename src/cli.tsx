@@ -92,9 +92,14 @@ program
       failFast: opts.failFast,
     };
 
-    render(<App config={config} onExit={(err) => {
-      process.exitCode = err ? getExitCode(err) : 0;
-    }} />);
+    render(
+      <App
+        config={config}
+        onExit={(err) => {
+          process.exitCode = err ? getExitCode(err) : 0;
+        }}
+      />,
+    );
   });
 
 program.parse();

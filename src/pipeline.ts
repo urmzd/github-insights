@@ -9,10 +9,10 @@ import {
   fetchUserProfile,
   makeGraphql,
 } from "./api.js";
-import { InsightsError } from "./errors.js";
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
+import { InsightsError } from "./errors.js";
 import {
   aggregateLanguages,
   buildClassificationInputs,
@@ -156,7 +156,10 @@ export async function runPipeline(
     );
   } catch (err) {
     if (failFast) throw err;
-    const msg = err instanceof InsightsError ? `${err.message} [${err.code}]` : String(err);
+    const msg =
+      err instanceof InsightsError
+        ? `${err.message} [${err.code}]`
+        : String(err);
     cb.onProgress(`AI classification unavailable (${msg}), using heuristics`);
   }
 
@@ -258,7 +261,10 @@ export async function runPipeline(
         );
       } catch (err) {
         if (failFast) throw err;
-        const msg = err instanceof InsightsError ? `${err.message} [${err.code}]` : String(err);
+        const msg =
+          err instanceof InsightsError
+            ? `${err.message} [${err.code}]`
+            : String(err);
         cb.onProgress(`AI preamble unavailable (${msg}), skipping`);
       }
     }

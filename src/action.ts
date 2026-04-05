@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { InsightsError, getExitCode } from "./errors.js";
+import { getExitCode, InsightsError } from "./errors.js";
 import type { PipelineCallbacks, PipelineConfig } from "./pipeline.js";
 import { runPipeline } from "./pipeline.js";
 import type { TemplateName } from "./types.js";
@@ -21,8 +21,7 @@ async function run(): Promise<void> {
   const configPath = core.getInput("config-file") || undefined;
   const readmePath =
     core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
-  const failFast =
-    (core.getInput("fail-fast") || "false") === "true";
+  const failFast = (core.getInput("fail-fast") || "false") === "true";
 
   const templateName: TemplateName =
     (core.getInput("template") as TemplateName) || "showcase";
