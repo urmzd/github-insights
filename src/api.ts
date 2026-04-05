@@ -1,5 +1,6 @@
 import * as github from "@actions/github";
 import type { UserConfig } from "./config.js";
+import { ErrorCode, InsightsError } from "./errors.js";
 import { interpolate, type PromptValves } from "./prompts.js";
 import type {
   ContributionData,
@@ -18,14 +19,24 @@ const fetchWithRetry = async (
   url: string,
   init: RequestInit,
   label: string,
-): Promise<Response | null> => {
+): Promise<Response> => {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(url, init);
+    let res: Response;
+    try {
+      res = await fetch(url, init);
+    } catch (err) {
+      throw new InsightsError(
+        `${label}: network error: ${err instanceof Error ? err.message : String(err)}`,
+        ErrorCode.AI_UNAVAILABLE,
+      );
+    }
     if (res.status !== 429) return res;
 
     if (attempt === MAX_RETRIES) {
-      console.warn(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`);
-      return null;
+      throw new InsightsError(
+        `${label}: rate limited after ${MAX_RETRIES + 1} attempts`,
+        ErrorCode.RATE_LIMITED,
+      );
     }
 
     const retryAfter = res.headers.get("retry-after");
@@ -35,7 +46,8 @@ const fetchWithRetry = async (
     );
     await new Promise((r) => setTimeout(r, waitSec * 1000));
   }
-  return null;
+  /* istanbul ignore next — unreachable, loop always returns or throws */
+  throw new InsightsError(`${label}: rate limited`, ErrorCode.RATE_LIMITED);
 };
 
 const MANIFEST_FILES = [
@@ -328,123 +340,125 @@ export const fetchAIPreamble = async (
   token: string,
   context: PreambleContext,
   valves: PromptValves,
-): Promise<string | undefined> => {
-  try {
-    const {
-      profile,
-      userConfig,
-      languages,
-      spotlightProjects,
-      complexProjects,
-    } = context;
+): Promise<string> => {
+  const { profile, userConfig, languages, spotlightProjects, complexProjects } =
+    context;
 
-    const langLines = languages
-      .map((l) => `- ${l.name}: ${l.percent}%`)
-      .join("\n");
+  const langLines = languages
+    .map((l) => `- ${l.name}: ${l.percent}%`)
+    .join("\n");
 
-    const formatProject = (p: ProjectItem): string => {
-      const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
-      const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
-      const desc = p.summary || p.description;
-      return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
-    };
+  const formatProject = (p: ProjectItem): string => {
+    const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
+    const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
+    const desc = p.summary || p.description;
+    return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
+  };
 
-    const spotlightLines = spotlightProjects.map(formatProject).join("\n");
-    const complexProjectLines = complexProjects.map(formatProject).join("\n");
+  const spotlightLines = spotlightProjects.map(formatProject).join("\n");
+  const complexProjectLines = complexProjects.map(formatProject).join("\n");
 
-    const profileLines = [
-      profile.name ? `Name: ${profile.name}` : null,
-      profile.bio ? `Bio: ${profile.bio}` : null,
-      profile.company ? `Company: ${profile.company}` : null,
-      profile.location ? `Location: ${profile.location}` : null,
-      userConfig.title ? `Current title: ${userConfig.title}` : null,
-      userConfig.desired_title
-        ? `Desired title: ${userConfig.desired_title}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
+  const profileLines = [
+    profile.name ? `Name: ${profile.name}` : null,
+    profile.bio ? `Bio: ${profile.bio}` : null,
+    profile.company ? `Company: ${profile.company}` : null,
+    profile.location ? `Location: ${profile.location}` : null,
+    userConfig.title ? `Current title: ${userConfig.title}` : null,
+    userConfig.desired_title
+      ? `Desired title: ${userConfig.desired_title}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
-    const prompt = interpolate(valves.user, {
-      profile: profileLines,
-      languages: langLines,
-      complexProjects: complexProjectLines || "None",
-      activeProjects: spotlightLines || "None",
-    });
+  const prompt = interpolate(valves.user, {
+    profile: profileLines,
+    languages: langLines,
+    complexProjects: complexProjectLines || "None",
+    activeProjects: spotlightLines || "None",
+  });
 
-    const res = await fetchWithRetry(
-      "https://models.github.ai/inference/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: valves.model,
-          messages: [
-            { role: "system", content: valves.system },
-            { role: "user", content: prompt },
-          ],
-          temperature: valves.temperature,
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "preamble",
-              strict: true,
-              schema: {
-                type: "object",
-                properties: { preamble: { type: "string" } },
-                required: ["preamble"],
-                additionalProperties: false,
-              },
+  const res = await fetchWithRetry(
+    "https://models.github.ai/inference/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: valves.model,
+        messages: [
+          { role: "system", content: valves.system },
+          { role: "user", content: prompt },
+        ],
+        temperature: valves.temperature,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "preamble",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: { preamble: { type: "string" } },
+              required: ["preamble"],
+              additionalProperties: false,
             },
           },
-        }),
-      },
-      "Preamble",
+        },
+      }),
+    },
+    "Preamble",
+  );
+
+  if (res.status === 401 || res.status === 403) {
+    throw new InsightsError(
+      `GitHub Models API auth error (preamble): ${res.status}`,
+      ErrorCode.AUTH_FAILED,
     );
-
-    if (!res?.ok) {
-      if (res)
-        console.warn(`GitHub Models API error (preamble): ${res.status}`);
-      return undefined;
-    }
-
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content) as { preamble?: string };
-    const raw = parsed.preamble || undefined;
-    if (!raw) return undefined;
-
-    const cleaned = raw
-      // Strip conversational preface (safety net)
-      .replace(
-        /^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i,
-        "",
-      )
-      // Strip wrapping code fences
-      .replace(/^```(?:markdown|md)?\s*\n?/, "")
-      .replace(/\n?```\s*$/, "")
-      .trim();
-
-    // Reject degenerate output (conversational filler with no real content)
-    const minLength = 20;
-    if (cleaned.length < minLength) {
-      console.warn(
-        `AI preamble too short after cleaning (${cleaned.length} chars), discarding`,
-      );
-      return undefined;
-    }
-
-    return cleaned;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
-    return undefined;
   }
+
+  if (!res.ok) {
+    throw new InsightsError(
+      `GitHub Models API error (preamble): ${res.status}`,
+      ErrorCode.AI_UNAVAILABLE,
+    );
+  }
+
+  const json = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = json.choices?.[0]?.message?.content || "{}";
+  const parsed = JSON.parse(content) as { preamble?: string };
+  const raw = parsed.preamble;
+  if (!raw) {
+    throw new InsightsError(
+      "AI preamble response contained no preamble field",
+      ErrorCode.AI_UNAVAILABLE,
+    );
+  }
+
+  const cleaned = raw
+    // Strip conversational preface (safety net)
+    .replace(
+      /^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i,
+      "",
+    )
+    // Strip wrapping code fences
+    .replace(/^```(?:markdown|md)?\s*\n?/, "")
+    .replace(/\n?```\s*$/, "")
+    .trim();
+
+  // Reject degenerate output (conversational filler with no real content)
+  const minLength = 20;
+  if (cleaned.length < minLength) {
+    throw new InsightsError(
+      `AI preamble too short after cleaning (${cleaned.length} chars)`,
+      ErrorCode.AI_UNAVAILABLE,
+    );
+  }
+
+  return cleaned;
 };
 
 export const fetchProjectClassifications = async (
@@ -452,106 +466,106 @@ export const fetchProjectClassifications = async (
   repos: RepoClassificationInput[],
   valves: PromptValves,
 ): Promise<RepoClassificationOutput[]> => {
-  try {
-    const repoData = JSON.stringify(repos, null, 2);
+  const repoData = JSON.stringify(repos, null, 2);
 
-    const prompt = interpolate(valves.user, { repoData });
+  const prompt = interpolate(valves.user, { repoData });
 
-    const res = await fetchWithRetry(
-      "https://models.github.ai/inference/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: valves.model,
-          messages: [
-            { role: "system", content: valves.system },
-            { role: "user", content: prompt },
-          ],
-          temperature: valves.temperature,
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "project_classifications",
-              strict: true,
-              schema: {
-                type: "object",
-                properties: {
-                  classifications: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        status: {
-                          type: "string",
-                          enum: ["active", "maintained", "inactive"],
-                        },
-                        summary: { type: "string" },
-                        category: {
-                          type: "string",
-                          enum: [
-                            "Developer Tools",
-                            "SDKs",
-                            "Applications",
-                            "Research & Experiments",
-                          ],
-                        },
-                        spotlight_rank: {
-                          type: ["integer", "null"],
-                        },
+  const res = await fetchWithRetry(
+    "https://models.github.ai/inference/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: valves.model,
+        messages: [
+          { role: "system", content: valves.system },
+          { role: "user", content: prompt },
+        ],
+        temperature: valves.temperature,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "project_classifications",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                classifications: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      status: {
+                        type: "string",
+                        enum: ["active", "maintained", "inactive"],
                       },
-                      required: [
-                        "name",
-                        "status",
-                        "summary",
-                        "category",
-                        "spotlight_rank",
-                      ],
-                      additionalProperties: false,
+                      summary: { type: "string" },
+                      category: {
+                        type: "string",
+                        enum: [
+                          "Developer Tools",
+                          "SDKs",
+                          "Applications",
+                          "Research & Experiments",
+                        ],
+                      },
+                      spotlight_rank: {
+                        type: ["integer", "null"],
+                      },
                     },
+                    required: [
+                      "name",
+                      "status",
+                      "summary",
+                      "category",
+                      "spotlight_rank",
+                    ],
+                    additionalProperties: false,
                   },
                 },
-                required: ["classifications"],
-                additionalProperties: false,
               },
+              required: ["classifications"],
+              additionalProperties: false,
             },
           },
-        }),
-      },
-      "Classifications",
+        },
+      }),
+    },
+    "Classifications",
+  );
+
+  if (res.status === 401 || res.status === 403) {
+    throw new InsightsError(
+      `GitHub Models API auth error (classifications): ${res.status}`,
+      ErrorCode.AUTH_FAILED,
     );
-
-    if (!res?.ok) {
-      if (res)
-        console.warn(
-          `GitHub Models API error (classifications): ${res.status}`,
-        );
-      return [];
-    }
-
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content) as {
-      classifications?: RepoClassificationOutput[];
-    };
-    return (parsed.classifications || [])
-      .filter(
-        (c) =>
-          c.name &&
-          (c.status === "active" ||
-            c.status === "maintained" ||
-            c.status === "inactive"),
-      )
-      .map((c) => ({ ...c, summary: c.summary || "" }));
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`Project classification failed (non-fatal): ${msg}`);
-    return [];
   }
+
+  if (!res.ok) {
+    throw new InsightsError(
+      `GitHub Models API error (classifications): ${res.status}`,
+      ErrorCode.AI_UNAVAILABLE,
+    );
+  }
+
+  const json = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = json.choices?.[0]?.message?.content || "{}";
+  const parsed = JSON.parse(content) as {
+    classifications?: RepoClassificationOutput[];
+  };
+  return (parsed.classifications || [])
+    .filter(
+      (c) =>
+        c.name &&
+        (c.status === "active" ||
+          c.status === "maintained" ||
+          c.status === "inactive"),
+    )
+    .map((c) => ({ ...c, summary: c.summary || "" }));
 };

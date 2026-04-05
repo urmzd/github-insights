@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { render } from "ink";
 import React from "react";
 import { configExists, initConfig } from "./config.js";
+import { getExitCode } from "./errors.js";
 import type { PipelineConfig } from "./pipeline.js";
 import { App } from "./tui/App.js";
 import type { TemplateName } from "./types.js";
@@ -51,6 +52,11 @@ program
     process.env.TEMPLATE || "showcase",
   )
   .option("--sections <list>", "Comma-separated section list")
+  .option(
+    "--fail-fast",
+    "Exit with an error instead of falling back to heuristics when AI is unavailable",
+    false,
+  )
   .action((opts) => {
     const token = opts.token || "";
     const username = opts.username || "";
@@ -83,9 +89,17 @@ program
             .map((s: string) => s.trim().toLowerCase())
             .filter(Boolean)
         : [],
+      failFast: opts.failFast,
     };
 
-    render(<App config={config} />);
+    render(
+      <App
+        config={config}
+        onExit={(err) => {
+          process.exitCode = err ? getExitCode(err) : 0;
+        }}
+      />,
+    );
   });
 
 program.parse();

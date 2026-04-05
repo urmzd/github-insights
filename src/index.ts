@@ -13,6 +13,7 @@ import {
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
+import { getExitCode, InsightsError } from "./errors.js";
 import {
   aggregateLanguages,
   buildClassificationInputs,
@@ -116,11 +117,23 @@ async function run(): Promise<void> {
       repos,
       contributionData,
     );
-    const aiClassifications = await fetchProjectClassifications(
-      token,
-      classificationInputs,
-      prompts.classification,
-    );
+
+    let aiClassifications: Awaited<
+      ReturnType<typeof fetchProjectClassifications>
+    > = [];
+    try {
+      aiClassifications = await fetchProjectClassifications(
+        token,
+        classificationInputs,
+        prompts.classification,
+      );
+    } catch (err) {
+      const msg =
+        err instanceof InsightsError
+          ? `${err.message} [${err.code}]`
+          : String(err);
+      core.warning(`AI classification unavailable (${msg}), using heuristics`);
+    }
     core.info(
       `Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`,
     );
@@ -192,18 +205,26 @@ async function run(): Promise<void> {
 
       if (!preamble) {
         core.info("No PREAMBLE.md found, generating with AI...");
-        preamble = await fetchAIPreamble(
-          token,
-          {
-            username,
-            profile: userProfile,
-            userConfig,
-            languages,
-            spotlightProjects,
-            complexProjects,
-          },
-          prompts.preamble,
-        );
+        try {
+          preamble = await fetchAIPreamble(
+            token,
+            {
+              username,
+              profile: userProfile,
+              userConfig,
+              languages,
+              spotlightProjects,
+              complexProjects,
+            },
+            prompts.preamble,
+          );
+        } catch (err) {
+          const msg =
+            err instanceof InsightsError
+              ? `${err.message} [${err.code}]`
+              : String(err);
+          core.warning(`AI preamble unavailable (${msg}), skipping`);
+        }
       }
 
       const svgs = activeSections.map((s) => ({
@@ -356,8 +377,10 @@ async function run(): Promise<void> {
       }
     }
   } catch (error: unknown) {
+    const code = error instanceof InsightsError ? error.code : undefined;
     const msg = error instanceof Error ? error.message : String(error);
-    core.setFailed(msg);
+    core.setFailed(code ? `[${code}] ${msg}` : msg);
+    process.exitCode = getExitCode(error);
   }
 }
 
