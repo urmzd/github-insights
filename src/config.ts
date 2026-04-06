@@ -23,7 +23,11 @@ const VALID_SECTIONS = [
   "constellation",
   "impact",
   "portfolio",
+  "stack",
 ] as const;
+
+const VALID_CONSTELLATION_GROUP_BY = ["language", "category"] as const;
+const constellationGroupBySet = new Set<string>(VALID_CONSTELLATION_GROUP_BY);
 
 const templateSet = new Set<string>(VALID_TEMPLATES);
 const sectionSet = new Set<string>(VALID_SECTIONS);
@@ -67,6 +71,17 @@ const aiConfigSchema = z
   .strip()
   .optional();
 
+/** Lowercases + validates against constellation group-by enum, returns undefined if invalid. */
+const lenientConstellationGroupBy = z
+  .string()
+  .transform((s) => {
+    const lower = s.trim().toLowerCase();
+    return constellationGroupBySet.has(lower)
+      ? (lower as (typeof VALID_CONSTELLATION_GROUP_BY)[number])
+      : undefined;
+  })
+  .optional();
+
 /** Filters array to valid section strings, returns undefined if empty. */
 const lenientSections = z
   .array(z.unknown())
@@ -92,6 +107,7 @@ export const UserConfigSchema = z
     exclude_archived: z.boolean().optional(),
     fail_fast: z.boolean().optional(),
     export_json: z.boolean().optional(),
+    constellation_group_by: lenientConstellationGroupBy,
     ai: aiConfigSchema,
   })
   .strip()
@@ -116,6 +132,7 @@ export type UserConfig = {
   exclude_archived?: boolean;
   fail_fast?: boolean;
   export_json?: boolean;
+  constellation_group_by?: (typeof VALID_CONSTELLATION_GROUP_BY)[number];
   ai?: AIConfig;
 };
 
@@ -132,6 +149,7 @@ const SECTION_PRESETS: Record<string, ShowcaseSection[]> = {
     "velocity",
     "rhythm",
     "constellation",
+    "stack",
     "portfolio",
     "impact",
   ],

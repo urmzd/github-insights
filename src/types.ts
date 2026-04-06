@@ -165,6 +165,8 @@ export interface ContributionRhythm {
   stats: StatItem[];
 }
 
+export type ConstellationGroupBy = "language" | "category";
+
 // ── Project constellation ─────────────────────────────────────────────────
 
 export interface GrowthArcPoint {
@@ -193,6 +195,24 @@ export interface UserProfile {
   socialAccounts: { provider: string; url: string }[];
 }
 
+// ── Tech Stack ──────────────────────────────────────────────────────────────
+
+export interface StackProject {
+  name: string;
+  url: string;
+  stars: number;
+  primaryLanguage: string;
+  primaryColor: string;
+  complexity: number;
+}
+
+export interface StackLayer {
+  name: string; // "AI & Research", "Applications", "Libraries & SDKs", "Infrastructure"
+  rank: number; // 0=bottom (infra) → 3=top (AI)
+  color: string; // layer accent color
+  projects: StackProject[];
+}
+
 // ── SVG embed ─────────────────────────────────────────────────────────────
 
 export interface SvgEmbed {
@@ -215,7 +235,8 @@ export type ShowcaseSection =
   | "rhythm"
   | "constellation"
   | "impact"
-  | "portfolio";
+  | "portfolio"
+  | "stack";
 
 export interface SpotlightProject extends ProjectItem {
   heatScore: number;
@@ -244,6 +265,30 @@ export interface RepoClassificationOutput {
   spotlight_rank?: number | null;
 }
 
+// ── Insights Report ─────────────────────────────────────────────────────────
+
+export interface InsightsReport {
+  username: string;
+  displayName: string;
+  firstName: string;
+  profile: UserProfile;
+  languages: LanguageItem[];
+  allProjects: ProjectItem[];
+  activeProjects: ProjectItem[];
+  maintainedProjects: ProjectItem[];
+  inactiveProjects: ProjectItem[];
+  archivedProjects: ProjectItem[];
+  categorizedProjects: Record<string, ProjectItem[]>;
+  spotlightProjects: SpotlightProject[];
+  velocity: MonthlyLanguageBucket[];
+  rhythm: ContributionRhythm;
+  constellation: ConstellationBar[];
+  stack: StackLayer[];
+  contributionData: ContributionData;
+  constellationGroupBy: ConstellationGroupBy;
+  generatedAt: string;
+}
+
 export interface TemplateContext {
   username: string;
   name: string;
@@ -266,6 +311,7 @@ export interface TemplateContext {
   velocity: MonthlyLanguageBucket[];
   rhythm: ContributionRhythm;
   constellation: ConstellationBar[];
+  stack: StackLayer[];
   contributionData: ContributionData;
   socialBadges: string;
   svgDir: string;
