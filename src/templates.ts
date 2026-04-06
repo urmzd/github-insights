@@ -172,6 +172,11 @@ function renderImpact(ctx: TemplateContext): string {
   return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
 }
 
+function renderStack(ctx: TemplateContext): string {
+  if (!ctx.sectionSvgs.stack) return "";
+  return `## Tech Stack\n\n![Tech Stack](${ctx.sectionSvgs.stack})`;
+}
+
 function renderPortfolio(ctx: TemplateContext): string {
   const tableParts: string[] = [];
 
@@ -207,6 +212,7 @@ const SECTION_RENDERERS: Record<
   constellation: renderConstellation,
   impact: renderImpact,
   portfolio: renderPortfolio,
+  stack: renderStack,
 };
 
 // ── Showcase template ─────────────────────────────────────────────────────
