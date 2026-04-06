@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.9.2 (2026-04-06)
+
+### Bug Fixes
+
+- deduplicate spotlight/portfolio, dynamic constellation rows, and guard constellation+stack ([44fbca0](https://github.com/urmzd/github-insights/commit/44fbca0bab24990dea840fef4396c9740e054c29))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.9.1...v3.9.2)
+
+
 ## 3.9.1 (2026-04-06)
 
 ### Bug Fixes

@@ -56244,7 +56244,6 @@ const SECTION_PRESETS = {
         "spotlight",
         "velocity",
         "rhythm",
-        "constellation",
         "stack",
         "portfolio",
         "impact",
@@ -56262,14 +56261,23 @@ const DEFAULT_SECTIONS = SECTION_PRESETS.showcase;
 const DEFAULT_CONFIG_ASSET = (0,external_node_path_namespaceObject.join)((0,external_node_path_namespaceObject.dirname)((0,external_node_url_namespaceObject.fileURLToPath)(import.meta.url)), "templates", "github-insights.default.yaml");
 // ── Public API ────────────────────────────────────────────────────────────
 function resolveTemplateSections(templateName, explicitSections) {
+    let sections;
     if (explicitSections && explicitSections.length > 0) {
         const valid = explicitSections.filter((s) => SectionSchema.safeParse(s).success);
-        return valid.length > 0 ? valid : DEFAULT_SECTIONS;
+        sections =
+            valid.length > 0 ? valid : DEFAULT_SECTIONS;
     }
-    if (templateName && SECTION_PRESETS[templateName]) {
-        return SECTION_PRESETS[templateName];
+    else if (templateName && SECTION_PRESETS[templateName]) {
+        sections = SECTION_PRESETS[templateName];
     }
-    return DEFAULT_SECTIONS;
+    else {
+        sections = DEFAULT_SECTIONS;
+    }
+    // constellation and stack are mutually exclusive — keep constellation
+    if (sections.includes("constellation") && sections.includes("stack")) {
+        sections = sections.filter((s) => s !== "stack");
+    }
+    return sections;
 }
 function parseUserConfig(raw, format = "yaml") {
     const parsed = format === "toml"
