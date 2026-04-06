@@ -125,6 +125,25 @@ describe("parseUserConfig", () => {
     });
   });
 
+  it("parses constellation_group_by as language", () => {
+    const raw = `constellation_group_by: language`;
+    expect(parseUserConfig(raw)).toEqual({
+      constellation_group_by: "language",
+    });
+  });
+
+  it("parses constellation_group_by as category", () => {
+    const raw = `constellation_group_by: category`;
+    expect(parseUserConfig(raw)).toEqual({
+      constellation_group_by: "category",
+    });
+  });
+
+  it("drops invalid constellation_group_by", () => {
+    const raw = `constellation_group_by: "invalid"`;
+    expect(parseUserConfig(raw)).toEqual({});
+  });
+
   it("parses ecosystem template", () => {
     const raw = `template: "ecosystem"`;
     expect(parseUserConfig(raw)).toEqual({ template: "ecosystem" });
@@ -133,6 +152,13 @@ describe("parseUserConfig", () => {
   it("parses showcase template", () => {
     const raw = `template: "showcase"`;
     expect(parseUserConfig(raw)).toEqual({ template: "showcase" });
+  });
+
+  it("parses stack section", () => {
+    const raw = `sections:\n  - stack`;
+    expect(parseUserConfig(raw)).toEqual({
+      sections: ["stack"],
+    });
   });
 
   it("parses TOML format when specified", () => {
@@ -179,6 +205,7 @@ describe("resolveTemplateSections", () => {
       "velocity",
       "rhythm",
       "constellation",
+      "stack",
       "portfolio",
       "impact",
     ]);
