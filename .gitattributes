@@ -19,6 +19,16 @@
 # Linguist overrides
 dist/** linguist-generated
 dist-cli/** linguist-generated
+*.svg linguist-generated
+
+# Markup / styling
+*.html linguist-documentation
+*.css linguist-documentation
+*.md linguist-documentation
+
+# Build tooling
+Justfile linguist-vendored
+justfile linguist-vendored
 
 # Binary files
 *.png binary

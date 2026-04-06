@@ -40,6 +40,19 @@ const EXCLUDED_LANGUAGES = new Set([
   "TeX",
   "SCSS",
   "Less",
+  "Jinja",
+]);
+
+/** Narrower set for constellation secondary dots — only strip markup/styling. */
+const MARKUP_LANGUAGES = new Set([
+  "Jupyter Notebook",
+  "HTML",
+  "CSS",
+  "Markdown",
+  "TeX",
+  "SCSS",
+  "Less",
+  "Jinja",
 ]);
 
 // ── Section keys ────────────────────────────────────────────────────────────
@@ -658,7 +671,7 @@ export const computeConstellationLayout = (
       complexity: repo ? complexityScore(repo) : 0,
       primaryLanguage: groupKey,
       primaryColor: pickPrimaryColor(p.languages, repo),
-      languages: (p.languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l)),
+      languages: (p.languages || []).filter((l) => !MARKUP_LANGUAGES.has(l)),
       stars: p.stars,
     };
   });
