@@ -43,6 +43,12 @@ const makeContext = (
     constellation: "assets/insights/metrics-constellation.svg",
     impact: "assets/insights/metrics-impact.svg",
   },
+  sectionSvgsLight: {
+    velocity: "assets/insights/metrics-velocity-light.svg",
+    rhythm: "assets/insights/metrics-rhythm-light.svg",
+    constellation: "assets/insights/metrics-constellation-light.svg",
+    impact: "assets/insights/metrics-impact-light.svg",
+  },
   profile: makeUserProfile(),
   activeProjects: [
     {

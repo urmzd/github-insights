@@ -152,29 +152,46 @@ function renderSpotlight(ctx: TemplateContext): string {
   return `## Spotlight\n\n${items}`;
 }
 
+function pictureElement(
+  alt: string,
+  darkSrc: string,
+  lightSrc: string,
+): string {
+  return [
+    "<picture>",
+    `  <source media="(prefers-color-scheme: light)" srcset="${lightSrc}">`,
+    `  <img alt="${alt}" src="${darkSrc}">`,
+    "</picture>",
+  ].join("\n");
+}
+
 function renderVelocity(ctx: TemplateContext): string {
   if (!ctx.sectionSvgs.velocity) return "";
-  return `## Language Velocity\n\n![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`;
+  const alt = descriptiveAlt("Language Velocity", ctx.name);
+  return `## Language Velocity\n\n${pictureElement(alt, ctx.sectionSvgs.velocity, ctx.sectionSvgsLight.velocity)}`;
 }
 
 function renderRhythm(ctx: TemplateContext): string {
   if (!ctx.sectionSvgs.rhythm) return "";
-  return `## Contribution Rhythm\n\n![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`;
+  const alt = descriptiveAlt("Contribution Rhythm", ctx.name);
+  return `## Contribution Rhythm\n\n${pictureElement(alt, ctx.sectionSvgs.rhythm, ctx.sectionSvgsLight.rhythm)}`;
 }
 
 function renderConstellation(ctx: TemplateContext): string {
   if (!ctx.sectionSvgs.constellation) return "";
-  return `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`;
+  const alt = descriptiveAlt("Project Constellation", ctx.name);
+  return `## Project Map\n\n${pictureElement(alt, ctx.sectionSvgs.constellation, ctx.sectionSvgsLight.constellation)}`;
 }
 
 function renderImpact(ctx: TemplateContext): string {
   if (!ctx.sectionSvgs.impact) return "";
-  return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
+  const alt = descriptiveAlt("Impact Trail", ctx.name);
+  return `## Open Source Impact\n\n${pictureElement(alt, ctx.sectionSvgs.impact, ctx.sectionSvgsLight.impact)}`;
 }
 
 function renderStack(ctx: TemplateContext): string {
   if (!ctx.sectionSvgs.stack) return "";
-  return `## Tech Stack\n\n![Tech Stack](${ctx.sectionSvgs.stack})`;
+  return `## Tech Stack\n\n${pictureElement("Tech Stack", ctx.sectionSvgs.stack, ctx.sectionSvgsLight.stack)}`;
 }
 
 function renderPortfolio(ctx: TemplateContext): string {
