@@ -14,17 +14,11 @@ import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
 import { InsightsError } from "./errors.js";
 import {
-  aggregateLanguages,
   buildClassificationInputs,
+  buildInsightsReport,
   buildSections,
-  computeConstellationLayout,
-  computeContributionRhythm,
-  computeLanguageVelocity,
-  computeSpotlightProjects,
-  getTopProjectsByComplexity,
   SECTION_KEYS,
   SVG_SECTION_KEYS,
-  splitProjectsByRecency,
 } from "./metrics.js";
 import { resolvePrompts } from "./prompts.js";
 import { loadPreamble } from "./readme.js";
@@ -140,8 +134,6 @@ export async function runPipeline(
   const exportJson = config.exportJson || userConfig.export_json || false;
 
   cb.onPhaseStart("classify", "Classifying projects");
-  const languages = aggregateLanguages(repos);
-  const complexProjects = getTopProjectsByComplexity(repos);
   const classificationInputs = buildClassificationInputs(
     repos,
     contributionData,
@@ -172,22 +164,27 @@ export async function runPipeline(
 
   // ── Transform ─────────────────────────────────────────────────────────────
   cb.onPhaseStart("transform", "Computing metrics");
-  const {
-    active: activeProjects,
-    maintained: maintainedProjects,
-    inactive: inactiveProjects,
-    archived: archivedProjects,
-  } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+  const displayName = userConfig.name || userProfile.name || config.username;
+  const constellationGroupBy = userConfig.constellation_group_by || "language";
 
-  const velocity = computeLanguageVelocity(contributionData, repos);
-  const rhythm = computeContributionRhythm(contributionData);
-  const constellation = computeConstellationLayout(complexProjects, repos);
+  const report = buildInsightsReport({
+    username: config.username,
+    displayName,
+    profile: userProfile,
+    repos,
+    contributionData,
+    aiClassifications,
+    constellationGroupBy,
+    excludeArchived: userConfig.exclude_archived !== false,
+  });
 
   const sectionDefs = buildSections({
-    velocity,
-    rhythm,
-    constellation,
-    contributionData,
+    velocity: report.velocity,
+    rhythm: report.rhythm,
+    constellation: report.constellation,
+    stack: report.stack,
+    contributionData: report.contributionData,
+    constellationGroupBy: report.constellationGroupBy,
   });
 
   let activeSections = sectionDefs.filter((s) => s.renderBody);
@@ -245,13 +242,7 @@ export async function runPipeline(
     const svgDir =
       relative(dirname(config.readmePath), config.outputDir) || ".";
 
-    const displayName = userConfig.name || userProfile.name || config.username;
     const socialBadges = buildSocialBadges(userProfile);
-    const spotlightProjects = computeSpotlightProjects(
-      repos,
-      contributionData,
-      aiClassifications,
-    );
 
     let preamble = loadPreamble(userConfig.preamble);
     if (!preamble) {
@@ -263,9 +254,9 @@ export async function runPipeline(
             username: config.username,
             profile: userProfile,
             userConfig,
-            languages,
-            spotlightProjects,
-            complexProjects,
+            languages: report.languages,
+            spotlightProjects: report.spotlightProjects,
+            complexProjects: report.allProjects,
           },
           prompts.preamble,
         );
@@ -291,22 +282,8 @@ export async function runPipeline(
       }
     }
 
-    const includeArchived = userConfig.exclude_archived === false;
-    const allProjectItems = [
-      ...activeProjects,
-      ...maintainedProjects,
-      ...inactiveProjects,
-      ...(includeArchived ? archivedProjects : []),
-    ];
-    const categorizedProjects: Record<string, typeof allProjectItems> = {};
-    for (const project of allProjectItems) {
-      const cat = project.category || "Other";
-      if (!categorizedProjects[cat]) categorizedProjects[cat] = [];
-      categorizedProjects[cat].push(project);
-    }
-
     const template = getTemplate(templateName);
-    const readme = template({
+    const contextBase = {
       username: config.username,
       name: displayName,
       firstName: extractFirstName(displayName),
@@ -315,24 +292,29 @@ export async function runPipeline(
       bio: userConfig.bio,
       preamble,
       templateName,
+      profile: userProfile,
+      activeProjects: report.activeProjects,
+      maintainedProjects: report.maintainedProjects,
+      inactiveProjects: report.inactiveProjects,
+      archivedProjects: report.archivedProjects,
+      allProjects: report.allProjects,
+      categorizedProjects: report.categorizedProjects,
+      languages: report.languages,
+      velocity: report.velocity,
+      rhythm: report.rhythm,
+      constellation: report.constellation,
+      stack: report.stack,
+      contributionData: report.contributionData,
+      socialBadges,
+      spotlightProjects: report.spotlightProjects,
+      resolvedSections,
+    };
+
+    const readme = template({
+      ...contextBase,
       svgs,
       sectionSvgs,
-      profile: userProfile,
-      activeProjects,
-      maintainedProjects,
-      inactiveProjects,
-      archivedProjects,
-      allProjects: complexProjects,
-      categorizedProjects,
-      languages,
-      velocity,
-      rhythm,
-      constellation,
-      contributionData,
-      socialBadges,
       svgDir,
-      spotlightProjects,
-      resolvedSections,
     });
     writeFileSync(config.readmePath, readme);
 
@@ -361,32 +343,10 @@ export async function runPipeline(
       }
 
       const previewReadme = template({
-        username: config.username,
-        name: displayName,
-        firstName: extractFirstName(displayName),
-        pronunciation: userConfig.pronunciation,
-        title: userConfig.title,
-        bio: userConfig.bio,
-        preamble,
-        templateName,
+        ...contextBase,
         svgs: previewSvgs,
         sectionSvgs: previewSectionSvgs,
-        profile: userProfile,
-        activeProjects,
-        maintainedProjects,
-        inactiveProjects,
-        archivedProjects,
-        allProjects: complexProjects,
-        categorizedProjects,
-        languages,
-        velocity,
-        rhythm,
-        constellation,
-        contributionData,
-        socialBadges,
         svgDir: ".",
-        spotlightProjects,
-        resolvedSections,
       });
       writeFileSync(`${tplDir}/README.md`, previewReadme);
       cb.onProgress(`Preview at ${tplDir}/README.md`);
