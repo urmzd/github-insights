@@ -2,7 +2,7 @@
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
-import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
+import { BAR_COLORS, LAYOUT } from "../theme.js";
 import type { ExternalRepo, RenderResult } from "../types.js";
 
 export function renderImpactTrail(

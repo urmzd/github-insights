@@ -2,7 +2,7 @@
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
-import { LAYOUT, THEME } from "../theme.js";
+import { LAYOUT } from "../theme.js";
 import type { ConstellationBar, RenderResult } from "../types.js";
 
 export function renderProjectConstellation(
@@ -46,19 +46,15 @@ export function renderProjectConstellation(
       currentLang = bar.primaryLanguage;
       const delay = Math.min(itemIndex + 1, 6);
 
-      // For "Other" group, use a neutral color
-      const headerColor =
-        currentLang === "Other" ? THEME.secondary : bar.primaryColor;
-
       svg += (
         <>
           <circle
             cx={padX + 5}
             cy={curY + groupHeaderHeight / 2}
             r="5"
-            fill={headerColor}
+            fill={currentLang === "Other" ? undefined : bar.primaryColor}
+            className={`${currentLang === "Other" ? "secondary-fill" : ""} fade-${delay}`}
             fill-opacity="0.8"
-            className={`fade-${delay}`}
           />
           <text
             x={padX + 16}
@@ -73,7 +69,7 @@ export function renderProjectConstellation(
             y1={curY + groupHeaderHeight / 2}
             x2={starX + 40}
             y2={curY + groupHeaderHeight / 2}
-            stroke={THEME.border}
+            className="border-stroke"
             stroke-opacity="0.3"
             stroke-width="1"
           />
@@ -128,23 +124,22 @@ export function renderProjectConstellation(
     if (hasSecondary) {
       let dotX = padX + 8;
       for (const lang of secondaryLangs.slice(0, 5)) {
-        const dotColor = langColorMap.get(lang) || THEME.muted;
+        const langColor = langColorMap.get(lang);
         svg += (
           <>
             <circle
               cx={dotX + 4}
               cy={curY + rowBaseHeight + 4}
               r="3"
-              fill={dotColor}
+              fill={langColor}
+              className={`${langColor ? "" : "muted-fill"} fade-${delay}`}
               fill-opacity="0.6"
-              className={`fade-${delay}`}
             />
             <text
               x={dotX + 10}
               y={curY + rowBaseHeight + 7}
-              className={`t fade-${delay}`}
+              className={`t muted-fill fade-${delay}`}
               font-size="9"
-              fill={THEME.muted}
             >
               {escapeXml(truncate(lang, 10))}
             </text>

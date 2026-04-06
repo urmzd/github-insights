@@ -6,13 +6,13 @@ void Fragment;
 
 describe("StyleDefs", () => {
   it("returns a string containing <defs> and <style>", () => {
-    const result = StyleDefs();
+    const result = StyleDefs({ mode: "dark" });
     expect(result).toContain("<defs>");
     expect(result).toContain("<style>");
   });
 
   it("contains expected CSS classes", () => {
-    const result = StyleDefs();
+    const result = StyleDefs({ mode: "dark" });
     expect(result).toContain(".t-h");
     expect(result).toContain(".t-label");
     expect(result).toContain(".t-value");
@@ -20,7 +20,7 @@ describe("StyleDefs", () => {
   });
 
   it("contains font-family declaration", () => {
-    const result = StyleDefs();
+    const result = StyleDefs({ mode: "dark" });
     expect(result).toContain("font-family:");
   });
 });

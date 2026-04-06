@@ -2,7 +2,7 @@
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
-import { LAYOUT, THEME } from "../theme.js";
+import { LAYOUT } from "../theme.js";
 import type { RenderResult } from "../types.js";
 
 export function renderSectionHeader(
@@ -43,7 +43,7 @@ export function renderDivider(y: number): RenderResult {
       y1={y}
       x2={LAYOUT.padX + 760}
       y2={y}
-      stroke={THEME.border}
+      className="border-stroke"
       stroke-opacity="0.6"
       stroke-width="1"
     />

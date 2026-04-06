@@ -2,7 +2,7 @@
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
-import { LAYOUT, THEME } from "../theme.js";
+import { LAYOUT } from "../theme.js";
 import type { MonthlyLanguageBucket, RenderResult } from "../types.js";
 
 export function renderLanguageVelocity(

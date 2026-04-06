@@ -2,7 +2,7 @@
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml } from "../svg-utils.js";
-import { BAR_COLORS, LAYOUT, THEME } from "../theme.js";
+import { BAR_COLORS, LAYOUT } from "../theme.js";
 import type { ContributionRhythm, RenderResult } from "../types.js";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -28,7 +28,7 @@ export function renderContributionRhythm(
       cy={radarCy}
       r={radarR * pct}
       fill="none"
-      stroke={THEME.border}
+      className="border-stroke"
       stroke-width="1"
       stroke-opacity="0.4"
     />
@@ -46,7 +46,7 @@ export function renderContributionRhythm(
         y1={radarCy}
         x2={x2}
         y2={y2}
-        stroke={THEME.border}
+        className="border-stroke"
         stroke-width="1"
         stroke-opacity="0.3"
       />

@@ -2,7 +2,7 @@
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
 import { escapeXml, truncate } from "../svg-utils.js";
-import { LAYOUT, THEME } from "../theme.js";
+import { LAYOUT } from "../theme.js";
 import type { RenderResult, StackLayer } from "../types.js";
 
 export function renderTechStack(layers: StackLayer[], y: number): RenderResult {
@@ -113,9 +113,8 @@ export function renderTechStack(layers: StackLayer[], y: number): RenderResult {
           <text
             x={cardX + 22}
             y={cardY + 41}
-            className={`t fade-${delay}`}
+            className={`t muted-fill fade-${delay}`}
             font-size="9"
-            fill={THEME.muted}
           >
             {escapeXml(project.primaryLanguage)}
           </text>

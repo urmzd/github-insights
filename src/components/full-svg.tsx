@@ -1,12 +1,16 @@
 /** @jsx h */
 /** @jsxFrag Fragment */
 import { Fragment, h } from "../jsx-factory.js";
-import { LAYOUT, THEME } from "../theme.js";
-import type { SectionDef } from "../types.js";
+import { LAYOUT } from "../theme.js";
+import type { SectionDef, ThemeMode } from "../types.js";
 import { renderSectionHeader } from "./section.js";
 import { StyleDefs } from "./style-defs.js";
 
-export function wrapSectionSvg(bodySvg: string, height: number): string {
+export function wrapSectionSvg(
+  bodySvg: string,
+  height: number,
+  mode: ThemeMode = "dark",
+): string {
   const { width } = LAYOUT;
   return (
     <svg
@@ -15,20 +19,17 @@ export function wrapSectionSvg(bodySvg: string, height: number): string {
       height={height}
       viewBox={`0 0 ${width} ${height}`}
     >
-      <StyleDefs />
-      <rect
-        width={width}
-        height={height}
-        rx="12"
-        className="bg-fill"
-        fill={THEME.bg}
-      />
+      <StyleDefs mode={mode} />
+      <rect width={width} height={height} rx="12" className="bg-fill" />
       {bodySvg}
     </svg>
   );
 }
 
-export function generateFullSvg(sections: SectionDef[]): string {
+export function generateFullSvg(
+  sections: SectionDef[],
+  mode: ThemeMode = "dark",
+): string {
   const { width, padY, sectionGap } = LAYOUT;
   let y = padY;
   let bodySvg = "";
@@ -54,14 +55,8 @@ export function generateFullSvg(sections: SectionDef[]): string {
       height={totalHeight}
       viewBox={`0 0 ${width} ${totalHeight}`}
     >
-      <StyleDefs />
-      <rect
-        width={width}
-        height={totalHeight}
-        rx="12"
-        className="bg-fill"
-        fill={THEME.bg}
-      />
+      <StyleDefs mode={mode} />
+      <rect width={width} height={totalHeight} rx="12" className="bg-fill" />
       {bodySvg}
     </svg>
   );
