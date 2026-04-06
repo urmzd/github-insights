@@ -10,6 +10,7 @@ import {
   collectAllDependencies,
   collectAllTopics,
   computeSpotlightProjects,
+  computeStackLayout,
   getTopProjectsByStars,
   heuristicCategory,
   heuristicHeatScore,
@@ -20,6 +21,7 @@ import type {
   ContributionRhythm,
   ManifestMap,
   MonthlyLanguageBucket,
+  ProjectItem,
 } from "./types.js";
 
 // ── aggregateLanguages ──────────────────────────────────────────────────────
@@ -553,6 +555,7 @@ describe("SECTION_KEYS", () => {
     expect(SECTION_KEYS.rhythm).toBe("metrics-rhythm.svg");
     expect(SECTION_KEYS.constellation).toBe("metrics-constellation.svg");
     expect(SECTION_KEYS.impact).toBe("metrics-impact.svg");
+    expect(SECTION_KEYS.stack).toBe("metrics-stack.svg");
   });
 });
 
@@ -645,6 +648,37 @@ describe("buildSections", () => {
     expect(sections.map((s) => s.filename)).not.toContain(
       "metrics-constellation.svg",
     );
+  });
+
+  it("stack section conditional on non-empty stack data", () => {
+    const input = {
+      ...baseSectionsInput(),
+      stack: [
+        {
+          name: "Applications",
+          rank: 2,
+          color: "#d29922",
+          projects: [
+            {
+              name: "my-app",
+              url: "https://github.com/user/my-app",
+              stars: 10,
+              primaryLanguage: "TypeScript",
+              primaryColor: "#3178c6",
+              complexity: 42,
+            },
+          ],
+        },
+      ],
+    };
+    const sections = buildSections(input);
+    expect(sections.map((s) => s.filename)).toContain("metrics-stack.svg");
+  });
+
+  it("stack section omitted when no stack data", () => {
+    const input = { ...baseSectionsInput(), stack: [] };
+    const sections = buildSections(input);
+    expect(sections.map((s) => s.filename)).not.toContain("metrics-stack.svg");
   });
 
   it("each renderBody(0) does not throw", () => {
@@ -973,5 +1007,85 @@ describe("heuristicCategory", () => {
       },
     });
     expect(heuristicCategory(repo)).toBe("Other");
+  });
+});
+
+// ── computeStackLayout ──────────────────────────────────────────────────────
+
+describe("computeStackLayout", () => {
+  const makeProject = (overrides: Partial<ProjectItem> = {}): ProjectItem => ({
+    name: "test-project",
+    url: "https://github.com/user/test-project",
+    description: "A test project",
+    stars: 10,
+    languages: ["TypeScript"],
+    category: "Applications",
+    ...overrides,
+  });
+
+  it("groups projects into layers by category", () => {
+    const projects = [
+      makeProject({ name: "my-app", category: "Applications" }),
+      makeProject({ name: "my-cli", category: "Developer Tools" }),
+      makeProject({ name: "my-sdk", category: "SDKs" }),
+      makeProject({ name: "my-ml", category: "Research & Experiments" }),
+    ];
+    const repos = projects.map((p) => makeRepo({ name: p.name }));
+    const layers = computeStackLayout(projects, repos);
+
+    expect(layers.length).toBe(4);
+    // Sorted by rank ascending
+    expect(layers[0].name).toBe("Infrastructure & DevOps");
+    expect(layers[1].name).toBe("Libraries & SDKs");
+    expect(layers[2].name).toBe("Applications");
+    expect(layers[3].name).toBe("AI & Research");
+  });
+
+  it("caps projects per layer at 4", () => {
+    const projects = Array.from({ length: 6 }, (_, i) =>
+      makeProject({ name: `app-${i}`, category: "Applications" }),
+    );
+    const repos = projects.map((p) => makeRepo({ name: p.name }));
+    const layers = computeStackLayout(projects, repos);
+
+    expect(layers[0].projects.length).toBe(4);
+  });
+
+  it("returns empty array for empty projects", () => {
+    expect(computeStackLayout([], [])).toEqual([]);
+  });
+
+  it("sorts projects within layers by complexity descending", () => {
+    const projects = [
+      makeProject({ name: "small", category: "Applications", stars: 1 }),
+      makeProject({ name: "big", category: "Applications", stars: 100 }),
+    ];
+    const repos = [
+      makeRepo({ name: "small", stargazerCount: 1, diskUsage: 100 }),
+      makeRepo({ name: "big", stargazerCount: 100, diskUsage: 50000 }),
+    ];
+    const layers = computeStackLayout(projects, repos);
+
+    expect(layers[0].projects[0].name).toBe("big");
+    expect(layers[0].projects[1].name).toBe("small");
+  });
+
+  it("maps Other category to Applications layer", () => {
+    const projects = [makeProject({ name: "misc", category: "Other" })];
+    const repos = [makeRepo({ name: "misc" })];
+    const layers = computeStackLayout(projects, repos);
+
+    expect(layers[0].name).toBe("Applications");
+  });
+
+  it("filters out empty layers", () => {
+    const projects = [
+      makeProject({ name: "my-app", category: "Applications" }),
+    ];
+    const repos = [makeRepo({ name: "my-app" })];
+    const layers = computeStackLayout(projects, repos);
+
+    expect(layers.length).toBe(1);
+    expect(layers[0].name).toBe("Applications");
   });
 });
