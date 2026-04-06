@@ -41089,7 +41089,7 @@ function Fragment({ children }) {
 }
 
 ;// CONCATENATED MODULE: ./src/theme.ts
-const theme_THEME = {
+const THEME = {
     bg: "#0d1117",
     cardBg: "#161b22",
     border: "#30363d",
@@ -41179,7 +41179,7 @@ function renderSubHeader(text, y) {
     return { svg, height: 14 };
 }
 function renderDivider(y) {
-    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
+    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, className: "border-stroke", "stroke-opacity": "0.6", "stroke-width": "1" }));
     return { svg, height: 1 };
 }
 function renderSection(title, subtitle, renderBody) {
@@ -41200,39 +41200,27 @@ void Fragment;
 /** @jsxFrag Fragment */
 
 
-function StyleDefs() {
+function StyleDefs({ mode }) {
+    const t = mode === "dark" ? THEME : THEME_LIGHT;
     return (jsx_factory_h("defs", null,
         jsx_factory_h("style", null, `
   .t { font-family: ${FONT}; font-variant-numeric: tabular-lining; }
-  .t-h { font-size: 14px; fill: ${theme_THEME.text}; letter-spacing: 2px; font-weight: 600; }
-  .t-sub { font-size: 11px; fill: ${theme_THEME.muted}; }
-  .t-label { font-size: 12px; fill: ${theme_THEME.secondary}; }
-  .t-value { font-size: 11px; fill: ${theme_THEME.muted}; }
-  .t-subhdr { font-size: 11px; fill: ${theme_THEME.secondary}; letter-spacing: 1px; font-weight: 600; }
-  .t-stat-label { font-size: 10px; fill: ${theme_THEME.secondary}; font-weight: 600; }
+  .t-h { font-size: 14px; fill: ${t.text}; letter-spacing: 2px; font-weight: 600; }
+  .t-sub { font-size: 11px; fill: ${t.muted}; }
+  .t-label { font-size: 12px; fill: ${t.secondary}; }
+  .t-value { font-size: 11px; fill: ${t.muted}; }
+  .t-subhdr { font-size: 11px; fill: ${t.secondary}; letter-spacing: 1px; font-weight: 600; }
+  .t-stat-label { font-size: 10px; fill: ${t.secondary}; font-weight: 600; }
   .t-stat-value { font-size: 22px; font-weight: 700; }
-  .t-card-title { font-size: 12px; fill: ${theme_THEME.link}; font-weight: 700; }
-  .t-card-detail { font-size: 11px; fill: ${theme_THEME.secondary}; }
+  .t-card-title { font-size: 12px; fill: ${t.link}; font-weight: 700; }
+  .t-card-detail { font-size: 11px; fill: ${t.secondary}; }
   .t-pill { font-size: 11px; font-weight: 600; }
-  .t-bullet { font-size: 12px; fill: ${theme_THEME.text}; }
-  .bg-fill { fill: ${theme_THEME.bg}; }
-  .card-fill { fill: ${theme_THEME.cardBg}; }
-  .border-stroke { stroke: ${theme_THEME.border}; }
-
-  @media (prefers-color-scheme: light) {
-    .bg-fill { fill: ${THEME_LIGHT.bg}; }
-    .card-fill { fill: ${THEME_LIGHT.cardBg}; }
-    .border-stroke { stroke: ${THEME_LIGHT.border}; }
-    .t-h { fill: ${THEME_LIGHT.text}; }
-    .t-sub { fill: ${THEME_LIGHT.muted}; }
-    .t-label { fill: ${THEME_LIGHT.secondary}; }
-    .t-value { fill: ${THEME_LIGHT.muted}; }
-    .t-subhdr { fill: ${THEME_LIGHT.secondary}; }
-    .t-stat-label { fill: ${THEME_LIGHT.secondary}; }
-    .t-card-title { fill: ${THEME_LIGHT.link}; }
-    .t-card-detail { fill: ${THEME_LIGHT.secondary}; }
-    .t-bullet { fill: ${THEME_LIGHT.text}; }
-  }
+  .t-bullet { font-size: 12px; fill: ${t.text}; }
+  .bg-fill { fill: ${t.bg}; }
+  .card-fill { fill: ${t.cardBg}; }
+  .border-stroke { stroke: ${t.border}; }
+  .muted-fill { fill: ${t.muted}; }
+  .secondary-fill { fill: ${t.secondary}; }
 
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
@@ -41267,14 +41255,14 @@ void Fragment;
 
 
 
-function wrapSectionSvg(bodySvg, height) {
+function wrapSectionSvg(bodySvg, height, mode = "dark") {
     const { width } = theme_LAYOUT;
     return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
-        jsx_factory_h(StyleDefs, null),
-        jsx_factory_h("rect", { width: width, height: height, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
+        jsx_factory_h(StyleDefs, { mode: mode }),
+        jsx_factory_h("rect", { width: width, height: height, rx: "12", className: "bg-fill" }),
         bodySvg));
 }
-function generateFullSvg(sections) {
+function generateFullSvg(sections, mode = "dark") {
     const { width, padY, sectionGap } = theme_LAYOUT;
     let y = padY;
     let bodySvg = "";
@@ -41290,8 +41278,8 @@ function generateFullSvg(sections) {
     }
     const totalHeight = y + padY;
     return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
-        jsx_factory_h(StyleDefs, null),
-        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
+        jsx_factory_h(StyleDefs, { mode: mode }),
+        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill" }),
         bodySvg));
 }
 
@@ -56355,13 +56343,13 @@ function renderContributionRhythm(rhythm, y) {
     const maxVal = Math.max(...rhythm.dayTotals, 1);
     // Guide circles
     const guides = [0.25, 0.5, 0.75, 1.0];
-    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { key: pct, cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" })));
+    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { key: pct, cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", className: "border-stroke", "stroke-width": "1", "stroke-opacity": "0.4" })));
     // Spoke lines
     const spokesSvg = DAY_NAMES.map((dayName, i) => {
         const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
         const x2 = radarCx + radarR * Math.cos(angle);
         const y2 = radarCy + radarR * Math.sin(angle);
-        return (jsx_factory_h("line", { key: dayName, x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }));
+        return (jsx_factory_h("line", { key: dayName, x1: radarCx, y1: radarCy, x2: x2, y2: y2, className: "border-stroke", "stroke-width": "1", "stroke-opacity": "0.3" }));
     });
     // Day labels
     const labelsSvg = DAY_NAMES.map((name, i) => {
@@ -56613,12 +56601,10 @@ function renderProjectConstellation(bars, y) {
                 curY += groupGap;
             currentLang = bar.primaryLanguage;
             const delay = Math.min(itemIndex + 1, 6);
-            // For "Other" group, use a neutral color
-            const headerColor = currentLang === "Other" ? theme_THEME.secondary : bar.primaryColor;
             svg += (jsx_factory_h(Fragment, null,
-                jsx_factory_h("circle", { cx: padX + 5, cy: curY + groupHeaderHeight / 2, r: "5", fill: headerColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
+                jsx_factory_h("circle", { cx: padX + 5, cy: curY + groupHeaderHeight / 2, r: "5", fill: currentLang === "Other" ? undefined : bar.primaryColor, className: `${currentLang === "Other" ? "secondary-fill" : ""} fade-${delay}`, "fill-opacity": "0.8" }),
                 jsx_factory_h("text", { x: padX + 16, y: curY + groupHeaderHeight / 2 + 4, className: `t t-subhdr fade-${delay}` }, svg_utils_escapeXml(currentLang)),
-                jsx_factory_h("line", { x1: barStartX, y1: curY + groupHeaderHeight / 2, x2: starX + 40, y2: curY + groupHeaderHeight / 2, stroke: theme_THEME.border, "stroke-opacity": "0.3", "stroke-width": "1" })));
+                jsx_factory_h("line", { x1: barStartX, y1: curY + groupHeaderHeight / 2, x2: starX + 40, y2: curY + groupHeaderHeight / 2, className: "border-stroke", "stroke-opacity": "0.3", "stroke-width": "1" })));
             curY += groupHeaderHeight;
         }
         const delay = Math.min(itemIndex + 1, 6);
@@ -56636,10 +56622,10 @@ function renderProjectConstellation(bars, y) {
         if (hasSecondary) {
             let dotX = padX + 8;
             for (const lang of secondaryLangs.slice(0, 5)) {
-                const dotColor = langColorMap.get(lang) || theme_THEME.muted;
+                const langColor = langColorMap.get(lang);
                 svg += (jsx_factory_h(Fragment, null,
-                    jsx_factory_h("circle", { cx: dotX + 4, cy: curY + rowBaseHeight + 4, r: "3", fill: dotColor, "fill-opacity": "0.6", className: `fade-${delay}` }),
-                    jsx_factory_h("text", { x: dotX + 10, y: curY + rowBaseHeight + 7, className: `t fade-${delay}`, "font-size": "9", fill: theme_THEME.muted }, svg_utils_escapeXml(truncate(lang, 10)))));
+                    jsx_factory_h("circle", { cx: dotX + 4, cy: curY + rowBaseHeight + 4, r: "3", fill: langColor, className: `${langColor ? "" : "muted-fill"} fade-${delay}`, "fill-opacity": "0.6" }),
+                    jsx_factory_h("text", { x: dotX + 10, y: curY + rowBaseHeight + 7, className: `t muted-fill fade-${delay}`, "font-size": "9" }, svg_utils_escapeXml(truncate(lang, 10)))));
                 dotX += Math.min(lang.length * 6 + 20, 80);
             }
         }
@@ -56697,7 +56683,7 @@ function renderTechStack(layers, y) {
             // Language pill: circle + text
             svg += (jsx_factory_h(Fragment, null,
                 jsx_factory_h("circle", { cx: cardX + 14, cy: cardY + 38, r: "3", fill: project.primaryColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
-                jsx_factory_h("text", { x: cardX + 22, y: cardY + 41, className: `t fade-${delay}`, "font-size": "9", fill: theme_THEME.muted }, svg_utils_escapeXml(project.primaryLanguage))));
+                jsx_factory_h("text", { x: cardX + 22, y: cardY + 41, className: `t muted-fill fade-${delay}`, "font-size": "9" }, svg_utils_escapeXml(project.primaryLanguage))));
         }
         curY += bandHeight + bandGap;
     }
@@ -57702,30 +57688,42 @@ function renderSpotlight(ctx) {
         .join("\n\n");
     return `## Spotlight\n\n${items}`;
 }
+function pictureElement(alt, darkSrc, lightSrc) {
+    return [
+        "<picture>",
+        `  <source media="(prefers-color-scheme: light)" srcset="${lightSrc}">`,
+        `  <img alt="${alt}" src="${darkSrc}">`,
+        "</picture>",
+    ].join("\n");
+}
 function renderVelocity(ctx) {
     if (!ctx.sectionSvgs.velocity)
         return "";
-    return `## Language Velocity\n\n![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`;
+    const alt = descriptiveAlt("Language Velocity", ctx.name);
+    return `## Language Velocity\n\n${pictureElement(alt, ctx.sectionSvgs.velocity, ctx.sectionSvgsLight.velocity)}`;
 }
 function renderRhythm(ctx) {
     if (!ctx.sectionSvgs.rhythm)
         return "";
-    return `## Contribution Rhythm\n\n![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`;
+    const alt = descriptiveAlt("Contribution Rhythm", ctx.name);
+    return `## Contribution Rhythm\n\n${pictureElement(alt, ctx.sectionSvgs.rhythm, ctx.sectionSvgsLight.rhythm)}`;
 }
 function renderConstellation(ctx) {
     if (!ctx.sectionSvgs.constellation)
         return "";
-    return `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`;
+    const alt = descriptiveAlt("Project Constellation", ctx.name);
+    return `## Project Map\n\n${pictureElement(alt, ctx.sectionSvgs.constellation, ctx.sectionSvgsLight.constellation)}`;
 }
 function renderImpact(ctx) {
     if (!ctx.sectionSvgs.impact)
         return "";
-    return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
+    const alt = descriptiveAlt("Impact Trail", ctx.name);
+    return `## Open Source Impact\n\n${pictureElement(alt, ctx.sectionSvgs.impact, ctx.sectionSvgsLight.impact)}`;
 }
 function renderStack(ctx) {
     if (!ctx.sectionSvgs.stack)
         return "";
-    return `## Tech Stack\n\n![Tech Stack](${ctx.sectionSvgs.stack})`;
+    return `## Tech Stack\n\n${pictureElement("Tech Stack", ctx.sectionSvgs.stack, ctx.sectionSvgsLight.stack)}`;
 }
 function renderPortfolio(ctx) {
     const tableParts = [];
@@ -57898,17 +57896,19 @@ async function runPipeline(config, cb) {
         if (!section.renderBody)
             continue;
         const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody);
-        (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
+        (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${section.filename}`, wrapSectionSvg(svg, height, "dark"));
+        const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+        (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${lightFilename}`, wrapSectionSvg(svg, height, "light"));
         if (exportJson && section.data !== undefined) {
             const jsonFilename = section.filename.replace(/\.svg$/, ".json");
             (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/${jsonFilename}`, JSON.stringify(section.data, null, 2));
             cb.onProgress(`Wrote ${jsonFilename}`);
         }
-        cb.onProgress(`Wrote ${section.filename}`);
+        cb.onProgress(`Wrote ${section.filename} (+light)`);
     }
-    const combinedSvg = generateFullSvg(activeSections);
-    (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/index.svg`, combinedSvg);
-    cb.onPhaseComplete("render-svg", `${activeSections.length + 1} SVG files`);
+    (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/index.svg`, generateFullSvg(activeSections, "dark"));
+    (0,external_node_fs_namespaceObject.writeFileSync)(`${config.outputDir}/index-light.svg`, generateFullSvg(activeSections, "light"));
+    cb.onPhaseComplete("render-svg", `${activeSections.length * 2 + 2} SVG files`);
     // ── Write files ───────────────────────────────────────────────────────────
     cb.onPhaseStart("write-files", "Writing output files");
     const filesWritten = [`${config.outputDir}/index.svg`];
@@ -57948,9 +57948,12 @@ async function runPipeline(config, cb) {
             path: `${svgDir}/${s.filename}`,
         }));
         const sectionSvgs = {};
+        const sectionSvgsLight = {};
         for (const [key, filename] of Object.entries(SECTION_KEYS)) {
             if (activeSections.some((s) => s.filename === filename)) {
                 sectionSvgs[key] = `${svgDir}/${filename}`;
+                sectionSvgsLight[key] =
+                    `${svgDir}/${filename.replace(/\.svg$/, "-light.svg")}`;
             }
         }
         const template = getTemplate(templateName);
@@ -57984,6 +57987,7 @@ async function runPipeline(config, cb) {
             ...contextBase,
             svgs,
             sectionSvgs,
+            sectionSvgsLight,
             svgDir,
         });
         (0,external_node_fs_namespaceObject.writeFileSync)(config.readmePath, readme);
@@ -57992,23 +57996,30 @@ async function runPipeline(config, cb) {
             const tplDir = "examples/default";
             (0,external_node_fs_namespaceObject.mkdirSync)(tplDir, { recursive: true });
             (0,external_node_fs_namespaceObject.copyFileSync)(`${config.outputDir}/index.svg`, `${tplDir}/index.svg`);
+            (0,external_node_fs_namespaceObject.copyFileSync)(`${config.outputDir}/index-light.svg`, `${tplDir}/index-light.svg`);
             for (const section of activeSections) {
                 (0,external_node_fs_namespaceObject.copyFileSync)(`${config.outputDir}/${section.filename}`, `${tplDir}/${section.filename}`);
+                const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+                (0,external_node_fs_namespaceObject.copyFileSync)(`${config.outputDir}/${lightFilename}`, `${tplDir}/${lightFilename}`);
             }
             const previewSvgs = activeSections.map((s) => ({
                 label: s.title,
                 path: `./${s.filename}`,
             }));
             const previewSectionSvgs = {};
+            const previewSectionSvgsLight = {};
             for (const [key, filename] of Object.entries(SECTION_KEYS)) {
                 if (activeSections.some((s) => s.filename === filename)) {
                     previewSectionSvgs[key] = `./${filename}`;
+                    previewSectionSvgsLight[key] =
+                        `./${filename.replace(/\.svg$/, "-light.svg")}`;
                 }
             }
             const previewReadme = template({
                 ...contextBase,
                 svgs: previewSvgs,
                 sectionSvgs: previewSectionSvgs,
+                sectionSvgsLight: previewSectionSvgsLight,
                 svgDir: ".",
             });
             (0,external_node_fs_namespaceObject.writeFileSync)(`${tplDir}/README.md`, previewReadme);

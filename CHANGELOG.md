@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.9.0 (2026-04-06)
+
+### Features
+
+- **templates**: add theme-aware picture elements ([47ce03d](https://github.com/urmzd/github-insights/commit/47ce03d6ba69a5f71d7483e3ca615fb04e4fc3eb))
+- **render**: generate light and dark SVG variants ([7612858](https://github.com/urmzd/github-insights/commit/76128583f0c72a925839737aa25decbf0b8b93a4))
+- **types**: add ThemeMode type for dark and light variants ([896052b](https://github.com/urmzd/github-insights/commit/896052b53dcb8c1f345b29fec968f023fe0fca58))
+
+### Refactoring
+
+- **styling**: migrate components to CSS-based theming ([f777b7f](https://github.com/urmzd/github-insights/commit/f777b7f9c121483e8e64eb797223b47976f2cb5c))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.8.0...v3.9.0)
+
+
 ## 3.8.0 (2026-04-06)
 
 ### Features
