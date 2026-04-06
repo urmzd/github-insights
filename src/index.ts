@@ -176,14 +176,25 @@ async function run(): Promise<void> {
       );
       writeFileSync(
         `${outputDir}/${section.filename}`,
-        wrapSectionSvg(svg, height),
+        wrapSectionSvg(svg, height, "dark"),
       );
-      core.info(`Wrote ${outputDir}/${section.filename}`);
+      const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+      writeFileSync(
+        `${outputDir}/${lightFilename}`,
+        wrapSectionSvg(svg, height, "light"),
+      );
+      core.info(`Wrote ${outputDir}/${section.filename} (+light)`);
     }
 
-    const combinedSvg = generateFullSvg(activeSections);
-    writeFileSync(`${outputDir}/index.svg`, combinedSvg);
-    core.info(`Wrote ${outputDir}/index.svg`);
+    writeFileSync(
+      `${outputDir}/index.svg`,
+      generateFullSvg(activeSections, "dark"),
+    );
+    writeFileSync(
+      `${outputDir}/index-light.svg`,
+      generateFullSvg(activeSections, "light"),
+    );
+    core.info(`Wrote ${outputDir}/index.svg (+light)`);
 
     // ── README ─────────────────────────────────────────────────────────────
     if (readmePath && readmePath !== "none") {
@@ -223,9 +234,12 @@ async function run(): Promise<void> {
       }));
 
       const sectionSvgs: Record<string, string> = {};
+      const sectionSvgsLight: Record<string, string> = {};
       for (const [key, filename] of Object.entries(SECTION_KEYS)) {
         if (activeSections.some((s) => s.filename === filename)) {
           sectionSvgs[key] = `${svgDir}/${filename}`;
+          sectionSvgsLight[key] =
+            `${svgDir}/${filename.replace(/\.svg$/, "-light.svg")}`;
         }
       }
 
@@ -262,6 +276,7 @@ async function run(): Promise<void> {
           ...contextBase,
           svgs,
           sectionSvgs,
+          sectionSvgsLight,
           svgDir,
         });
         writeFileSync(readmePath, readme);
@@ -277,10 +292,22 @@ async function run(): Promise<void> {
         mkdirSync(tplDir, { recursive: true });
 
         copyFileSync(`${outputDir}/index.svg`, `${tplDir}/index.svg`);
+        copyFileSync(
+          `${outputDir}/index-light.svg`,
+          `${tplDir}/index-light.svg`,
+        );
         for (const section of activeSections) {
           copyFileSync(
             `${outputDir}/${section.filename}`,
             `${tplDir}/${section.filename}`,
+          );
+          const lightFilename = section.filename.replace(
+            /\.svg$/,
+            "-light.svg",
+          );
+          copyFileSync(
+            `${outputDir}/${lightFilename}`,
+            `${tplDir}/${lightFilename}`,
           );
         }
 
@@ -290,9 +317,12 @@ async function run(): Promise<void> {
         }));
 
         const previewSectionSvgs: Record<string, string> = {};
+        const previewSectionSvgsLight: Record<string, string> = {};
         for (const [key, filename] of Object.entries(SECTION_KEYS)) {
           if (activeSections.some((s) => s.filename === filename)) {
             previewSectionSvgs[key] = `./${filename}`;
+            previewSectionSvgsLight[key] =
+              `./${filename.replace(/\.svg$/, "-light.svg")}`;
           }
         }
 
@@ -301,6 +331,7 @@ async function run(): Promise<void> {
           ...contextBase,
           svgs: previewSvgs,
           sectionSvgs: previewSectionSvgs,
+          sectionSvgsLight: previewSectionSvgsLight,
           svgDir: ".",
         });
 

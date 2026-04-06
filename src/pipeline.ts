@@ -211,7 +211,12 @@ export async function runPipeline(
     );
     writeFileSync(
       `${config.outputDir}/${section.filename}`,
-      wrapSectionSvg(svg, height),
+      wrapSectionSvg(svg, height, "dark"),
+    );
+    const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+    writeFileSync(
+      `${config.outputDir}/${lightFilename}`,
+      wrapSectionSvg(svg, height, "light"),
     );
     if (exportJson && section.data !== undefined) {
       const jsonFilename = section.filename.replace(/\.svg$/, ".json");
@@ -221,12 +226,21 @@ export async function runPipeline(
       );
       cb.onProgress(`Wrote ${jsonFilename}`);
     }
-    cb.onProgress(`Wrote ${section.filename}`);
+    cb.onProgress(`Wrote ${section.filename} (+light)`);
   }
 
-  const combinedSvg = generateFullSvg(activeSections);
-  writeFileSync(`${config.outputDir}/index.svg`, combinedSvg);
-  cb.onPhaseComplete("render-svg", `${activeSections.length + 1} SVG files`);
+  writeFileSync(
+    `${config.outputDir}/index.svg`,
+    generateFullSvg(activeSections, "dark"),
+  );
+  writeFileSync(
+    `${config.outputDir}/index-light.svg`,
+    generateFullSvg(activeSections, "light"),
+  );
+  cb.onPhaseComplete(
+    "render-svg",
+    `${activeSections.length * 2 + 2} SVG files`,
+  );
 
   // ── Write files ───────────────────────────────────────────────────────────
   cb.onPhaseStart("write-files", "Writing output files");
@@ -276,9 +290,12 @@ export async function runPipeline(
     }));
 
     const sectionSvgs: Record<string, string> = {};
+    const sectionSvgsLight: Record<string, string> = {};
     for (const [key, filename] of Object.entries(SECTION_KEYS)) {
       if (activeSections.some((s) => s.filename === filename)) {
         sectionSvgs[key] = `${svgDir}/${filename}`;
+        sectionSvgsLight[key] =
+          `${svgDir}/${filename.replace(/\.svg$/, "-light.svg")}`;
       }
     }
 
@@ -314,6 +331,7 @@ export async function runPipeline(
       ...contextBase,
       svgs,
       sectionSvgs,
+      sectionSvgsLight,
       svgDir,
     });
     writeFileSync(config.readmePath, readme);
@@ -324,10 +342,19 @@ export async function runPipeline(
       mkdirSync(tplDir, { recursive: true });
 
       copyFileSync(`${config.outputDir}/index.svg`, `${tplDir}/index.svg`);
+      copyFileSync(
+        `${config.outputDir}/index-light.svg`,
+        `${tplDir}/index-light.svg`,
+      );
       for (const section of activeSections) {
         copyFileSync(
           `${config.outputDir}/${section.filename}`,
           `${tplDir}/${section.filename}`,
+        );
+        const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+        copyFileSync(
+          `${config.outputDir}/${lightFilename}`,
+          `${tplDir}/${lightFilename}`,
         );
       }
 
@@ -336,9 +363,12 @@ export async function runPipeline(
         path: `./${s.filename}`,
       }));
       const previewSectionSvgs: Record<string, string> = {};
+      const previewSectionSvgsLight: Record<string, string> = {};
       for (const [key, filename] of Object.entries(SECTION_KEYS)) {
         if (activeSections.some((s) => s.filename === filename)) {
           previewSectionSvgs[key] = `./${filename}`;
+          previewSectionSvgsLight[key] =
+            `./${filename.replace(/\.svg$/, "-light.svg")}`;
         }
       }
 
@@ -346,6 +376,7 @@ export async function runPipeline(
         ...contextBase,
         svgs: previewSvgs,
         sectionSvgs: previewSectionSvgs,
+        sectionSvgsLight: previewSectionSvgsLight,
         svgDir: ".",
       });
       writeFileSync(`${tplDir}/README.md`, previewReadme);
