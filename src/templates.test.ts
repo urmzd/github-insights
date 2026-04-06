@@ -240,9 +240,10 @@ describe("showcaseTemplate", () => {
     expect(output).toContain("A software developer in Austin, TX.");
   });
 
-  it("includes inline metadata", () => {
+  it("does not include inline metadata (redundant with preamble)", () => {
     const output = getTemplate("showcase")(makeContext());
-    expect(output).toContain("**Top Languages:** TypeScript, Rust");
+    expect(output).not.toContain("**Top Languages:**");
+    expect(output).not.toContain("**Role:**");
   });
 
   it("includes social badges", () => {

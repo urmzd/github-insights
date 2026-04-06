@@ -48,16 +48,6 @@ export function descriptiveAlt(label: string, name: string): string {
   return label;
 }
 
-function inlineMetadata(ctx: TemplateContext): string {
-  const parts: string[] = [];
-  if (ctx.title) parts.push(`**Role:** ${ctx.title}`);
-  const topLangs = ctx.languages.slice(0, 5).map((l) => l.name);
-  if (topLangs.length > 0)
-    parts.push(`**Top Languages:** ${topLangs.join(", ")}`);
-  if (parts.length === 0) return "";
-  return parts.join(" | ");
-}
-
 export function extractFirstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || fullName;
 }
@@ -235,9 +225,6 @@ function showcaseTemplate(ctx: TemplateContext): string {
   if (ctx.preamble) {
     parts.push(ctx.preamble);
   }
-
-  const meta = inlineMetadata(ctx);
-  if (meta) parts.push(meta);
 
   if (ctx.socialBadges) {
     parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
