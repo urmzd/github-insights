@@ -15,10 +15,14 @@ sections:
   - velocity
   - rhythm
   - constellation
+  # - stack
   - portfolio
   - impact
 
 exclude_archived: true
+
+# How to group projects in the constellation chart: "language" or "category"
+# constellation_group_by: language
 
 # When true, the pipeline will fail instead of falling back to heuristics
 # when AI classification or preamble generation is unavailable.
