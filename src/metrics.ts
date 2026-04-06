@@ -2,11 +2,14 @@ import { renderContributionRhythm } from "./components/contribution-rhythm.js";
 import { renderImpactTrail } from "./components/impact-trail.js";
 import { renderLanguageVelocity } from "./components/language-velocity.js";
 import { renderProjectConstellation } from "./components/project-constellation.js";
+import { renderTechStack } from "./components/tech-stack.js";
 import { parseManifest } from "./parsers.js";
 import type {
   ConstellationBar,
+  ConstellationGroupBy,
   ContributionData,
   ContributionRhythm,
+  InsightsReport,
   LanguageItem,
   ManifestMap,
   MonthlyLanguageBucket,
@@ -17,6 +20,9 @@ import type {
   RepoNode,
   SectionDef,
   SpotlightProject,
+  StackLayer,
+  StackProject,
+  UserProfile,
 } from "./types.js";
 
 // ── Category Sets ───────────────────────────────────────────────────────────
@@ -43,6 +49,7 @@ export const SECTION_KEYS: Record<string, string> = {
   rhythm: "metrics-rhythm.svg",
   constellation: "metrics-constellation.svg",
   impact: "metrics-impact.svg",
+  stack: "metrics-stack.svg",
   spotlight: "",
   portfolio: "",
 };
@@ -52,6 +59,7 @@ export const SVG_SECTION_KEYS = [
   "rhythm",
   "constellation",
   "impact",
+  "stack",
 ] as const;
 
 export const TEXT_SECTION_KEYS = ["spotlight", "portfolio"] as const;
@@ -628,6 +636,7 @@ function pickPrimaryColor(
 export const computeConstellationLayout = (
   projects: ProjectItem[],
   repos: RepoNode[],
+  groupBy: ConstellationGroupBy = "language",
 ): ConstellationBar[] => {
   if (projects.length === 0) return [];
 
@@ -639,23 +648,27 @@ export const computeConstellationLayout = (
   // Build bars with complexity scores
   const bars: ConstellationBar[] = projects.map((p) => {
     const repo = repoMap.get(p.name);
+    const groupKey =
+      groupBy === "category"
+        ? p.category || (repo ? heuristicCategory(repo) : "Other")
+        : pickPrimaryLanguage(p.languages, repo);
     return {
       name: p.name,
       url: p.url,
       complexity: repo ? complexityScore(repo) : 0,
-      primaryLanguage: pickPrimaryLanguage(p.languages, repo),
+      primaryLanguage: groupKey,
       primaryColor: pickPrimaryColor(p.languages, repo),
       languages: (p.languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l)),
       stars: p.stars,
     };
   });
 
-  // Group by primary language
+  // Group by chosen key
   const groups = new Map<string, ConstellationBar[]>();
   for (const bar of bars) {
-    const lang = bar.primaryLanguage;
-    if (!groups.has(lang)) groups.set(lang, []);
-    groups.get(lang)?.push(bar);
+    const key = bar.primaryLanguage;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)?.push(bar);
   }
 
   // Sort within each group by complexity (descending)
@@ -663,34 +676,196 @@ export const computeConstellationLayout = (
     group.sort((a, b) => b.complexity - a.complexity);
   }
 
-  // Collapse single-project groups into "Other"
-  const multiGroups: [string, ConstellationBar[]][] = [];
-  const otherBars: ConstellationBar[] = [];
-  for (const [lang, group] of groups) {
-    if (group.length === 1) {
-      otherBars.push({ ...group[0], primaryLanguage: "Other" });
-    } else {
-      multiGroups.push([lang, group]);
-    }
-  }
-  if (otherBars.length > 0) {
-    otherBars.sort((a, b) => b.complexity - a.complexity);
-    multiGroups.push(["Other", otherBars]);
-  }
+  // Keep all groups — no collapsing to "Other"
+  const sortedGroups = [...groups.entries()];
 
   // Sort groups by max complexity (descending)
-  multiGroups.sort(
+  sortedGroups.sort(
     (a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0),
   );
 
   // Cap each group at 3, then cap total at 12
   const MAX_PER_GROUP = 3;
   const MAX_BARS = 12;
-  const flat = multiGroups.flatMap(([, group]) =>
+  const flat = sortedGroups.flatMap(([, group]) =>
     group.slice(0, MAX_PER_GROUP),
   );
   return flat.slice(0, MAX_BARS);
 };
+
+// ── Tech Stack Layout ──────────────────────────────────────────────────────
+
+const STACK_LAYER_MAP: Record<
+  string,
+  { name: string; rank: number; color: string }
+> = {
+  "Developer Tools": {
+    name: "Infrastructure & DevOps",
+    rank: 0,
+    color: "#3fb950",
+  },
+  SDKs: { name: "Libraries & SDKs", rank: 1, color: "#58a6ff" },
+  Applications: { name: "Applications", rank: 2, color: "#d29922" },
+  Other: { name: "Applications", rank: 2, color: "#d29922" },
+  "Research & Experiments": {
+    name: "AI & Research",
+    rank: 3,
+    color: "#bc8cff",
+  },
+};
+
+export const computeStackLayout = (
+  projects: ProjectItem[],
+  repos: RepoNode[],
+): StackLayer[] => {
+  const repoMap = new Map<string, RepoNode>();
+  for (const repo of repos) {
+    repoMap.set(repo.name, repo);
+  }
+
+  // Group projects by stack layer
+  const layerProjects = new Map<
+    number,
+    {
+      layer: { name: string; rank: number; color: string };
+      projects: StackProject[];
+    }
+  >();
+
+  for (const project of projects) {
+    const category =
+      project.category ||
+      (repoMap.has(project.name)
+        ? heuristicCategory(repoMap.get(project.name)!)
+        : "Other");
+    const layerDef = STACK_LAYER_MAP[category] || STACK_LAYER_MAP["Other"];
+    const repo = repoMap.get(project.name);
+
+    const stackProject: StackProject = {
+      name: project.name,
+      url: project.url,
+      stars: project.stars,
+      primaryLanguage: pickPrimaryLanguage(project.languages, repo),
+      primaryColor: pickPrimaryColor(project.languages, repo),
+      complexity: repo ? complexityScore(repo) : 0,
+    };
+
+    if (!layerProjects.has(layerDef.rank)) {
+      layerProjects.set(layerDef.rank, { layer: layerDef, projects: [] });
+    }
+    layerProjects.get(layerDef.rank)!.projects.push(stackProject);
+  }
+
+  // Sort projects within each layer by complexity desc, cap at 4
+  const layers: StackLayer[] = [];
+  for (const [, entry] of layerProjects) {
+    entry.projects.sort((a, b) => b.complexity - a.complexity);
+    layers.push({
+      name: entry.layer.name,
+      rank: entry.layer.rank,
+      color: entry.layer.color,
+      projects: entry.projects.slice(0, 4),
+    });
+  }
+
+  // Sort by rank ascending (bottom = infra, top = AI)
+  layers.sort((a, b) => a.rank - b.rank);
+
+  return layers;
+};
+
+// ── Insights Report Builder ────────────────────────────────────────────────
+
+export function buildInsightsReport(params: {
+  username: string;
+  displayName: string;
+  profile: UserProfile;
+  repos: RepoNode[];
+  contributionData: ContributionData;
+  aiClassifications: RepoClassificationOutput[];
+  constellationGroupBy: ConstellationGroupBy;
+  excludeArchived: boolean;
+}): InsightsReport {
+  const {
+    username,
+    displayName,
+    profile,
+    repos,
+    contributionData,
+    aiClassifications,
+    constellationGroupBy,
+    excludeArchived,
+  } = params;
+
+  const languages = aggregateLanguages(repos);
+  const complexProjects = getTopProjectsByComplexity(repos);
+  const {
+    active: activeProjects,
+    maintained: maintainedProjects,
+    inactive: inactiveProjects,
+    archived: archivedProjects,
+  } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+
+  const velocity = computeLanguageVelocity(contributionData, repos);
+  const rhythm = computeContributionRhythm(contributionData);
+  const constellation = computeConstellationLayout(
+    complexProjects,
+    repos,
+    constellationGroupBy,
+  );
+  const spotlightProjects = computeSpotlightProjects(
+    repos,
+    contributionData,
+    aiClassifications,
+  );
+
+  // Build allProjects and categorizedProjects
+  const includeArchived = !excludeArchived;
+  const allProjectItems = [
+    ...activeProjects,
+    ...maintainedProjects,
+    ...inactiveProjects,
+    ...(includeArchived ? archivedProjects : []),
+  ];
+  const categorizedProjects: Record<string, ProjectItem[]> = {};
+  for (const project of allProjectItems) {
+    const cat = project.category || "Other";
+    if (!categorizedProjects[cat]) categorizedProjects[cat] = [];
+    categorizedProjects[cat].push(project);
+  }
+
+  // Stack uses the classified projects (all non-archived)
+  const stackProjects = [
+    ...activeProjects,
+    ...maintainedProjects,
+    ...inactiveProjects,
+  ];
+  const stack = computeStackLayout(stackProjects, repos);
+
+  const firstName = displayName.trim().split(/\s+/)[0] || displayName;
+
+  return {
+    username,
+    displayName,
+    firstName,
+    profile,
+    languages,
+    allProjects: complexProjects,
+    activeProjects,
+    maintainedProjects,
+    inactiveProjects,
+    archivedProjects,
+    categorizedProjects,
+    spotlightProjects,
+    velocity,
+    rhythm,
+    constellation,
+    stack,
+    contributionData,
+    constellationGroupBy,
+    generatedAt: new Date().toISOString(),
+  };
+}
 
 // ── Section definitions ─────────────────────────────────────────────────────
 
@@ -698,12 +873,16 @@ export const buildSections = ({
   velocity,
   rhythm,
   constellation,
+  stack,
   contributionData,
+  constellationGroupBy = "language",
 }: {
   velocity: MonthlyLanguageBucket[];
   rhythm: ContributionRhythm;
   constellation: ConstellationBar[];
+  stack?: StackLayer[];
   contributionData: ContributionData;
+  constellationGroupBy?: ConstellationGroupBy;
 }): SectionDef[] => {
   const sections: SectionDef[] = [];
 
@@ -733,7 +912,9 @@ export const buildSections = ({
       filename: "metrics-constellation.svg",
       title: "Project Constellation",
       subtitle:
-        "Top projects ranked by complexity, grouped by primary language",
+        constellationGroupBy === "category"
+          ? "Top projects ranked by complexity, grouped by domain"
+          : "Top projects ranked by complexity, grouped by primary language",
       renderBody: (y: number) => renderProjectConstellation(constellation, y),
       data: constellation,
     });
@@ -748,6 +929,17 @@ export const buildSections = ({
       subtitle: "External repositories contributed to",
       renderBody: (y: number) => renderImpactTrail(impactRepos, y),
       data: impactRepos,
+    });
+  }
+
+  // 5. Tech Stack
+  if (stack && stack.length > 0) {
+    sections.push({
+      filename: "metrics-stack.svg",
+      title: "Tech Stack",
+      subtitle: "Projects arranged by abstraction layer",
+      renderBody: (y: number) => renderTechStack(stack, y),
+      data: stack,
     });
   }
 
