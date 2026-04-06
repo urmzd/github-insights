@@ -1,3 +1,7 @@
+// ── Theme ───────────────────────────────────────────────────────────────────
+
+export type ThemeMode = "dark" | "light";
+
 // ── Render result ───────────────────────────────────────────────────────────
 
 export interface RenderResult {
@@ -300,6 +304,7 @@ export interface TemplateContext {
   templateName: TemplateName;
   svgs: SvgEmbed[];
   sectionSvgs: Record<string, string>;
+  sectionSvgsLight: Record<string, string>;
   profile: UserProfile;
   activeProjects: ProjectItem[];
   maintainedProjects: ProjectItem[];
