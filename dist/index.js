@@ -56165,7 +56165,10 @@ const VALID_SECTIONS = [
     "constellation",
     "impact",
     "portfolio",
+    "stack",
 ];
+const VALID_CONSTELLATION_GROUP_BY = ["language", "category"];
+const constellationGroupBySet = new Set(VALID_CONSTELLATION_GROUP_BY);
 const templateSet = new Set(VALID_TEMPLATES);
 const sectionSet = new Set(VALID_SECTIONS);
 /** Trims a string, returns undefined if empty/whitespace-only. */
@@ -56199,6 +56202,15 @@ const aiConfigSchema = object({
 })
     .strip()
     .optional();
+/** Lowercases + validates against constellation group-by enum, returns undefined if invalid. */
+const lenientConstellationGroupBy = schemas_string()
+    .transform((s) => {
+    const lower = s.trim().toLowerCase();
+    return constellationGroupBySet.has(lower)
+        ? lower
+        : undefined;
+})
+    .optional();
 /** Filters array to valid section strings, returns undefined if empty. */
 const lenientSections = array(unknown())
     .transform((arr) => {
@@ -56221,6 +56233,7 @@ const UserConfigSchema = object({
     exclude_archived: schemas_boolean().optional(),
     fail_fast: schemas_boolean().optional(),
     export_json: schemas_boolean().optional(),
+    constellation_group_by: lenientConstellationGroupBy,
     ai: aiConfigSchema,
 })
     .strip()
@@ -56244,6 +56257,7 @@ const SECTION_PRESETS = {
         "velocity",
         "rhythm",
         "constellation",
+        "stack",
         "portfolio",
         "impact",
     ],
@@ -56611,7 +56625,7 @@ function renderProjectConstellation(bars, y) {
         const barWidth = Math.max(4, (bar.complexity / maxComplexity) * barMaxWidth);
         const secondaryLangs = bar.languages.slice(1);
         const hasSecondary = secondaryLangs.length > 0;
-        const totalRowHeight = rowBaseHeight + (hasSecondary ? langDotsHeight : 0);
+        const totalRowHeight = rowBaseHeight + langDotsHeight;
         // Project name
         svg += (jsx_factory_h("text", { x: padX + 8, y: curY + 16, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(bar.name, 24))));
         // Complexity bar
@@ -56631,6 +56645,61 @@ function renderProjectConstellation(bars, y) {
         }
         curY += totalRowHeight + rowGap;
         itemIndex++;
+    }
+    const totalHeight = curY - y;
+    return { svg, height: totalHeight };
+}
+void Fragment;
+
+;// CONCATENATED MODULE: ./src/components/tech-stack.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
+
+
+
+function renderTechStack(layers, y) {
+    if (layers.length === 0)
+        return { svg: "", height: 0 };
+    const { padX } = theme_LAYOUT;
+    const contentWidth = theme_LAYOUT.width - padX * 2;
+    const cardWidth = 176;
+    const cardHeight = 52;
+    const cardGap = 12;
+    const headerHeight = 24;
+    const bandPadding = 24;
+    const bandGap = 8;
+    // Render layers top-to-bottom (highest rank first)
+    const sortedLayers = [...layers].sort((a, b) => b.rank - a.rank);
+    let svg = "";
+    let curY = y;
+    for (let li = 0; li < sortedLayers.length; li++) {
+        const layer = sortedLayers[li];
+        const delay = Math.min(li + 1, 6);
+        const bandHeight = headerHeight + cardHeight + bandPadding * 2;
+        // Layer band background
+        svg += (jsx_factory_h("rect", { x: padX, y: curY, width: contentWidth, height: bandHeight, rx: "8", fill: layer.color, "fill-opacity": "0.08", className: `fade-${delay}` }));
+        // Layer header label
+        svg += (jsx_factory_h("text", { x: padX + 16, y: curY + bandPadding + 12, className: `t t-subhdr fade-${delay}`, "fill-opacity": "0.9" }, svg_utils_escapeXml(layer.name.toUpperCase())));
+        // Project cards
+        const cardY = curY + bandPadding + headerHeight;
+        for (let ci = 0; ci < layer.projects.length; ci++) {
+            const project = layer.projects[ci];
+            const cardX = padX + 16 + ci * (cardWidth + cardGap);
+            // Don't render cards that overflow
+            if (cardX + cardWidth > padX + contentWidth - 16)
+                break;
+            // Card background
+            svg += (jsx_factory_h("rect", { x: cardX, y: cardY, width: cardWidth, height: cardHeight, rx: "6", className: `card-fill fade-${delay}` }));
+            // Project name
+            svg += (jsx_factory_h("text", { x: cardX + 10, y: cardY + 20, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(project.name, 20))));
+            // Stars in top-right
+            svg += (jsx_factory_h("text", { x: cardX + cardWidth - 10, y: cardY + 20, className: `t t-value fade-${delay}`, "text-anchor": "end", "font-size": "9" }, `\u2605 ${project.stars}`));
+            // Language pill: circle + text
+            svg += (jsx_factory_h(Fragment, null,
+                jsx_factory_h("circle", { cx: cardX + 14, cy: cardY + 38, r: "3", fill: project.primaryColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
+                jsx_factory_h("text", { x: cardX + 22, y: cardY + 41, className: `t fade-${delay}`, "font-size": "9", fill: theme_THEME.muted }, svg_utils_escapeXml(project.primaryLanguage))));
+        }
+        curY += bandHeight + bandGap;
     }
     const totalHeight = curY - y;
     return { svg, height: totalHeight };
@@ -56781,6 +56850,7 @@ const parsers_parseManifest = (filename, text) => PARSER_MAP.get(filename)?.pars
 
 
 
+
 // ── Category Sets ───────────────────────────────────────────────────────────
 const EXCLUDED_LANGUAGES = new Set([
     "Jupyter Notebook",
@@ -56802,6 +56872,7 @@ const SECTION_KEYS = {
     rhythm: "metrics-rhythm.svg",
     constellation: "metrics-constellation.svg",
     impact: "metrics-impact.svg",
+    stack: "metrics-stack.svg",
     spotlight: "",
     portfolio: "",
 };
@@ -56810,6 +56881,7 @@ const SVG_SECTION_KEYS = [
     "rhythm",
     "constellation",
     "impact",
+    "stack",
 ];
 const TEXT_SECTION_KEYS = (/* unused pure expression or super */ null && (["spotlight", "portfolio"]));
 // ── Aggregation ─────────────────────────────────────────────────────────────
@@ -57248,7 +57320,7 @@ function pickPrimaryColor(languages, repo) {
     return repo?.primaryLanguage?.color || "#8b949e";
 }
 // ── Project Constellation ───────────────────────────────────────────────────
-const computeConstellationLayout = (projects, repos) => {
+const computeConstellationLayout = (projects, repos, groupBy = "language") => {
     if (projects.length === 0)
         return [];
     const repoMap = new Map();
@@ -57258,53 +57330,156 @@ const computeConstellationLayout = (projects, repos) => {
     // Build bars with complexity scores
     const bars = projects.map((p) => {
         const repo = repoMap.get(p.name);
+        const groupKey = groupBy === "category"
+            ? p.category || (repo ? heuristicCategory(repo) : "Other")
+            : pickPrimaryLanguage(p.languages, repo);
         return {
             name: p.name,
             url: p.url,
             complexity: repo ? complexityScore(repo) : 0,
-            primaryLanguage: pickPrimaryLanguage(p.languages, repo),
+            primaryLanguage: groupKey,
             primaryColor: pickPrimaryColor(p.languages, repo),
             languages: (p.languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l)),
             stars: p.stars,
         };
     });
-    // Group by primary language
+    // Group by chosen key
     const groups = new Map();
     for (const bar of bars) {
-        const lang = bar.primaryLanguage;
-        if (!groups.has(lang))
-            groups.set(lang, []);
-        groups.get(lang)?.push(bar);
+        const key = bar.primaryLanguage;
+        if (!groups.has(key))
+            groups.set(key, []);
+        groups.get(key)?.push(bar);
     }
     // Sort within each group by complexity (descending)
     for (const group of groups.values()) {
         group.sort((a, b) => b.complexity - a.complexity);
     }
-    // Collapse single-project groups into "Other"
-    const multiGroups = [];
-    const otherBars = [];
-    for (const [lang, group] of groups) {
-        if (group.length === 1) {
-            otherBars.push({ ...group[0], primaryLanguage: "Other" });
-        }
-        else {
-            multiGroups.push([lang, group]);
-        }
-    }
-    if (otherBars.length > 0) {
-        otherBars.sort((a, b) => b.complexity - a.complexity);
-        multiGroups.push(["Other", otherBars]);
-    }
+    // Keep all groups — no collapsing to "Other"
+    const sortedGroups = [...groups.entries()];
     // Sort groups by max complexity (descending)
-    multiGroups.sort((a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0));
+    sortedGroups.sort((a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0));
     // Cap each group at 3, then cap total at 12
     const MAX_PER_GROUP = 3;
     const MAX_BARS = 12;
-    const flat = multiGroups.flatMap(([, group]) => group.slice(0, MAX_PER_GROUP));
+    const flat = sortedGroups.flatMap(([, group]) => group.slice(0, MAX_PER_GROUP));
     return flat.slice(0, MAX_BARS);
 };
+// ── Tech Stack Layout ──────────────────────────────────────────────────────
+const STACK_LAYER_MAP = {
+    "Developer Tools": {
+        name: "Infrastructure & DevOps",
+        rank: 0,
+        color: "#3fb950",
+    },
+    SDKs: { name: "Libraries & SDKs", rank: 1, color: "#58a6ff" },
+    Applications: { name: "Applications", rank: 2, color: "#d29922" },
+    Other: { name: "Applications", rank: 2, color: "#d29922" },
+    "Research & Experiments": {
+        name: "AI & Research",
+        rank: 3,
+        color: "#bc8cff",
+    },
+};
+const computeStackLayout = (projects, repos) => {
+    const repoMap = new Map();
+    for (const repo of repos) {
+        repoMap.set(repo.name, repo);
+    }
+    // Group projects by stack layer
+    const layerProjects = new Map();
+    for (const project of projects) {
+        const category = project.category ||
+            (repoMap.has(project.name)
+                ? heuristicCategory(repoMap.get(project.name))
+                : "Other");
+        const layerDef = STACK_LAYER_MAP[category] || STACK_LAYER_MAP["Other"];
+        const repo = repoMap.get(project.name);
+        const stackProject = {
+            name: project.name,
+            url: project.url,
+            stars: project.stars,
+            primaryLanguage: pickPrimaryLanguage(project.languages, repo),
+            primaryColor: pickPrimaryColor(project.languages, repo),
+            complexity: repo ? complexityScore(repo) : 0,
+        };
+        if (!layerProjects.has(layerDef.rank)) {
+            layerProjects.set(layerDef.rank, { layer: layerDef, projects: [] });
+        }
+        layerProjects.get(layerDef.rank).projects.push(stackProject);
+    }
+    // Sort projects within each layer by complexity desc, cap at 4
+    const layers = [];
+    for (const [, entry] of layerProjects) {
+        entry.projects.sort((a, b) => b.complexity - a.complexity);
+        layers.push({
+            name: entry.layer.name,
+            rank: entry.layer.rank,
+            color: entry.layer.color,
+            projects: entry.projects.slice(0, 4),
+        });
+    }
+    // Sort by rank ascending (bottom = infra, top = AI)
+    layers.sort((a, b) => a.rank - b.rank);
+    return layers;
+};
+// ── Insights Report Builder ────────────────────────────────────────────────
+function buildInsightsReport(params) {
+    const { username, displayName, profile, repos, contributionData, aiClassifications, constellationGroupBy, excludeArchived, } = params;
+    const languages = aggregateLanguages(repos);
+    const complexProjects = getTopProjectsByComplexity(repos);
+    const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+    const velocity = computeLanguageVelocity(contributionData, repos);
+    const rhythm = computeContributionRhythm(contributionData);
+    const constellation = computeConstellationLayout(complexProjects, repos, constellationGroupBy);
+    const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
+    // Build allProjects and categorizedProjects
+    const includeArchived = !excludeArchived;
+    const allProjectItems = [
+        ...activeProjects,
+        ...maintainedProjects,
+        ...inactiveProjects,
+        ...(includeArchived ? archivedProjects : []),
+    ];
+    const categorizedProjects = {};
+    for (const project of allProjectItems) {
+        const cat = project.category || "Other";
+        if (!categorizedProjects[cat])
+            categorizedProjects[cat] = [];
+        categorizedProjects[cat].push(project);
+    }
+    // Stack uses the classified projects (all non-archived)
+    const stackProjects = [
+        ...activeProjects,
+        ...maintainedProjects,
+        ...inactiveProjects,
+    ];
+    const stack = computeStackLayout(stackProjects, repos);
+    const firstName = displayName.trim().split(/\s+/)[0] || displayName;
+    return {
+        username,
+        displayName,
+        firstName,
+        profile,
+        languages,
+        allProjects: complexProjects,
+        activeProjects,
+        maintainedProjects,
+        inactiveProjects,
+        archivedProjects,
+        categorizedProjects,
+        spotlightProjects,
+        velocity,
+        rhythm,
+        constellation,
+        stack,
+        contributionData,
+        constellationGroupBy,
+        generatedAt: new Date().toISOString(),
+    };
+}
 // ── Section definitions ─────────────────────────────────────────────────────
-const buildSections = ({ velocity, rhythm, constellation, contributionData, }) => {
+const buildSections = ({ velocity, rhythm, constellation, stack, contributionData, constellationGroupBy = "language", }) => {
     const sections = [];
     // 1. Language Velocity
     if (velocity.length > 0) {
@@ -57329,7 +57504,9 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
         sections.push({
             filename: "metrics-constellation.svg",
             title: "Project Constellation",
-            subtitle: "Top projects ranked by complexity, grouped by primary language",
+            subtitle: constellationGroupBy === "category"
+                ? "Top projects ranked by complexity, grouped by domain"
+                : "Top projects ranked by complexity, grouped by primary language",
             renderBody: (y) => renderProjectConstellation(constellation, y),
             data: constellation,
         });
@@ -57343,6 +57520,16 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
             subtitle: "External repositories contributed to",
             renderBody: (y) => renderImpactTrail(impactRepos, y),
             data: impactRepos,
+        });
+    }
+    // 5. Tech Stack
+    if (stack && stack.length > 0) {
+        sections.push({
+            filename: "metrics-stack.svg",
+            title: "Tech Stack",
+            subtitle: "Projects arranged by abstraction layer",
+            renderBody: (y) => renderTechStack(stack, y),
+            data: stack,
         });
     }
     return sections;
@@ -57535,6 +57722,11 @@ function renderImpact(ctx) {
         return "";
     return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
 }
+function renderStack(ctx) {
+    if (!ctx.sectionSvgs.stack)
+        return "";
+    return `## Tech Stack\n\n![Tech Stack](${ctx.sectionSvgs.stack})`;
+}
 function renderPortfolio(ctx) {
     const tableParts = [];
     for (const category of CATEGORY_ORDER) {
@@ -57562,6 +57754,7 @@ const SECTION_RENDERERS = {
     constellation: renderConstellation,
     impact: renderImpact,
     portfolio: renderPortfolio,
+    stack: renderStack,
 };
 // ── Showcase template ─────────────────────────────────────────────────────
 function showcaseTemplate(ctx) {
@@ -57656,8 +57849,6 @@ async function runPipeline(config, cb) {
     const failFast = config.failFast || userConfig.fail_fast || false;
     const exportJson = config.exportJson || userConfig.export_json || false;
     cb.onPhaseStart("classify", "Classifying projects");
-    const languages = aggregateLanguages(repos);
-    const complexProjects = getTopProjectsByComplexity(repos);
     const classificationInputs = buildClassificationInputs(repos, contributionData);
     let aiClassifications = [];
     try {
@@ -57674,15 +57865,25 @@ async function runPipeline(config, cb) {
     cb.onPhaseComplete("classify", `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`);
     // ── Transform ─────────────────────────────────────────────────────────────
     cb.onPhaseStart("transform", "Computing metrics");
-    const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
-    const velocity = computeLanguageVelocity(contributionData, repos);
-    const rhythm = computeContributionRhythm(contributionData);
-    const constellation = computeConstellationLayout(complexProjects, repos);
-    const sectionDefs = buildSections({
-        velocity,
-        rhythm,
-        constellation,
+    const displayName = userConfig.name || userProfile.name || config.username;
+    const constellationGroupBy = userConfig.constellation_group_by || "language";
+    const report = buildInsightsReport({
+        username: config.username,
+        displayName,
+        profile: userProfile,
+        repos,
         contributionData,
+        aiClassifications,
+        constellationGroupBy,
+        excludeArchived: userConfig.exclude_archived !== false,
+    });
+    const sectionDefs = buildSections({
+        velocity: report.velocity,
+        rhythm: report.rhythm,
+        constellation: report.constellation,
+        stack: report.stack,
+        contributionData: report.contributionData,
+        constellationGroupBy: report.constellationGroupBy,
     });
     let activeSections = sectionDefs.filter((s) => s.renderBody);
     if (svgSectionsNeeded.size > 0) {
@@ -57719,9 +57920,7 @@ async function runPipeline(config, cb) {
     if (config.readmePath && config.readmePath !== "none") {
         cb.onPhaseStart("generate-readme", "Generating README");
         const svgDir = (0,external_node_path_namespaceObject.relative)((0,external_node_path_namespaceObject.dirname)(config.readmePath), config.outputDir) || ".";
-        const displayName = userConfig.name || userProfile.name || config.username;
         const socialBadges = buildSocialBadges(userProfile);
-        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
         let preamble = loadPreamble(userConfig.preamble);
         if (!preamble) {
             cb.onProgress("Generating preamble with AI...");
@@ -57730,9 +57929,9 @@ async function runPipeline(config, cb) {
                     username: config.username,
                     profile: userProfile,
                     userConfig,
-                    languages,
-                    spotlightProjects,
-                    complexProjects,
+                    languages: report.languages,
+                    spotlightProjects: report.spotlightProjects,
+                    complexProjects: report.allProjects,
                 }, prompts.preamble);
             }
             catch (err) {
@@ -57754,22 +57953,8 @@ async function runPipeline(config, cb) {
                 sectionSvgs[key] = `${svgDir}/${filename}`;
             }
         }
-        const includeArchived = userConfig.exclude_archived === false;
-        const allProjectItems = [
-            ...activeProjects,
-            ...maintainedProjects,
-            ...inactiveProjects,
-            ...(includeArchived ? archivedProjects : []),
-        ];
-        const categorizedProjects = {};
-        for (const project of allProjectItems) {
-            const cat = project.category || "Other";
-            if (!categorizedProjects[cat])
-                categorizedProjects[cat] = [];
-            categorizedProjects[cat].push(project);
-        }
         const template = getTemplate(templateName);
-        const readme = template({
+        const contextBase = {
             username: config.username,
             name: displayName,
             firstName: extractFirstName(displayName),
@@ -57778,24 +57963,28 @@ async function runPipeline(config, cb) {
             bio: userConfig.bio,
             preamble,
             templateName,
+            profile: userProfile,
+            activeProjects: report.activeProjects,
+            maintainedProjects: report.maintainedProjects,
+            inactiveProjects: report.inactiveProjects,
+            archivedProjects: report.archivedProjects,
+            allProjects: report.allProjects,
+            categorizedProjects: report.categorizedProjects,
+            languages: report.languages,
+            velocity: report.velocity,
+            rhythm: report.rhythm,
+            constellation: report.constellation,
+            stack: report.stack,
+            contributionData: report.contributionData,
+            socialBadges,
+            spotlightProjects: report.spotlightProjects,
+            resolvedSections,
+        };
+        const readme = template({
+            ...contextBase,
             svgs,
             sectionSvgs,
-            profile: userProfile,
-            activeProjects,
-            maintainedProjects,
-            inactiveProjects,
-            archivedProjects,
-            allProjects: complexProjects,
-            categorizedProjects,
-            languages,
-            velocity,
-            rhythm,
-            constellation,
-            contributionData,
-            socialBadges,
             svgDir,
-            spotlightProjects,
-            resolvedSections,
         });
         (0,external_node_fs_namespaceObject.writeFileSync)(config.readmePath, readme);
         // Local template preview
@@ -57817,32 +58006,10 @@ async function runPipeline(config, cb) {
                 }
             }
             const previewReadme = template({
-                username: config.username,
-                name: displayName,
-                firstName: extractFirstName(displayName),
-                pronunciation: userConfig.pronunciation,
-                title: userConfig.title,
-                bio: userConfig.bio,
-                preamble,
-                templateName,
+                ...contextBase,
                 svgs: previewSvgs,
                 sectionSvgs: previewSectionSvgs,
-                profile: userProfile,
-                activeProjects,
-                maintainedProjects,
-                inactiveProjects,
-                archivedProjects,
-                allProjects: complexProjects,
-                categorizedProjects,
-                languages,
-                velocity,
-                rhythm,
-                constellation,
-                contributionData,
-                socialBadges,
                 svgDir: ".",
-                spotlightProjects,
-                resolvedSections,
             });
             (0,external_node_fs_namespaceObject.writeFileSync)(`${tplDir}/README.md`, previewReadme);
             cb.onProgress(`Preview at ${tplDir}/README.md`);

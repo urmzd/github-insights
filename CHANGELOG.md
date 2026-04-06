@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.8.0 (2026-04-06)
+
+### Features
+
+- **config**: add stack section, constellation group-by, and insights report types ([1c97d6d](https://github.com/urmzd/github-insights/commit/1c97d6d6f5a9b062bda3b4b02e5ffc07766b049f))
+- **templates**: add tech stack section renderer ([9480ddd](https://github.com/urmzd/github-insights/commit/9480ddd7edc953d00e460edf3f2149444b87e9cc))
+- **metrics**: add stack layout computation and insights report builder ([25c3b7d](https://github.com/urmzd/github-insights/commit/25c3b7d7e7bfec71458a8b8468138e83af0f8c8a))
+- **components**: add tech-stack component ([1e0e6de](https://github.com/urmzd/github-insights/commit/1e0e6dea1a090b28693729c3416bd6c45ece6b66))
+
+### Documentation
+
+- **config**: add stack section and constellation_group_by examples ([8a14c0a](https://github.com/urmzd/github-insights/commit/8a14c0ac4641160b44abf62cc283ffdf5bfb179e))
+
+### Refactoring
+
+- **cli**: consolidate metrics into insights report ([c9f0786](https://github.com/urmzd/github-insights/commit/c9f0786a1af523dca50ff63464262df7eb39da51))
+- **pipeline**: consolidate metrics into insights report ([206321f](https://github.com/urmzd/github-insights/commit/206321f06dbf989d6d317f2c830e20ec15afc685))
+- **project-constellation**: simplify row height calculation ([175ea64](https://github.com/urmzd/github-insights/commit/175ea64f594ce612c537a2c35bbafae7d2fe1937))
+
+### Miscellaneous
+
+- **templates**: add tech stack section rendering test ([44fef3b](https://github.com/urmzd/github-insights/commit/44fef3b7ee7d3d2afaa01090c0f41abba053b6a1))
+- **metrics**: add stack layout computation tests ([3a439e4](https://github.com/urmzd/github-insights/commit/3a439e41f7b0faca855806213916623242b2ef5c))
+- **config**: add constellation_group_by and stack section tests ([43be6ed](https://github.com/urmzd/github-insights/commit/43be6edfefc3740229d1a30c2c56d2696f6d7a46))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.7.1...v3.8.0)
+
+
 ## 3.7.1 (2026-04-06)
 
 ### Bug Fixes
