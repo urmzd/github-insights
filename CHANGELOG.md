@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.7.1 (2026-04-06)
+
+### Bug Fixes
+
+- remove redundant inline metadata from showcase template ([7770fd7](https://github.com/urmzd/github-insights/commit/7770fd7809447bccd5155ed2758b2c34c585000f))
+
+### Miscellaneous
+
+- exclude dist and dist-cli from GitHub language stats ([fad0e9b](https://github.com/urmzd/github-insights/commit/fad0e9b8213f103046a26e63546593e847c28304))
+- **deps**: bump actions/create-github-app-token from 1 to 3 ([0d58d0b](https://github.com/urmzd/github-insights/commit/0d58d0b25ca77621108dd857ab2413994502af51))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.7.0...v3.7.1)
+
+
 ## 3.7.0 (2026-04-05)
 
 ### Features
