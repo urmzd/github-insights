@@ -195,10 +195,13 @@ function renderStack(ctx: TemplateContext): string {
 }
 
 function renderPortfolio(ctx: TemplateContext): string {
+  const spotlightNames = new Set(ctx.spotlightProjects.map((p) => p.name));
   const tableParts: string[] = [];
 
   for (const category of CATEGORY_ORDER) {
-    const projects = ctx.categorizedProjects[category];
+    const projects = ctx.categorizedProjects[category]?.filter(
+      (p) => !spotlightNames.has(p.name),
+    );
     if (projects && projects.length > 0) {
       tableParts.push(renderProjectTable(category, projects));
     }
@@ -206,8 +209,9 @@ function renderPortfolio(ctx: TemplateContext): string {
 
   for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
     if (!CATEGORY_ORDER.includes(category)) {
-      if (projects.length > 0) {
-        tableParts.push(renderProjectTable(category, projects));
+      const filtered = projects.filter((p) => !spotlightNames.has(p.name));
+      if (filtered.length > 0) {
+        tableParts.push(renderProjectTable(category, filtered));
       }
     }
   }

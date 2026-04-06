@@ -62175,15 +62175,17 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var commander__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(8179);
 /* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8518);
 /* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(7306);
-/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3979);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_3__]);
-([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_3__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3916);
+/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(3979);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_4__]);
+([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_4__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+
 
 
 
 
 // Hardcoded at build time — update via `npm version`
-const version = "3.1.0";
+const version = "3.4.0";
 const program = new commander__WEBPACK_IMPORTED_MODULE_0__/* .Command */ .uB()
     .name("github-insights")
     .description("Generate GitHub profile insights and visualizations")
@@ -62209,6 +62211,8 @@ program
     .option("--readme-path <path>", "README output path", process.env.README_PATH || (process.env.CI ? "README.md" : "none"))
     .option("--template <name>", "Template preset", process.env.TEMPLATE || "showcase")
     .option("--sections <list>", "Comma-separated section list")
+    .option("--fail-fast", "Exit with an error instead of falling back to heuristics when AI is unavailable", false)
+    .option("--export-json", "Export underlying JSON data alongside SVGs for auditing", false)
     .action((opts) => {
     const token = opts.token || "";
     const username = opts.username || "";
@@ -62237,8 +62241,12 @@ program
                 .map((s) => s.trim().toLowerCase())
                 .filter(Boolean)
             : [],
+        failFast: opts.failFast,
+        exportJson: opts.exportJson,
     };
-    (0,ink__WEBPACK_IMPORTED_MODULE_1__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_3__/* .App */ .q, { config: config }));
+    (0,ink__WEBPACK_IMPORTED_MODULE_1__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_4__/* .App */ .q, { config: config, onExit: (err) => {
+            process.exitCode = err ? (0,_errors_js__WEBPACK_IMPORTED_MODULE_3__/* .getExitCode */ .OF)(err) : 0;
+        } }));
 });
 program.parse();
 
@@ -76297,7 +76305,10 @@ const VALID_SECTIONS = [
     "constellation",
     "impact",
     "portfolio",
+    "stack",
 ];
+const VALID_CONSTELLATION_GROUP_BY = ["language", "category"];
+const constellationGroupBySet = new Set(VALID_CONSTELLATION_GROUP_BY);
 const templateSet = new Set(VALID_TEMPLATES);
 const sectionSet = new Set(VALID_SECTIONS);
 /** Trims a string, returns undefined if empty/whitespace-only. */
@@ -76331,6 +76342,15 @@ const aiConfigSchema = object({
 })
     .strip()
     .optional();
+/** Lowercases + validates against constellation group-by enum, returns undefined if invalid. */
+const lenientConstellationGroupBy = schemas_string()
+    .transform((s) => {
+    const lower = s.trim().toLowerCase();
+    return constellationGroupBySet.has(lower)
+        ? lower
+        : undefined;
+})
+    .optional();
 /** Filters array to valid section strings, returns undefined if empty. */
 const lenientSections = array(unknown())
     .transform((arr) => {
@@ -76351,6 +76371,9 @@ const UserConfigSchema = object({
     template: lenientTemplate,
     sections: lenientSections,
     exclude_archived: schemas_boolean().optional(),
+    fail_fast: schemas_boolean().optional(),
+    export_json: schemas_boolean().optional(),
+    constellation_group_by: lenientConstellationGroupBy,
     ai: aiConfigSchema,
 })
     .strip()
@@ -76374,6 +76397,7 @@ const SECTION_PRESETS = {
         "velocity",
         "rhythm",
         "constellation",
+        "stack",
         "portfolio",
         "impact",
     ],
@@ -76458,7 +76482,49 @@ function resolveConfigPath() {
 
 /***/ }),
 
-/***/ 6536:
+/***/ 3916:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
+
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   KH: () => (/* binding */ InsightsError),
+/* harmony export */   O4: () => (/* binding */ ErrorCode),
+/* harmony export */   OF: () => (/* binding */ getExitCode)
+/* harmony export */ });
+/* unused harmony export EXIT_CODES */
+var ErrorCode;
+(function (ErrorCode) {
+    ErrorCode["RATE_LIMITED"] = "RATE_LIMITED";
+    ErrorCode["AI_UNAVAILABLE"] = "AI_UNAVAILABLE";
+    ErrorCode["AUTH_FAILED"] = "AUTH_FAILED";
+    ErrorCode["API_ERROR"] = "API_ERROR";
+})(ErrorCode || (ErrorCode = {}));
+class InsightsError extends Error {
+    code;
+    constructor(message, code) {
+        super(message);
+        this.code = code;
+        this.name = "InsightsError";
+    }
+}
+/** Process exit codes by error type. */
+const EXIT_CODES = {
+    [ErrorCode.RATE_LIMITED]: 2,
+    [ErrorCode.AI_UNAVAILABLE]: 3,
+    [ErrorCode.AUTH_FAILED]: 4,
+    [ErrorCode.API_ERROR]: 5,
+    UNKNOWN: 1,
+};
+function getExitCode(error) {
+    if (error instanceof InsightsError) {
+        return EXIT_CODES[error.code];
+    }
+    return EXIT_CODES.UNKNOWN;
+}
+
+
+/***/ }),
+
+/***/ 8109:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 
@@ -76475,6 +76541,8 @@ var external_node_fs_ = __nccwpck_require__(3024);
 var external_node_path_ = __nccwpck_require__(6760);
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
 var github = __nccwpck_require__(3228);
+// EXTERNAL MODULE: ./src/errors.ts
+var errors = __nccwpck_require__(3916);
 // EXTERNAL MODULE: external "node:url"
 var external_node_url_ = __nccwpck_require__(3136);
 ;// CONCATENATED MODULE: ./src/prompts.ts
@@ -76541,22 +76609,29 @@ function interpolate(template, vars) {
 ;// CONCATENATED MODULE: ./src/api.ts
 
 
+
 const MAX_RETRIES = 3;
 const fetchWithRetry = async (url, init, label) => {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        const res = await fetch(url, init);
+        let res;
+        try {
+            res = await fetch(url, init);
+        }
+        catch (err) {
+            throw new errors/* InsightsError */.KH(`${label}: network error: ${err instanceof Error ? err.message : String(err)}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
+        }
         if (res.status !== 429)
             return res;
         if (attempt === MAX_RETRIES) {
-            console.warn(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`);
-            return null;
+            throw new errors/* InsightsError */.KH(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`, errors/* ErrorCode */.O4.RATE_LIMITED);
         }
         const retryAfter = res.headers.get("retry-after");
         const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
         console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((r) => setTimeout(r, waitSec * 1000));
     }
-    return null;
+    /* istanbul ignore next — unreachable, loop always returns or throws */
+    throw new errors/* InsightsError */.KH(`${label}: rate limited`, errors/* ErrorCode */.O4.RATE_LIMITED);
 };
 const MANIFEST_FILES = (/* unused pure expression or super */ null && ([
     "package.json",
@@ -76777,184 +76852,172 @@ const fetchUserProfile = async (graphql, username) => {
     }
 };
 const fetchAIPreamble = async (token, context, valves) => {
-    try {
-        const { profile, userConfig, languages, spotlightProjects, complexProjects, } = context;
-        const langLines = languages
-            .map((l) => `- ${l.name}: ${l.percent}%`)
-            .join("\n");
-        const formatProject = (p) => {
-            const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
-            const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
-            const desc = p.summary || p.description;
-            return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
-        };
-        const spotlightLines = spotlightProjects.map(formatProject).join("\n");
-        const complexProjectLines = complexProjects.map(formatProject).join("\n");
-        const profileLines = [
-            profile.name ? `Name: ${profile.name}` : null,
-            profile.bio ? `Bio: ${profile.bio}` : null,
-            profile.company ? `Company: ${profile.company}` : null,
-            profile.location ? `Location: ${profile.location}` : null,
-            userConfig.title ? `Current title: ${userConfig.title}` : null,
-            userConfig.desired_title
-                ? `Desired title: ${userConfig.desired_title}`
-                : null,
-        ]
-            .filter(Boolean)
-            .join("\n");
-        const prompt = interpolate(valves.user, {
-            profile: profileLines,
-            languages: langLines,
-            complexProjects: complexProjectLines || "None",
-            activeProjects: spotlightLines || "None",
-        });
-        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: valves.model,
-                messages: [
-                    { role: "system", content: valves.system },
-                    { role: "user", content: prompt },
-                ],
-                temperature: valves.temperature,
-                response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                        name: "preamble",
-                        strict: true,
-                        schema: {
-                            type: "object",
-                            properties: { preamble: { type: "string" } },
-                            required: ["preamble"],
-                            additionalProperties: false,
-                        },
+    const { profile, userConfig, languages, spotlightProjects, complexProjects } = context;
+    const langLines = languages
+        .map((l) => `- ${l.name}: ${l.percent}%`)
+        .join("\n");
+    const formatProject = (p) => {
+        const langs = p.languages?.length ? ` [${p.languages.join(", ")}]` : "";
+        const size = p.codeSize ? ` ~${Math.round(p.codeSize / 1024)}MB` : "";
+        const desc = p.summary || p.description;
+        return `- ${p.name} (${p.stars} stars${size})${langs}: ${desc}`;
+    };
+    const spotlightLines = spotlightProjects.map(formatProject).join("\n");
+    const complexProjectLines = complexProjects.map(formatProject).join("\n");
+    const profileLines = [
+        profile.name ? `Name: ${profile.name}` : null,
+        profile.bio ? `Bio: ${profile.bio}` : null,
+        profile.company ? `Company: ${profile.company}` : null,
+        profile.location ? `Location: ${profile.location}` : null,
+        userConfig.title ? `Current title: ${userConfig.title}` : null,
+        userConfig.desired_title
+            ? `Desired title: ${userConfig.desired_title}`
+            : null,
+    ]
+        .filter(Boolean)
+        .join("\n");
+    const prompt = interpolate(valves.user, {
+        profile: profileLines,
+        languages: langLines,
+        complexProjects: complexProjectLines || "None",
+        activeProjects: spotlightLines || "None",
+    });
+    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
+        method: "POST",
+        headers: {
+            Authorization: `bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model: valves.model,
+            messages: [
+                { role: "system", content: valves.system },
+                { role: "user", content: prompt },
+            ],
+            temperature: valves.temperature,
+            response_format: {
+                type: "json_schema",
+                json_schema: {
+                    name: "preamble",
+                    strict: true,
+                    schema: {
+                        type: "object",
+                        properties: { preamble: { type: "string" } },
+                        required: ["preamble"],
+                        additionalProperties: false,
                     },
                 },
-            }),
-        }, "Preamble");
-        if (!res?.ok) {
-            if (res)
-                console.warn(`GitHub Models API error (preamble): ${res.status}`);
-            return undefined;
-        }
-        const json = (await res.json());
-        const content = json.choices?.[0]?.message?.content || "{}";
-        const parsed = JSON.parse(content);
-        const raw = parsed.preamble || undefined;
-        if (!raw)
-            return undefined;
-        const cleaned = raw
-            // Strip conversational preface (safety net)
-            .replace(/^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i, "")
-            // Strip wrapping code fences
-            .replace(/^```(?:markdown|md)?\s*\n?/, "")
-            .replace(/\n?```\s*$/, "")
-            .trim();
-        // Reject degenerate output (conversational filler with no real content)
-        const minLength = 20;
-        if (cleaned.length < minLength) {
-            console.warn(`AI preamble too short after cleaning (${cleaned.length} chars), discarding`);
-            return undefined;
-        }
-        return cleaned;
+            },
+        }),
+    }, "Preamble");
+    if (res.status === 401 || res.status === 403) {
+        throw new errors/* InsightsError */.KH(`GitHub Models API auth error (preamble): ${res.status}`, errors/* ErrorCode */.O4.AUTH_FAILED);
     }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`AI preamble generation failed (non-fatal): ${msg}`);
-        return undefined;
+    if (!res.ok) {
+        throw new errors/* InsightsError */.KH(`GitHub Models API error (preamble): ${res.status}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
     }
+    const json = (await res.json());
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content);
+    const raw = parsed.preamble;
+    if (!raw) {
+        throw new errors/* InsightsError */.KH("AI preamble response contained no preamble field", errors/* ErrorCode */.O4.AI_UNAVAILABLE);
+    }
+    const cleaned = raw
+        // Strip conversational preface (safety net)
+        .replace(/^(?:certainly|sure|of course|here(?:'s| is| are)|absolutely|great)[\s\S]*?(?::\s*\n|\.\s*\n)/i, "")
+        // Strip wrapping code fences
+        .replace(/^```(?:markdown|md)?\s*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
+    // Reject degenerate output (conversational filler with no real content)
+    const minLength = 20;
+    if (cleaned.length < minLength) {
+        throw new errors/* InsightsError */.KH(`AI preamble too short after cleaning (${cleaned.length} chars)`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
+    }
+    return cleaned;
 };
 const fetchProjectClassifications = async (token, repos, valves) => {
-    try {
-        const repoData = JSON.stringify(repos, null, 2);
-        const prompt = interpolate(valves.user, { repoData });
-        const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: valves.model,
-                messages: [
-                    { role: "system", content: valves.system },
-                    { role: "user", content: prompt },
-                ],
-                temperature: valves.temperature,
-                response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                        name: "project_classifications",
-                        strict: true,
-                        schema: {
-                            type: "object",
-                            properties: {
-                                classifications: {
-                                    type: "array",
-                                    items: {
-                                        type: "object",
-                                        properties: {
-                                            name: { type: "string" },
-                                            status: {
-                                                type: "string",
-                                                enum: ["active", "maintained", "inactive"],
-                                            },
-                                            summary: { type: "string" },
-                                            category: {
-                                                type: "string",
-                                                enum: [
-                                                    "Developer Tools",
-                                                    "SDKs",
-                                                    "Applications",
-                                                    "Research & Experiments",
-                                                ],
-                                            },
-                                            spotlight_rank: {
-                                                type: ["integer", "null"],
-                                            },
+    const repoData = JSON.stringify(repos, null, 2);
+    const prompt = interpolate(valves.user, { repoData });
+    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
+        method: "POST",
+        headers: {
+            Authorization: `bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model: valves.model,
+            messages: [
+                { role: "system", content: valves.system },
+                { role: "user", content: prompt },
+            ],
+            temperature: valves.temperature,
+            response_format: {
+                type: "json_schema",
+                json_schema: {
+                    name: "project_classifications",
+                    strict: true,
+                    schema: {
+                        type: "object",
+                        properties: {
+                            classifications: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        name: { type: "string" },
+                                        status: {
+                                            type: "string",
+                                            enum: ["active", "maintained", "inactive"],
                                         },
-                                        required: [
-                                            "name",
-                                            "status",
-                                            "summary",
-                                            "category",
-                                            "spotlight_rank",
-                                        ],
-                                        additionalProperties: false,
+                                        summary: { type: "string" },
+                                        category: {
+                                            type: "string",
+                                            enum: [
+                                                "Developer Tools",
+                                                "SDKs",
+                                                "Applications",
+                                                "Research & Experiments",
+                                            ],
+                                        },
+                                        spotlight_rank: {
+                                            type: ["integer", "null"],
+                                        },
                                     },
+                                    required: [
+                                        "name",
+                                        "status",
+                                        "summary",
+                                        "category",
+                                        "spotlight_rank",
+                                    ],
+                                    additionalProperties: false,
                                 },
                             },
-                            required: ["classifications"],
-                            additionalProperties: false,
                         },
+                        required: ["classifications"],
+                        additionalProperties: false,
                     },
                 },
-            }),
-        }, "Classifications");
-        if (!res?.ok) {
-            if (res)
-                console.warn(`GitHub Models API error (classifications): ${res.status}`);
-            return [];
-        }
-        const json = (await res.json());
-        const content = json.choices?.[0]?.message?.content || "{}";
-        const parsed = JSON.parse(content);
-        return (parsed.classifications || [])
-            .filter((c) => c.name &&
-            (c.status === "active" ||
-                c.status === "maintained" ||
-                c.status === "inactive"))
-            .map((c) => ({ ...c, summary: c.summary || "" }));
+            },
+        }),
+    }, "Classifications");
+    if (res.status === 401 || res.status === 403) {
+        throw new errors/* InsightsError */.KH(`GitHub Models API auth error (classifications): ${res.status}`, errors/* ErrorCode */.O4.AUTH_FAILED);
     }
-    catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`Project classification failed (non-fatal): ${msg}`);
-        return [];
+    if (!res.ok) {
+        throw new errors/* InsightsError */.KH(`GitHub Models API error (classifications): ${res.status}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
     }
+    const json = (await res.json());
+    const content = json.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(content);
+    return (parsed.classifications || [])
+        .filter((c) => c.name &&
+        (c.status === "active" ||
+            c.status === "maintained" ||
+            c.status === "inactive"))
+        .map((c) => ({ ...c, summary: c.summary || "" }));
 };
 
 ;// CONCATENATED MODULE: ./src/jsx-factory.ts
@@ -76996,7 +77059,7 @@ function Fragment({ children }) {
 }
 
 ;// CONCATENATED MODULE: ./src/theme.ts
-const theme_THEME = {
+const THEME = {
     bg: "#0d1117",
     cardBg: "#161b22",
     border: "#30363d",
@@ -77086,7 +77149,7 @@ function renderSubHeader(text, y) {
     return { svg, height: 14 };
 }
 function renderDivider(y) {
-    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, stroke: THEME.border, "stroke-opacity": "0.6", "stroke-width": "1" }));
+    const svg = (h("line", { x1: LAYOUT.padX, y1: y, x2: LAYOUT.padX + 760, y2: y, className: "border-stroke", "stroke-opacity": "0.6", "stroke-width": "1" }));
     return { svg, height: 1 };
 }
 function renderSection(title, subtitle, renderBody) {
@@ -77107,39 +77170,27 @@ void Fragment;
 /** @jsxFrag Fragment */
 
 
-function StyleDefs() {
+function StyleDefs({ mode }) {
+    const t = mode === "dark" ? THEME : THEME_LIGHT;
     return (jsx_factory_h("defs", null,
         jsx_factory_h("style", null, `
   .t { font-family: ${FONT}; font-variant-numeric: tabular-lining; }
-  .t-h { font-size: 14px; fill: ${theme_THEME.text}; letter-spacing: 2px; font-weight: 600; }
-  .t-sub { font-size: 11px; fill: ${theme_THEME.muted}; }
-  .t-label { font-size: 12px; fill: ${theme_THEME.secondary}; }
-  .t-value { font-size: 11px; fill: ${theme_THEME.muted}; }
-  .t-subhdr { font-size: 11px; fill: ${theme_THEME.secondary}; letter-spacing: 1px; font-weight: 600; }
-  .t-stat-label { font-size: 10px; fill: ${theme_THEME.secondary}; font-weight: 600; }
+  .t-h { font-size: 14px; fill: ${t.text}; letter-spacing: 2px; font-weight: 600; }
+  .t-sub { font-size: 11px; fill: ${t.muted}; }
+  .t-label { font-size: 12px; fill: ${t.secondary}; }
+  .t-value { font-size: 11px; fill: ${t.muted}; }
+  .t-subhdr { font-size: 11px; fill: ${t.secondary}; letter-spacing: 1px; font-weight: 600; }
+  .t-stat-label { font-size: 10px; fill: ${t.secondary}; font-weight: 600; }
   .t-stat-value { font-size: 22px; font-weight: 700; }
-  .t-card-title { font-size: 12px; fill: ${theme_THEME.link}; font-weight: 700; }
-  .t-card-detail { font-size: 11px; fill: ${theme_THEME.secondary}; }
+  .t-card-title { font-size: 12px; fill: ${t.link}; font-weight: 700; }
+  .t-card-detail { font-size: 11px; fill: ${t.secondary}; }
   .t-pill { font-size: 11px; font-weight: 600; }
-  .t-bullet { font-size: 12px; fill: ${theme_THEME.text}; }
-  .bg-fill { fill: ${theme_THEME.bg}; }
-  .card-fill { fill: ${theme_THEME.cardBg}; }
-  .border-stroke { stroke: ${theme_THEME.border}; }
-
-  @media (prefers-color-scheme: light) {
-    .bg-fill { fill: ${THEME_LIGHT.bg}; }
-    .card-fill { fill: ${THEME_LIGHT.cardBg}; }
-    .border-stroke { stroke: ${THEME_LIGHT.border}; }
-    .t-h { fill: ${THEME_LIGHT.text}; }
-    .t-sub { fill: ${THEME_LIGHT.muted}; }
-    .t-label { fill: ${THEME_LIGHT.secondary}; }
-    .t-value { fill: ${THEME_LIGHT.muted}; }
-    .t-subhdr { fill: ${THEME_LIGHT.secondary}; }
-    .t-stat-label { fill: ${THEME_LIGHT.secondary}; }
-    .t-card-title { fill: ${THEME_LIGHT.link}; }
-    .t-card-detail { fill: ${THEME_LIGHT.secondary}; }
-    .t-bullet { fill: ${THEME_LIGHT.text}; }
-  }
+  .t-bullet { font-size: 12px; fill: ${t.text}; }
+  .bg-fill { fill: ${t.bg}; }
+  .card-fill { fill: ${t.cardBg}; }
+  .border-stroke { stroke: ${t.border}; }
+  .muted-fill { fill: ${t.muted}; }
+  .secondary-fill { fill: ${t.secondary}; }
 
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
@@ -77174,14 +77225,14 @@ void Fragment;
 
 
 
-function wrapSectionSvg(bodySvg, height) {
+function wrapSectionSvg(bodySvg, height, mode = "dark") {
     const { width } = theme_LAYOUT;
     return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: `0 0 ${width} ${height}` },
-        jsx_factory_h(StyleDefs, null),
-        jsx_factory_h("rect", { width: width, height: height, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
+        jsx_factory_h(StyleDefs, { mode: mode }),
+        jsx_factory_h("rect", { width: width, height: height, rx: "12", className: "bg-fill" }),
         bodySvg));
 }
-function generateFullSvg(sections) {
+function generateFullSvg(sections, mode = "dark") {
     const { width, padY, sectionGap } = theme_LAYOUT;
     let y = padY;
     let bodySvg = "";
@@ -77197,8 +77248,8 @@ function generateFullSvg(sections) {
     }
     const totalHeight = y + padY;
     return (jsx_factory_h("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: totalHeight, viewBox: `0 0 ${width} ${totalHeight}` },
-        jsx_factory_h(StyleDefs, null),
-        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill", fill: theme_THEME.bg }),
+        jsx_factory_h(StyleDefs, { mode: mode }),
+        jsx_factory_h("rect", { width: width, height: totalHeight, rx: "12", className: "bg-fill" }),
         bodySvg));
 }
 
@@ -77220,13 +77271,13 @@ function renderContributionRhythm(rhythm, y) {
     const maxVal = Math.max(...rhythm.dayTotals, 1);
     // Guide circles
     const guides = [0.25, 0.5, 0.75, 1.0];
-    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { key: pct, cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.4" })));
+    const guidesSvg = guides.map((pct) => (jsx_factory_h("circle", { key: pct, cx: radarCx, cy: radarCy, r: radarR * pct, fill: "none", className: "border-stroke", "stroke-width": "1", "stroke-opacity": "0.4" })));
     // Spoke lines
     const spokesSvg = DAY_NAMES.map((dayName, i) => {
         const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
         const x2 = radarCx + radarR * Math.cos(angle);
         const y2 = radarCy + radarR * Math.sin(angle);
-        return (jsx_factory_h("line", { key: dayName, x1: radarCx, y1: radarCy, x2: x2, y2: y2, stroke: theme_THEME.border, "stroke-width": "1", "stroke-opacity": "0.3" }));
+        return (jsx_factory_h("line", { key: dayName, x1: radarCx, y1: radarCy, x2: x2, y2: y2, className: "border-stroke", "stroke-width": "1", "stroke-opacity": "0.3" }));
     });
     // Day labels
     const labelsSvg = DAY_NAMES.map((name, i) => {
@@ -77478,12 +77529,10 @@ function renderProjectConstellation(bars, y) {
                 curY += groupGap;
             currentLang = bar.primaryLanguage;
             const delay = Math.min(itemIndex + 1, 6);
-            // For "Other" group, use a neutral color
-            const headerColor = currentLang === "Other" ? theme_THEME.secondary : bar.primaryColor;
             svg += (jsx_factory_h(Fragment, null,
-                jsx_factory_h("circle", { cx: padX + 5, cy: curY + groupHeaderHeight / 2, r: "5", fill: headerColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
+                jsx_factory_h("circle", { cx: padX + 5, cy: curY + groupHeaderHeight / 2, r: "5", fill: currentLang === "Other" ? undefined : bar.primaryColor, className: `${currentLang === "Other" ? "secondary-fill" : ""} fade-${delay}`, "fill-opacity": "0.8" }),
                 jsx_factory_h("text", { x: padX + 16, y: curY + groupHeaderHeight / 2 + 4, className: `t t-subhdr fade-${delay}` }, svg_utils_escapeXml(currentLang)),
-                jsx_factory_h("line", { x1: barStartX, y1: curY + groupHeaderHeight / 2, x2: starX + 40, y2: curY + groupHeaderHeight / 2, stroke: theme_THEME.border, "stroke-opacity": "0.3", "stroke-width": "1" })));
+                jsx_factory_h("line", { x1: barStartX, y1: curY + groupHeaderHeight / 2, x2: starX + 40, y2: curY + groupHeaderHeight / 2, className: "border-stroke", "stroke-opacity": "0.3", "stroke-width": "1" })));
             curY += groupHeaderHeight;
         }
         const delay = Math.min(itemIndex + 1, 6);
@@ -77501,15 +77550,70 @@ function renderProjectConstellation(bars, y) {
         if (hasSecondary) {
             let dotX = padX + 8;
             for (const lang of secondaryLangs.slice(0, 5)) {
-                const dotColor = langColorMap.get(lang) || theme_THEME.muted;
+                const langColor = langColorMap.get(lang);
                 svg += (jsx_factory_h(Fragment, null,
-                    jsx_factory_h("circle", { cx: dotX + 4, cy: curY + rowBaseHeight + 4, r: "3", fill: dotColor, "fill-opacity": "0.6", className: `fade-${delay}` }),
-                    jsx_factory_h("text", { x: dotX + 10, y: curY + rowBaseHeight + 7, className: `t fade-${delay}`, "font-size": "9", fill: theme_THEME.muted }, svg_utils_escapeXml(truncate(lang, 10)))));
+                    jsx_factory_h("circle", { cx: dotX + 4, cy: curY + rowBaseHeight + 4, r: "3", fill: langColor, className: `${langColor ? "" : "muted-fill"} fade-${delay}`, "fill-opacity": "0.6" }),
+                    jsx_factory_h("text", { x: dotX + 10, y: curY + rowBaseHeight + 7, className: `t muted-fill fade-${delay}`, "font-size": "9" }, svg_utils_escapeXml(truncate(lang, 10)))));
                 dotX += Math.min(lang.length * 6 + 20, 80);
             }
         }
         curY += totalRowHeight + rowGap;
         itemIndex++;
+    }
+    const totalHeight = curY - y;
+    return { svg, height: totalHeight };
+}
+void Fragment;
+
+;// CONCATENATED MODULE: ./src/components/tech-stack.tsx
+/** @jsx h */
+/** @jsxFrag Fragment */
+
+
+
+function renderTechStack(layers, y) {
+    if (layers.length === 0)
+        return { svg: "", height: 0 };
+    const { padX } = theme_LAYOUT;
+    const contentWidth = theme_LAYOUT.width - padX * 2;
+    const cardWidth = 176;
+    const cardHeight = 52;
+    const cardGap = 12;
+    const headerHeight = 24;
+    const bandPadding = 24;
+    const bandGap = 8;
+    // Render layers top-to-bottom (highest rank first)
+    const sortedLayers = [...layers].sort((a, b) => b.rank - a.rank);
+    let svg = "";
+    let curY = y;
+    for (let li = 0; li < sortedLayers.length; li++) {
+        const layer = sortedLayers[li];
+        const delay = Math.min(li + 1, 6);
+        const bandHeight = headerHeight + cardHeight + bandPadding * 2;
+        // Layer band background
+        svg += (jsx_factory_h("rect", { x: padX, y: curY, width: contentWidth, height: bandHeight, rx: "8", fill: layer.color, "fill-opacity": "0.08", className: `fade-${delay}` }));
+        // Layer header label
+        svg += (jsx_factory_h("text", { x: padX + 16, y: curY + bandPadding + 12, className: `t t-subhdr fade-${delay}`, "fill-opacity": "0.9" }, svg_utils_escapeXml(layer.name.toUpperCase())));
+        // Project cards
+        const cardY = curY + bandPadding + headerHeight;
+        for (let ci = 0; ci < layer.projects.length; ci++) {
+            const project = layer.projects[ci];
+            const cardX = padX + 16 + ci * (cardWidth + cardGap);
+            // Don't render cards that overflow
+            if (cardX + cardWidth > padX + contentWidth - 16)
+                break;
+            // Card background
+            svg += (jsx_factory_h("rect", { x: cardX, y: cardY, width: cardWidth, height: cardHeight, rx: "6", className: `card-fill fade-${delay}` }));
+            // Project name
+            svg += (jsx_factory_h("text", { x: cardX + 10, y: cardY + 20, className: `t t-card-title fade-${delay}` }, svg_utils_escapeXml(truncate(project.name, 20))));
+            // Stars in top-right
+            svg += (jsx_factory_h("text", { x: cardX + cardWidth - 10, y: cardY + 20, className: `t t-value fade-${delay}`, "text-anchor": "end", "font-size": "9" }, `\u2605 ${project.stars}`));
+            // Language pill: circle + text
+            svg += (jsx_factory_h(Fragment, null,
+                jsx_factory_h("circle", { cx: cardX + 14, cy: cardY + 38, r: "3", fill: project.primaryColor, "fill-opacity": "0.8", className: `fade-${delay}` }),
+                jsx_factory_h("text", { x: cardX + 22, y: cardY + 41, className: `t muted-fill fade-${delay}`, "font-size": "9" }, svg_utils_escapeXml(project.primaryLanguage))));
+        }
+        curY += bandHeight + bandGap;
     }
     const totalHeight = curY - y;
     return { svg, height: totalHeight };
@@ -77662,14 +77766,41 @@ const parsers_parseManifest = (filename, text) => PARSER_MAP.get(filename)?.pars
 
 
 
+
 // ── Category Sets ───────────────────────────────────────────────────────────
-const EXCLUDED_LANGUAGES = new Set(["Jupyter Notebook"]);
+const EXCLUDED_LANGUAGES = new Set([
+    "Jupyter Notebook",
+    "HTML",
+    "CSS",
+    "Markdown",
+    "Shell",
+    "Makefile",
+    "Dockerfile",
+    "Nix",
+    "Just",
+    "TeX",
+    "SCSS",
+    "Less",
+    "Jinja",
+]);
+/** Narrower set for constellation secondary dots — only strip markup/styling. */
+const MARKUP_LANGUAGES = new Set([
+    "Jupyter Notebook",
+    "HTML",
+    "CSS",
+    "Markdown",
+    "TeX",
+    "SCSS",
+    "Less",
+    "Jinja",
+]);
 // ── Section keys ────────────────────────────────────────────────────────────
 const SECTION_KEYS = {
     velocity: "metrics-velocity.svg",
     rhythm: "metrics-rhythm.svg",
     constellation: "metrics-constellation.svg",
     impact: "metrics-impact.svg",
+    stack: "metrics-stack.svg",
     spotlight: "",
     portfolio: "",
 };
@@ -77678,6 +77809,7 @@ const SVG_SECTION_KEYS = [
     "rhythm",
     "constellation",
     "impact",
+    "stack",
 ];
 const TEXT_SECTION_KEYS = (/* unused pure expression or super */ null && (["spotlight", "portfolio"]));
 // ── Aggregation ─────────────────────────────────────────────────────────────
@@ -77793,6 +77925,47 @@ const heuristicStatus = (commits, createdAt) => {
         return "maintained";
     return "inactive";
 };
+const heuristicHeatScore = (repo, commitsLastYear) => {
+    const commitBoost = Math.min(commitsLastYear, 50) * 2;
+    const daysSincePush = (Date.now() - new Date(repo.pushedAt).getTime()) / (24 * 60 * 60 * 1000);
+    const recencyBonus = Math.max(0, 90 - daysSincePush) / 3;
+    const starBoost = Math.log2(repo.stargazerCount + 1) * 5;
+    return commitBoost + recencyBonus + starBoost;
+};
+const CATEGORY_KEYWORDS = [
+    [
+        "Developer Tools",
+        /\b(cli|command.?line|tool|build|generator|scaffold|lint|format|action|automation|devtool)\b/i,
+    ],
+    [
+        "SDKs",
+        /\b(sdk|lib|library|client|wrapper|binding|plugin|middleware|driver|adapter)\b/i,
+    ],
+    [
+        "Applications",
+        /\b(app|application|web|api|server|dashboard|frontend|backend|website|platform|service)\b/i,
+    ],
+    [
+        "Research & Experiments",
+        /\b(experiment|research|thesis|academic|ml|machine.?learning|deep.?learning|neural|algorithm|game|clone|learning|course)\b/i,
+    ],
+];
+const heuristicCategory = (repo) => {
+    const parts = [
+        repo.name.replace(/[-_]/g, " "),
+        repo.description || "",
+        ...repo.repositoryTopics.nodes.map((n) => n.topic.name),
+    ];
+    const text = parts.join(" ");
+    for (const [category, pattern] of CATEGORY_KEYWORDS) {
+        if (pattern.test(text))
+            return category;
+    }
+    const langs = new Set(repo.languages.edges.map((e) => e.node.name.toLowerCase()));
+    if (langs.has("jupyter notebook") || langs.has("r"))
+        return "Research & Experiments";
+    return "Other";
+};
 const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
     const commitMap = new Map();
     for (const entry of contributionData.commitContributionsByRepository || []) {
@@ -77831,11 +78004,14 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
     }
     console.info(`Split: ${activeRepos.length} active, ${maintainedRepos.length} maintained, ${inactiveRepos.length} inactive, ${archivedRepos.length} archived`);
     const sortByComplexity = (a, b) => complexityScore(b) - complexityScore(a);
-    const toProjectItemWithSummary = (repo) => ({
-        ...toProjectItem(repo),
-        summary: aiMap.get(repo.name)?.summary || undefined,
-        category: aiMap.get(repo.name)?.category || undefined,
-    });
+    const toProjectItemWithSummary = (repo) => {
+        const ai = aiMap.get(repo.name);
+        return {
+            ...toProjectItem(repo),
+            summary: ai?.summary || repo.description || undefined,
+            category: ai?.category || heuristicCategory(repo),
+        };
+    };
     const active = activeRepos
         .sort(sortByComplexity)
         .map(toProjectItemWithSummary);
@@ -77850,7 +78026,7 @@ const splitProjectsByRecency = (repos, contributionData, aiClassifications) => {
         .map(toProjectItemWithSummary);
     return { active, maintained, inactive, archived };
 };
-// ── Spotlight (LLM-ranked) ────────────────────────────────────────────────────
+// ── Spotlight (LLM-ranked with heuristic fallback) ───────────────────────────
 const computeSpotlightProjects = (repos, contributionData, aiClassifications) => {
     const aiMap = new Map();
     if (aiClassifications) {
@@ -77864,46 +78040,67 @@ const computeSpotlightProjects = (repos, contributionData, aiClassifications) =>
     }
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
-    // Collect repos that the LLM ranked for spotlight
-    const ranked = repos
-        .filter((repo) => {
-        const ai = aiMap.get(repo.name);
-        return (ai?.spotlight_rank != null && ai.spotlight_rank >= 1 && !repo.isArchived);
-    })
-        .sort((a, b) => {
-        const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
-        const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
-        return rankA - rankB;
-    })
+    const computeActivityLabel = (commits, daysSincePush) => {
+        if (commits >= 10 && daysSincePush <= 30)
+            return "Active";
+        if (commits >= 1 || daysSincePush <= 90)
+            return "Building";
+        return undefined;
+    };
+    // ── AI path: use LLM rankings when available ───────────────────────────
+    if (aiMap.size > 0) {
+        return repos
+            .filter((repo) => {
+            const ai = aiMap.get(repo.name);
+            return (ai?.spotlight_rank != null &&
+                ai.spotlight_rank >= 1 &&
+                !repo.isArchived);
+        })
+            .sort((a, b) => {
+            const rankA = aiMap.get(a.name)?.spotlight_rank ?? 999;
+            const rankB = aiMap.get(b.name)?.spotlight_rank ?? 999;
+            return rankA - rankB;
+        })
+            .map((repo) => {
+            const ai = aiMap.get(repo.name);
+            const commits = commitMap.get(repo.name) || 0;
+            const daysSincePush = Math.max(0, (now - new Date(repo.pushedAt).getTime()) / DAY_MS);
+            return {
+                ...toProjectItem(repo),
+                summary: ai?.summary || undefined,
+                category: ai?.category || undefined,
+                heatScore: ai?.spotlight_rank ?? 0,
+                activityLabel: computeActivityLabel(commits, daysSincePush),
+            };
+        });
+    }
+    // ── Heuristic fallback: rank by heat score ─────────────────────────────
+    return repos
+        .filter((repo) => !repo.isArchived)
         .map((repo) => {
-        const ai = aiMap.get(repo.name);
         const commits = commitMap.get(repo.name) || 0;
+        return { repo, commits, score: heuristicHeatScore(repo, commits) };
+    })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(({ repo, commits, score }) => {
         const daysSincePush = Math.max(0, (now - new Date(repo.pushedAt).getTime()) / DAY_MS);
-        const pushedInLast30 = daysSincePush <= 30;
-        const pushedInLast90 = daysSincePush <= 90;
-        let activityLabel;
-        if (commits >= 10 && pushedInLast30) {
-            activityLabel = "Active";
-        }
-        else if (commits >= 1 || pushedInLast90) {
-            activityLabel = "Building";
-        }
         return {
             ...toProjectItem(repo),
-            summary: ai?.summary || undefined,
-            category: ai?.category || undefined,
-            heatScore: ai?.spotlight_rank ?? 0,
-            activityLabel,
+            summary: repo.description || undefined,
+            category: heuristicCategory(repo),
+            heatScore: score,
+            activityLabel: computeActivityLabel(commits, daysSincePush),
         };
     });
-    return ranked;
 };
 // ── Language Velocity ────────────────────────────────────────────────────────
 const computeLanguageVelocity = (contributionData, repos) => {
     // Build a map of repo name → primary language + color
     const repoLangMap = new Map();
     for (const repo of repos) {
-        if (repo.primaryLanguage) {
+        if (repo.primaryLanguage &&
+            !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
             repoLangMap.set(repo.name, {
                 name: repo.primaryLanguage.name,
                 color: repo.primaryLanguage.color,
@@ -78026,8 +78223,32 @@ const computeContributionRhythm = (contributionData) => {
     ];
     return { dayTotals, longestStreak, stats };
 };
+// ── Language helpers ────────────────────────────────────────────────────────
+function pickPrimaryLanguage(languages, repo) {
+    const candidates = (languages || []).filter((l) => !EXCLUDED_LANGUAGES.has(l));
+    if (candidates.length > 0)
+        return candidates[0];
+    if (repo?.primaryLanguage &&
+        !EXCLUDED_LANGUAGES.has(repo.primaryLanguage.name)) {
+        return repo.primaryLanguage.name;
+    }
+    return "Other";
+}
+function pickPrimaryColor(languages, repo) {
+    const primary = pickPrimaryLanguage(languages, repo);
+    if (primary !== "Other" && repo?.primaryLanguage?.name === primary) {
+        return repo.primaryLanguage.color;
+    }
+    // Try matching from repo language edges
+    if (repo?.languages?.edges) {
+        const edge = repo.languages.edges.find((e) => e.node.name === primary);
+        if (edge)
+            return edge.node.color;
+    }
+    return repo?.primaryLanguage?.color || "#8b949e";
+}
 // ── Project Constellation ───────────────────────────────────────────────────
-const computeConstellationLayout = (projects, repos) => {
+const computeConstellationLayout = (projects, repos, groupBy = "language") => {
     if (projects.length === 0)
         return [];
     const repoMap = new Map();
@@ -78037,53 +78258,156 @@ const computeConstellationLayout = (projects, repos) => {
     // Build bars with complexity scores
     const bars = projects.map((p) => {
         const repo = repoMap.get(p.name);
+        const groupKey = groupBy === "category"
+            ? p.category || (repo ? heuristicCategory(repo) : "Other")
+            : pickPrimaryLanguage(p.languages, repo);
         return {
             name: p.name,
             url: p.url,
             complexity: repo ? complexityScore(repo) : 0,
-            primaryLanguage: p.languages?.[0] || "Other",
-            primaryColor: repo?.primaryLanguage?.color || "#8b949e",
-            languages: p.languages || [],
+            primaryLanguage: groupKey,
+            primaryColor: pickPrimaryColor(p.languages, repo),
+            languages: (p.languages || []).filter((l) => !MARKUP_LANGUAGES.has(l)),
             stars: p.stars,
         };
     });
-    // Group by primary language
+    // Group by chosen key
     const groups = new Map();
     for (const bar of bars) {
-        const lang = bar.primaryLanguage;
-        if (!groups.has(lang))
-            groups.set(lang, []);
-        groups.get(lang)?.push(bar);
+        const key = bar.primaryLanguage;
+        if (!groups.has(key))
+            groups.set(key, []);
+        groups.get(key)?.push(bar);
     }
     // Sort within each group by complexity (descending)
     for (const group of groups.values()) {
         group.sort((a, b) => b.complexity - a.complexity);
     }
-    // Collapse single-project groups into "Other"
-    const multiGroups = [];
-    const otherBars = [];
-    for (const [lang, group] of groups) {
-        if (group.length === 1) {
-            otherBars.push({ ...group[0], primaryLanguage: "Other" });
-        }
-        else {
-            multiGroups.push([lang, group]);
-        }
-    }
-    if (otherBars.length > 0) {
-        otherBars.sort((a, b) => b.complexity - a.complexity);
-        multiGroups.push(["Other", otherBars]);
-    }
+    // Keep all groups — no collapsing to "Other"
+    const sortedGroups = [...groups.entries()];
     // Sort groups by max complexity (descending)
-    multiGroups.sort((a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0));
+    sortedGroups.sort((a, b) => (b[1][0]?.complexity || 0) - (a[1][0]?.complexity || 0));
     // Cap each group at 3, then cap total at 12
     const MAX_PER_GROUP = 3;
     const MAX_BARS = 12;
-    const flat = multiGroups.flatMap(([, group]) => group.slice(0, MAX_PER_GROUP));
+    const flat = sortedGroups.flatMap(([, group]) => group.slice(0, MAX_PER_GROUP));
     return flat.slice(0, MAX_BARS);
 };
+// ── Tech Stack Layout ──────────────────────────────────────────────────────
+const STACK_LAYER_MAP = {
+    "Developer Tools": {
+        name: "Infrastructure & DevOps",
+        rank: 0,
+        color: "#3fb950",
+    },
+    SDKs: { name: "Libraries & SDKs", rank: 1, color: "#58a6ff" },
+    Applications: { name: "Applications", rank: 2, color: "#d29922" },
+    Other: { name: "Applications", rank: 2, color: "#d29922" },
+    "Research & Experiments": {
+        name: "AI & Research",
+        rank: 3,
+        color: "#bc8cff",
+    },
+};
+const computeStackLayout = (projects, repos) => {
+    const repoMap = new Map();
+    for (const repo of repos) {
+        repoMap.set(repo.name, repo);
+    }
+    // Group projects by stack layer
+    const layerProjects = new Map();
+    for (const project of projects) {
+        const category = project.category ||
+            (repoMap.has(project.name)
+                ? heuristicCategory(repoMap.get(project.name))
+                : "Other");
+        const layerDef = STACK_LAYER_MAP[category] || STACK_LAYER_MAP["Other"];
+        const repo = repoMap.get(project.name);
+        const stackProject = {
+            name: project.name,
+            url: project.url,
+            stars: project.stars,
+            primaryLanguage: pickPrimaryLanguage(project.languages, repo),
+            primaryColor: pickPrimaryColor(project.languages, repo),
+            complexity: repo ? complexityScore(repo) : 0,
+        };
+        if (!layerProjects.has(layerDef.rank)) {
+            layerProjects.set(layerDef.rank, { layer: layerDef, projects: [] });
+        }
+        layerProjects.get(layerDef.rank).projects.push(stackProject);
+    }
+    // Sort projects within each layer by complexity desc, cap at 4
+    const layers = [];
+    for (const [, entry] of layerProjects) {
+        entry.projects.sort((a, b) => b.complexity - a.complexity);
+        layers.push({
+            name: entry.layer.name,
+            rank: entry.layer.rank,
+            color: entry.layer.color,
+            projects: entry.projects.slice(0, 4),
+        });
+    }
+    // Sort by rank ascending (bottom = infra, top = AI)
+    layers.sort((a, b) => a.rank - b.rank);
+    return layers;
+};
+// ── Insights Report Builder ────────────────────────────────────────────────
+function buildInsightsReport(params) {
+    const { username, displayName, profile, repos, contributionData, aiClassifications, constellationGroupBy, excludeArchived, } = params;
+    const languages = aggregateLanguages(repos);
+    const complexProjects = getTopProjectsByComplexity(repos);
+    const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+    const velocity = computeLanguageVelocity(contributionData, repos);
+    const rhythm = computeContributionRhythm(contributionData);
+    const constellation = computeConstellationLayout(complexProjects, repos, constellationGroupBy);
+    const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
+    // Build allProjects and categorizedProjects
+    const includeArchived = !excludeArchived;
+    const allProjectItems = [
+        ...activeProjects,
+        ...maintainedProjects,
+        ...inactiveProjects,
+        ...(includeArchived ? archivedProjects : []),
+    ];
+    const categorizedProjects = {};
+    for (const project of allProjectItems) {
+        const cat = project.category || "Other";
+        if (!categorizedProjects[cat])
+            categorizedProjects[cat] = [];
+        categorizedProjects[cat].push(project);
+    }
+    // Stack uses the classified projects (all non-archived)
+    const stackProjects = [
+        ...activeProjects,
+        ...maintainedProjects,
+        ...inactiveProjects,
+    ];
+    const stack = computeStackLayout(stackProjects, repos);
+    const firstName = displayName.trim().split(/\s+/)[0] || displayName;
+    return {
+        username,
+        displayName,
+        firstName,
+        profile,
+        languages,
+        allProjects: complexProjects,
+        activeProjects,
+        maintainedProjects,
+        inactiveProjects,
+        archivedProjects,
+        categorizedProjects,
+        spotlightProjects,
+        velocity,
+        rhythm,
+        constellation,
+        stack,
+        contributionData,
+        constellationGroupBy,
+        generatedAt: new Date().toISOString(),
+    };
+}
 // ── Section definitions ─────────────────────────────────────────────────────
-const buildSections = ({ velocity, rhythm, constellation, contributionData, }) => {
+const buildSections = ({ velocity, rhythm, constellation, stack, contributionData, constellationGroupBy = "language", }) => {
     const sections = [];
     // 1. Language Velocity
     if (velocity.length > 0) {
@@ -78092,6 +78416,7 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
             title: "Language Velocity",
             subtitle: "How language usage has evolved over the past year",
             renderBody: (y) => renderLanguageVelocity(velocity, y),
+            data: velocity,
         });
     }
     // 2. Contribution Rhythm
@@ -78100,26 +78425,39 @@ const buildSections = ({ velocity, rhythm, constellation, contributionData, }) =
         title: "Contribution Rhythm",
         subtitle: "Activity patterns and statistics over the past year",
         renderBody: (y) => renderContributionRhythm(rhythm, y),
+        data: rhythm,
     });
     // 3. Project Constellation
     if (constellation.length > 0) {
         sections.push({
             filename: "metrics-constellation.svg",
             title: "Project Constellation",
-            subtitle: "Top projects ranked by complexity, grouped by primary language",
+            subtitle: constellationGroupBy === "category"
+                ? "Top projects ranked by complexity, grouped by domain"
+                : "Top projects ranked by complexity, grouped by primary language",
             renderBody: (y) => renderProjectConstellation(constellation, y),
+            data: constellation,
         });
     }
     // 4. Impact Trail
     if (contributionData.externalRepos.nodes.length > 0) {
+        const impactRepos = contributionData.externalRepos.nodes.slice(0, 8);
         sections.push({
             filename: "metrics-impact.svg",
             title: "Open Source Impact",
             subtitle: "External repositories contributed to",
-            renderBody: (y) => {
-                const repos = contributionData.externalRepos.nodes.slice(0, 8);
-                return renderImpactTrail(repos, y);
-            },
+            renderBody: (y) => renderImpactTrail(impactRepos, y),
+            data: impactRepos,
+        });
+    }
+    // 5. Tech Stack
+    if (stack && stack.length > 0) {
+        sections.push({
+            filename: "metrics-stack.svg",
+            title: "Tech Stack",
+            subtitle: "Projects arranged by abstraction layer",
+            renderBody: (y) => renderTechStack(stack, y),
+            data: stack,
         });
     }
     return sections;
@@ -78204,17 +78542,6 @@ function descriptiveAlt(label, name) {
     if (template)
         return template.replace(/\{name\}/g, name);
     return label;
-}
-function inlineMetadata(ctx) {
-    const parts = [];
-    if (ctx.title)
-        parts.push(`**Role:** ${ctx.title}`);
-    const topLangs = ctx.languages.slice(0, 5).map((l) => l.name);
-    if (topLangs.length > 0)
-        parts.push(`**Top Languages:** ${topLangs.join(", ")}`);
-    if (parts.length === 0)
-        return "";
-    return parts.join(" | ");
 }
 function extractFirstName(fullName) {
     return fullName.trim().split(/\s+/)[0] || fullName;
@@ -78303,38 +78630,57 @@ function renderSpotlight(ctx) {
         .join("\n\n");
     return `## Spotlight\n\n${items}`;
 }
+function pictureElement(alt, darkSrc, lightSrc) {
+    return [
+        "<picture>",
+        `  <source media="(prefers-color-scheme: light)" srcset="${lightSrc}">`,
+        `  <img alt="${alt}" src="${darkSrc}">`,
+        "</picture>",
+    ].join("\n");
+}
 function renderVelocity(ctx) {
     if (!ctx.sectionSvgs.velocity)
         return "";
-    return `## Language Velocity\n\n![${descriptiveAlt("Language Velocity", ctx.name)}](${ctx.sectionSvgs.velocity})`;
+    const alt = descriptiveAlt("Language Velocity", ctx.name);
+    return `## Language Velocity\n\n${pictureElement(alt, ctx.sectionSvgs.velocity, ctx.sectionSvgsLight.velocity)}`;
 }
 function renderRhythm(ctx) {
     if (!ctx.sectionSvgs.rhythm)
         return "";
-    return `## Contribution Rhythm\n\n![${descriptiveAlt("Contribution Rhythm", ctx.name)}](${ctx.sectionSvgs.rhythm})`;
+    const alt = descriptiveAlt("Contribution Rhythm", ctx.name);
+    return `## Contribution Rhythm\n\n${pictureElement(alt, ctx.sectionSvgs.rhythm, ctx.sectionSvgsLight.rhythm)}`;
 }
 function renderConstellation(ctx) {
     if (!ctx.sectionSvgs.constellation)
         return "";
-    return `## Project Map\n\n![${descriptiveAlt("Project Constellation", ctx.name)}](${ctx.sectionSvgs.constellation})`;
+    const alt = descriptiveAlt("Project Constellation", ctx.name);
+    return `## Project Map\n\n${pictureElement(alt, ctx.sectionSvgs.constellation, ctx.sectionSvgsLight.constellation)}`;
 }
 function renderImpact(ctx) {
     if (!ctx.sectionSvgs.impact)
         return "";
-    return `## Open Source Impact\n\n![${descriptiveAlt("Impact Trail", ctx.name)}](${ctx.sectionSvgs.impact})`;
+    const alt = descriptiveAlt("Impact Trail", ctx.name);
+    return `## Open Source Impact\n\n${pictureElement(alt, ctx.sectionSvgs.impact, ctx.sectionSvgsLight.impact)}`;
+}
+function renderStack(ctx) {
+    if (!ctx.sectionSvgs.stack)
+        return "";
+    return `## Tech Stack\n\n${pictureElement("Tech Stack", ctx.sectionSvgs.stack, ctx.sectionSvgsLight.stack)}`;
 }
 function renderPortfolio(ctx) {
+    const spotlightNames = new Set(ctx.spotlightProjects.map((p) => p.name));
     const tableParts = [];
     for (const category of CATEGORY_ORDER) {
-        const projects = ctx.categorizedProjects[category];
+        const projects = ctx.categorizedProjects[category]?.filter((p) => !spotlightNames.has(p.name));
         if (projects && projects.length > 0) {
             tableParts.push(renderProjectTable(category, projects));
         }
     }
     for (const [category, projects] of Object.entries(ctx.categorizedProjects)) {
         if (!CATEGORY_ORDER.includes(category)) {
-            if (projects.length > 0) {
-                tableParts.push(renderProjectTable(category, projects));
+            const filtered = projects.filter((p) => !spotlightNames.has(p.name));
+            if (filtered.length > 0) {
+                tableParts.push(renderProjectTable(category, filtered));
             }
         }
     }
@@ -78350,6 +78696,7 @@ const SECTION_RENDERERS = {
     constellation: renderConstellation,
     impact: renderImpact,
     portfolio: renderPortfolio,
+    stack: renderStack,
 };
 // ── Showcase template ─────────────────────────────────────────────────────
 function showcaseTemplate(ctx) {
@@ -78364,9 +78711,6 @@ function showcaseTemplate(ctx) {
     if (ctx.preamble) {
         parts.push(ctx.preamble);
     }
-    const meta = inlineMetadata(ctx);
-    if (meta)
-        parts.push(meta);
     if (ctx.socialBadges) {
         parts.push(`<!-- section: social -->\n${ctx.socialBadges}`);
     }
@@ -78388,6 +78732,7 @@ function getTemplate(_name) {
 }
 
 ;// CONCATENATED MODULE: ./src/pipeline.ts
+
 
 
 
@@ -78443,23 +78788,44 @@ async function runPipeline(config, cb) {
     ]);
     cb.onPhaseComplete("fetch-profile", `${contributionData.contributions.totalCommitContributions} commits, ${contributionData.contributions.totalPullRequestContributions} PRs`);
     // ── Classify ──────────────────────────────────────────────────────────────
+    const failFast = config.failFast || userConfig.fail_fast || false;
+    const exportJson = config.exportJson || userConfig.export_json || false;
     cb.onPhaseStart("classify", "Classifying projects");
-    const languages = aggregateLanguages(repos);
-    const complexProjects = getTopProjectsByComplexity(repos);
     const classificationInputs = buildClassificationInputs(repos, contributionData);
-    const aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
+    let aiClassifications = [];
+    try {
+        aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
+    }
+    catch (err) {
+        if (failFast)
+            throw err;
+        const msg = err instanceof errors/* InsightsError */.KH
+            ? `${err.message} [${err.code}]`
+            : String(err);
+        cb.onProgress(`AI classification unavailable (${msg}), using heuristics`);
+    }
     cb.onPhaseComplete("classify", `${aiClassifications.length} AI-classified, ${repos.length - aiClassifications.length} heuristic`);
     // ── Transform ─────────────────────────────────────────────────────────────
     cb.onPhaseStart("transform", "Computing metrics");
-    const { active: activeProjects, maintained: maintainedProjects, inactive: inactiveProjects, archived: archivedProjects, } = splitProjectsByRecency(repos, contributionData, aiClassifications);
-    const velocity = computeLanguageVelocity(contributionData, repos);
-    const rhythm = computeContributionRhythm(contributionData);
-    const constellation = computeConstellationLayout(complexProjects, repos);
-    const sectionDefs = buildSections({
-        velocity,
-        rhythm,
-        constellation,
+    const displayName = userConfig.name || userProfile.name || config.username;
+    const constellationGroupBy = userConfig.constellation_group_by || "language";
+    const report = buildInsightsReport({
+        username: config.username,
+        displayName,
+        profile: userProfile,
+        repos,
         contributionData,
+        aiClassifications,
+        constellationGroupBy,
+        excludeArchived: userConfig.exclude_archived !== false,
+    });
+    const sectionDefs = buildSections({
+        velocity: report.velocity,
+        rhythm: report.rhythm,
+        constellation: report.constellation,
+        stack: report.stack,
+        contributionData: report.contributionData,
+        constellationGroupBy: report.constellationGroupBy,
     });
     let activeSections = sectionDefs.filter((s) => s.renderBody);
     if (svgSectionsNeeded.size > 0) {
@@ -78474,12 +78840,19 @@ async function runPipeline(config, cb) {
         if (!section.renderBody)
             continue;
         const { svg, height } = renderSection(section.title, section.subtitle, section.renderBody);
-        (0,external_node_fs_.writeFileSync)(`${config.outputDir}/${section.filename}`, wrapSectionSvg(svg, height));
-        cb.onProgress(`Wrote ${section.filename}`);
+        (0,external_node_fs_.writeFileSync)(`${config.outputDir}/${section.filename}`, wrapSectionSvg(svg, height, "dark"));
+        const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+        (0,external_node_fs_.writeFileSync)(`${config.outputDir}/${lightFilename}`, wrapSectionSvg(svg, height, "light"));
+        if (exportJson && section.data !== undefined) {
+            const jsonFilename = section.filename.replace(/\.svg$/, ".json");
+            (0,external_node_fs_.writeFileSync)(`${config.outputDir}/${jsonFilename}`, JSON.stringify(section.data, null, 2));
+            cb.onProgress(`Wrote ${jsonFilename}`);
+        }
+        cb.onProgress(`Wrote ${section.filename} (+light)`);
     }
-    const combinedSvg = generateFullSvg(activeSections);
-    (0,external_node_fs_.writeFileSync)(`${config.outputDir}/index.svg`, combinedSvg);
-    cb.onPhaseComplete("render-svg", `${activeSections.length + 1} SVG files`);
+    (0,external_node_fs_.writeFileSync)(`${config.outputDir}/index.svg`, generateFullSvg(activeSections, "dark"));
+    (0,external_node_fs_.writeFileSync)(`${config.outputDir}/index-light.svg`, generateFullSvg(activeSections, "light"));
+    cb.onPhaseComplete("render-svg", `${activeSections.length * 2 + 2} SVG files`);
     // ── Write files ───────────────────────────────────────────────────────────
     cb.onPhaseStart("write-files", "Writing output files");
     const filesWritten = [`${config.outputDir}/index.svg`];
@@ -78491,47 +78864,44 @@ async function runPipeline(config, cb) {
     if (config.readmePath && config.readmePath !== "none") {
         cb.onPhaseStart("generate-readme", "Generating README");
         const svgDir = (0,external_node_path_.relative)((0,external_node_path_.dirname)(config.readmePath), config.outputDir) || ".";
-        const displayName = userConfig.name || userProfile.name || config.username;
         const socialBadges = buildSocialBadges(userProfile);
-        const spotlightProjects = computeSpotlightProjects(repos, contributionData, aiClassifications);
         let preamble = loadPreamble(userConfig.preamble);
         if (!preamble) {
             cb.onProgress("Generating preamble with AI...");
-            preamble = await fetchAIPreamble(config.token, {
-                username: config.username,
-                profile: userProfile,
-                userConfig,
-                languages,
-                spotlightProjects,
-                complexProjects,
-            }, prompts.preamble);
+            try {
+                preamble = await fetchAIPreamble(config.token, {
+                    username: config.username,
+                    profile: userProfile,
+                    userConfig,
+                    languages: report.languages,
+                    spotlightProjects: report.spotlightProjects,
+                    complexProjects: report.allProjects,
+                }, prompts.preamble);
+            }
+            catch (err) {
+                if (failFast)
+                    throw err;
+                const msg = err instanceof errors/* InsightsError */.KH
+                    ? `${err.message} [${err.code}]`
+                    : String(err);
+                cb.onProgress(`AI preamble unavailable (${msg}), skipping`);
+            }
         }
         const svgs = activeSections.map((s) => ({
             label: s.title,
             path: `${svgDir}/${s.filename}`,
         }));
         const sectionSvgs = {};
+        const sectionSvgsLight = {};
         for (const [key, filename] of Object.entries(SECTION_KEYS)) {
             if (activeSections.some((s) => s.filename === filename)) {
                 sectionSvgs[key] = `${svgDir}/${filename}`;
+                sectionSvgsLight[key] =
+                    `${svgDir}/${filename.replace(/\.svg$/, "-light.svg")}`;
             }
         }
-        const includeArchived = userConfig.exclude_archived === false;
-        const allProjectItems = [
-            ...activeProjects,
-            ...maintainedProjects,
-            ...inactiveProjects,
-            ...(includeArchived ? archivedProjects : []),
-        ];
-        const categorizedProjects = {};
-        for (const project of allProjectItems) {
-            const cat = project.category || "Other";
-            if (!categorizedProjects[cat])
-                categorizedProjects[cat] = [];
-            categorizedProjects[cat].push(project);
-        }
         const template = getTemplate(templateName);
-        const readme = template({
+        const contextBase = {
             username: config.username,
             name: displayName,
             firstName: extractFirstName(displayName),
@@ -78540,24 +78910,29 @@ async function runPipeline(config, cb) {
             bio: userConfig.bio,
             preamble,
             templateName,
+            profile: userProfile,
+            activeProjects: report.activeProjects,
+            maintainedProjects: report.maintainedProjects,
+            inactiveProjects: report.inactiveProjects,
+            archivedProjects: report.archivedProjects,
+            allProjects: report.allProjects,
+            categorizedProjects: report.categorizedProjects,
+            languages: report.languages,
+            velocity: report.velocity,
+            rhythm: report.rhythm,
+            constellation: report.constellation,
+            stack: report.stack,
+            contributionData: report.contributionData,
+            socialBadges,
+            spotlightProjects: report.spotlightProjects,
+            resolvedSections,
+        };
+        const readme = template({
+            ...contextBase,
             svgs,
             sectionSvgs,
-            profile: userProfile,
-            activeProjects,
-            maintainedProjects,
-            inactiveProjects,
-            archivedProjects,
-            allProjects: complexProjects,
-            categorizedProjects,
-            languages,
-            velocity,
-            rhythm,
-            constellation,
-            contributionData,
-            socialBadges,
+            sectionSvgsLight,
             svgDir,
-            spotlightProjects,
-            resolvedSections,
         });
         (0,external_node_fs_.writeFileSync)(config.readmePath, readme);
         // Local template preview
@@ -78565,46 +78940,31 @@ async function runPipeline(config, cb) {
             const tplDir = "examples/default";
             (0,external_node_fs_.mkdirSync)(tplDir, { recursive: true });
             (0,external_node_fs_.copyFileSync)(`${config.outputDir}/index.svg`, `${tplDir}/index.svg`);
+            (0,external_node_fs_.copyFileSync)(`${config.outputDir}/index-light.svg`, `${tplDir}/index-light.svg`);
             for (const section of activeSections) {
                 (0,external_node_fs_.copyFileSync)(`${config.outputDir}/${section.filename}`, `${tplDir}/${section.filename}`);
+                const lightFilename = section.filename.replace(/\.svg$/, "-light.svg");
+                (0,external_node_fs_.copyFileSync)(`${config.outputDir}/${lightFilename}`, `${tplDir}/${lightFilename}`);
             }
             const previewSvgs = activeSections.map((s) => ({
                 label: s.title,
                 path: `./${s.filename}`,
             }));
             const previewSectionSvgs = {};
+            const previewSectionSvgsLight = {};
             for (const [key, filename] of Object.entries(SECTION_KEYS)) {
                 if (activeSections.some((s) => s.filename === filename)) {
                     previewSectionSvgs[key] = `./${filename}`;
+                    previewSectionSvgsLight[key] =
+                        `./${filename.replace(/\.svg$/, "-light.svg")}`;
                 }
             }
             const previewReadme = template({
-                username: config.username,
-                name: displayName,
-                firstName: extractFirstName(displayName),
-                pronunciation: userConfig.pronunciation,
-                title: userConfig.title,
-                bio: userConfig.bio,
-                preamble,
-                templateName,
+                ...contextBase,
                 svgs: previewSvgs,
                 sectionSvgs: previewSectionSvgs,
-                profile: userProfile,
-                activeProjects,
-                maintainedProjects,
-                inactiveProjects,
-                archivedProjects,
-                allProjects: complexProjects,
-                categorizedProjects,
-                languages,
-                velocity,
-                rhythm,
-                constellation,
-                contributionData,
-                socialBadges,
+                sectionSvgsLight: previewSectionSvgsLight,
                 svgDir: ".",
-                spotlightProjects,
-                resolvedSections,
             });
             (0,external_node_fs_.writeFileSync)(`${tplDir}/README.md`, previewReadme);
             cb.onProgress(`Preview at ${tplDir}/README.md`);
@@ -78647,7 +79007,7 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var ink_spinner__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8078);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(7919);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__nccwpck_require__.n(react__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(6536);
+/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(8109);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_0__, ink_spinner__WEBPACK_IMPORTED_MODULE_1__]);
 ([ink__WEBPACK_IMPORTED_MODULE_0__, ink_spinner__WEBPACK_IMPORTED_MODULE_1__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
@@ -78727,7 +79087,7 @@ function ProgressLog({ messages }) {
         "\u2502 ",
         msg)))));
 }
-function App({ config }) {
+function App({ config, onExit }) {
     const { exit } = (0,ink__WEBPACK_IMPORTED_MODULE_0__/* .useApp */ .nm)();
     const [phases, setPhases] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(PHASE_ORDER.map((p) => ({
         phase: p,
@@ -78737,6 +79097,7 @@ function App({ config }) {
     const [progressMessages, setProgressMessages] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)([]);
     const [done, setDone] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(false);
     const [error, setError] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(null);
+    const [pipelineError, setPipelineError] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(null);
     const [startTime] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(Date.now());
     const [totalElapsed, setTotalElapsed] = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(0);
     (0,react__WEBPACK_IMPORTED_MODULE_2__.useEffect)(() => {
@@ -78775,15 +79136,17 @@ function App({ config }) {
         })
             .catch((err) => {
             setTotalElapsed(Date.now() - startTime);
+            setPipelineError(err);
             setError(err instanceof Error ? err.message : String(err));
             setDone(true);
         });
     }, [config, startTime]);
     (0,react__WEBPACK_IMPORTED_MODULE_2__.useEffect)(() => {
         if (done) {
+            onExit?.(pipelineError);
             setTimeout(() => exit(), 100);
         }
-    }, [done, exit]);
+    }, [done, exit, onExit, pipelineError]);
     // Filter out phases that were never activated and are still pending at the end
     const visiblePhases = done
         ? phases.filter((p) => p.status !== "pending")

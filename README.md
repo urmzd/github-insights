@@ -301,7 +301,7 @@ The `template` input maps to predefined section lists:
 | Preset | Sections |
 |--------|----------|
 | `showcase` (default) | `spotlight, velocity, rhythm, constellation, portfolio, impact` |
-| `ecosystem` | `spotlight, velocity, rhythm, constellation, portfolio, impact` |
+| `ecosystem` | `spotlight, velocity, rhythm, stack, portfolio, impact` |
 | `modern` | `spotlight, velocity, rhythm, constellation, impact` |
 | `classic` | `velocity, rhythm, constellation, impact` |
 | `minimal` | `velocity, rhythm` |

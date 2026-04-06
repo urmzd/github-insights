@@ -204,7 +204,6 @@ describe("resolveTemplateSections", () => {
       "spotlight",
       "velocity",
       "rhythm",
-      "constellation",
       "stack",
       "portfolio",
       "impact",
@@ -242,5 +241,15 @@ describe("resolveTemplateSections", () => {
       "portfolio",
       "impact",
     ]);
+  });
+
+  it("drops stack when both constellation and stack are specified", () => {
+    const result = resolveTemplateSections(undefined, [
+      "spotlight",
+      "constellation",
+      "stack",
+      "portfolio",
+    ]);
+    expect(result).toEqual(["spotlight", "constellation", "portfolio"]);
   });
 });

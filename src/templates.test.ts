@@ -374,6 +374,48 @@ describe("showcaseTemplate", () => {
     expect(output).not.toContain("## Portfolio");
   });
 
+  it("excludes spotlight projects from portfolio", () => {
+    const output = getTemplate("showcase")(
+      makeContext({
+        spotlightProjects: [
+          makeSpotlight({
+            name: "resume-generator",
+            url: "https://github.com/urmzd/resume-generator",
+          }),
+        ],
+        categorizedProjects: {
+          Applications: [
+            {
+              name: "resume-generator",
+              url: "https://github.com/urmzd/resume-generator",
+              description: "CLI tool for professional resumes",
+              stars: 42,
+              category: "Applications",
+            },
+            {
+              name: "other-app",
+              url: "https://github.com/urmzd/other-app",
+              description: "Another application",
+              stars: 5,
+              category: "Applications",
+            },
+          ],
+        },
+      }),
+    );
+    expect(output).toContain("## Spotlight");
+    expect(output).toContain("## Portfolio");
+    // spotlight renders it
+    const spotlightIdx = output.indexOf("## Spotlight");
+    const portfolioIdx = output.indexOf("## Portfolio");
+    const spotlightSection = output.slice(spotlightIdx, portfolioIdx);
+    expect(spotlightSection).toContain("resume-generator");
+    // portfolio excludes it but keeps other projects
+    const portfolioSection = output.slice(portfolioIdx);
+    expect(portfolioSection).not.toContain("resume-generator");
+    expect(portfolioSection).toContain("other-app");
+  });
+
   it("uses AI summary when available in spotlight", () => {
     const output = getTemplate("showcase")(
       makeContext({

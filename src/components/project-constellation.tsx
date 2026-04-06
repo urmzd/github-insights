@@ -86,7 +86,7 @@ export function renderProjectConstellation(
 
     const secondaryLangs = bar.languages.slice(1);
     const hasSecondary = secondaryLangs.length > 0;
-    const totalRowHeight = rowBaseHeight + langDotsHeight;
+    const totalRowHeight = rowBaseHeight + (hasSecondary ? langDotsHeight : 0);
 
     // Project name
     svg += (

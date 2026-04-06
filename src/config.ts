@@ -148,7 +148,6 @@ const SECTION_PRESETS: Record<string, ShowcaseSection[]> = {
     "spotlight",
     "velocity",
     "rhythm",
-    "constellation",
     "stack",
     "portfolio",
     "impact",
@@ -177,16 +176,25 @@ export function resolveTemplateSections(
   templateName?: TemplateName,
   explicitSections?: string[],
 ): ShowcaseSection[] {
+  let sections: ShowcaseSection[];
   if (explicitSections && explicitSections.length > 0) {
     const valid = explicitSections.filter(
       (s) => SectionSchema.safeParse(s).success,
     );
-    return valid.length > 0 ? (valid as ShowcaseSection[]) : DEFAULT_SECTIONS;
+    sections =
+      valid.length > 0 ? (valid as ShowcaseSection[]) : DEFAULT_SECTIONS;
+  } else if (templateName && SECTION_PRESETS[templateName]) {
+    sections = SECTION_PRESETS[templateName];
+  } else {
+    sections = DEFAULT_SECTIONS;
   }
-  if (templateName && SECTION_PRESETS[templateName]) {
-    return SECTION_PRESETS[templateName];
+
+  // constellation and stack are mutually exclusive — keep constellation
+  if (sections.includes("constellation") && sections.includes("stack")) {
+    sections = sections.filter((s) => s !== "stack");
   }
-  return DEFAULT_SECTIONS;
+
+  return sections;
 }
 
 export function parseUserConfig(
