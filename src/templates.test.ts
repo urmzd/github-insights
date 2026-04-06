@@ -93,6 +93,7 @@ const makeContext = (
   velocity: [],
   rhythm: { dayTotals: [0, 0, 0, 0, 0, 0, 0], longestStreak: 0, stats: [] },
   constellation: [],
+  stack: [],
   contributionData: makeContributionData(),
   socialBadges:
     "[![urmzd.dev](https://img.shields.io/badge/urmzd.dev-4285F4?style=flat&logo=google-chrome&logoColor=white)](https://urmzd.dev)",
@@ -304,6 +305,28 @@ describe("showcaseTemplate", () => {
     expect(output).toContain("### Applications");
     expect(output).toContain("### Research & Experiments");
     expect(output).toContain("</details>");
+  });
+
+  it("renders stack section", () => {
+    const output = getTemplate("showcase")(
+      makeContext({
+        sectionSvgs: {
+          ...makeContext().sectionSvgs,
+          stack: "assets/insights/metrics-stack.svg",
+        },
+        resolvedSections: ["stack"],
+        stack: [
+          {
+            name: "Applications",
+            rank: 2,
+            color: "#d29922",
+            projects: [],
+          },
+        ],
+      }),
+    );
+    expect(output).toContain("## Tech Stack");
+    expect(output).toContain("assets/insights/metrics-stack.svg");
   });
 
   it("omits sections not in resolvedSections", () => {
