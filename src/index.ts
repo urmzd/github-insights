@@ -15,17 +15,11 @@ import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
 import { getExitCode, InsightsError } from "./errors.js";
 import {
-  aggregateLanguages,
   buildClassificationInputs,
+  buildInsightsReport,
   buildSections,
-  computeConstellationLayout,
-  computeContributionRhythm,
-  computeLanguageVelocity,
-  computeSpotlightProjects,
-  getTopProjectsByComplexity,
   SECTION_KEYS,
   SVG_SECTION_KEYS,
-  splitProjectsByRecency,
 } from "./metrics.js";
 import { resolvePrompts } from "./prompts.js";
 import { loadPreamble } from "./readme.js";
@@ -109,9 +103,6 @@ async function run(): Promise<void> {
     core.info(`User profile: ${userProfile.name || username}`);
 
     // ── Transform ─────────────────────────────────────────────────────────
-    const languages = aggregateLanguages(repos);
-    const complexProjects = getTopProjectsByComplexity(repos);
-
     core.info("Fetching project classifications from GitHub Models...");
     const classificationInputs = buildClassificationInputs(
       repos,
@@ -138,23 +129,28 @@ async function run(): Promise<void> {
       `Project classifications: ${aiClassifications.length} AI-classified (${repos.length - aiClassifications.length} heuristic fallback)`,
     );
 
-    const {
-      active: activeProjects,
-      maintained: maintainedProjects,
-      inactive: inactiveProjects,
-      archived: archivedProjects,
-    } = splitProjectsByRecency(repos, contributionData, aiClassifications);
+    const displayName = userConfig.name || userProfile.name || username;
+    const constellationGroupBy =
+      userConfig.constellation_group_by || "language";
 
-    // ── Compute new visualization data ───────────────────────────────────
-    const velocity = computeLanguageVelocity(contributionData, repos);
-    const rhythm = computeContributionRhythm(contributionData);
-    const constellation = computeConstellationLayout(complexProjects, repos);
+    const report = buildInsightsReport({
+      username,
+      displayName,
+      profile: userProfile,
+      repos,
+      contributionData,
+      aiClassifications,
+      constellationGroupBy,
+      excludeArchived: userConfig.exclude_archived !== false,
+    });
 
     const sectionDefs = buildSections({
-      velocity,
-      rhythm,
-      constellation,
-      contributionData,
+      velocity: report.velocity,
+      rhythm: report.rhythm,
+      constellation: report.constellation,
+      stack: report.stack,
+      contributionData: report.contributionData,
+      constellationGroupBy: report.constellationGroupBy,
     });
 
     // Filter SVG sections to only those needed by resolved sections
@@ -193,13 +189,7 @@ async function run(): Promise<void> {
     if (readmePath && readmePath !== "none") {
       const svgDir = relative(dirname(readmePath), outputDir) || ".";
 
-      const displayName = userConfig.name || userProfile.name || username;
       const socialBadges = buildSocialBadges(userProfile);
-      const spotlightProjects = computeSpotlightProjects(
-        repos,
-        contributionData,
-        aiClassifications,
-      );
 
       let preamble = loadPreamble(userConfig.preamble);
 
@@ -212,9 +202,9 @@ async function run(): Promise<void> {
               username,
               profile: userProfile,
               userConfig,
-              languages,
-              spotlightProjects,
-              complexProjects,
+              languages: report.languages,
+              spotlightProjects: report.spotlightProjects,
+              complexProjects: report.allProjects,
             },
             prompts.preamble,
           );
@@ -239,50 +229,40 @@ async function run(): Promise<void> {
         }
       }
 
-      // Build categorized projects map
-      const includeArchived = userConfig.exclude_archived === false;
-      const allProjectItems = [
-        ...activeProjects,
-        ...maintainedProjects,
-        ...inactiveProjects,
-        ...(includeArchived ? archivedProjects : []),
-      ];
-      const categorizedProjects: Record<string, typeof allProjectItems> = {};
-      for (const project of allProjectItems) {
-        const cat = project.category || "Other";
-        if (!categorizedProjects[cat]) categorizedProjects[cat] = [];
-        categorizedProjects[cat].push(project);
-      }
+      const contextBase = {
+        username,
+        name: displayName,
+        firstName: extractFirstName(displayName),
+        pronunciation: userConfig.pronunciation,
+        title: userConfig.title,
+        bio: userConfig.bio,
+        preamble,
+        templateName,
+        profile: userProfile,
+        activeProjects: report.activeProjects,
+        maintainedProjects: report.maintainedProjects,
+        inactiveProjects: report.inactiveProjects,
+        archivedProjects: report.archivedProjects,
+        allProjects: report.allProjects,
+        categorizedProjects: report.categorizedProjects,
+        languages: report.languages,
+        velocity: report.velocity,
+        rhythm: report.rhythm,
+        constellation: report.constellation,
+        stack: report.stack,
+        contributionData: report.contributionData,
+        socialBadges,
+        spotlightProjects: report.spotlightProjects,
+        resolvedSections,
+      };
 
       {
         const template = getTemplate(templateName);
         const readme = template({
-          username,
-          name: displayName,
-          firstName: extractFirstName(displayName),
-          pronunciation: userConfig.pronunciation,
-          title: userConfig.title,
-          bio: userConfig.bio,
-          preamble,
-          templateName,
+          ...contextBase,
           svgs,
           sectionSvgs,
-          profile: userProfile,
-          activeProjects,
-          maintainedProjects,
-          inactiveProjects,
-          archivedProjects,
-          allProjects: complexProjects,
-          categorizedProjects,
-          languages,
-          velocity,
-          rhythm,
-          constellation,
-          contributionData,
-          socialBadges,
           svgDir,
-          spotlightProjects,
-          resolvedSections,
         });
         writeFileSync(readmePath, readme);
       }
@@ -318,32 +298,10 @@ async function run(): Promise<void> {
 
         const template = getTemplate(templateName);
         const output = template({
-          username,
-          name: displayName,
-          firstName: extractFirstName(displayName),
-          pronunciation: userConfig.pronunciation,
-          title: userConfig.title,
-          bio: userConfig.bio,
-          preamble,
-          templateName,
+          ...contextBase,
           svgs: previewSvgs,
           sectionSvgs: previewSectionSvgs,
-          profile: userProfile,
-          activeProjects,
-          maintainedProjects,
-          inactiveProjects,
-          archivedProjects,
-          allProjects: complexProjects,
-          categorizedProjects,
-          languages,
-          velocity,
-          rhythm,
-          constellation,
-          contributionData,
-          socialBadges,
           svgDir: ".",
-          spotlightProjects,
-          resolvedSections,
         });
 
         const previewPath = `${tplDir}/README.md`;
