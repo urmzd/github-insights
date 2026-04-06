@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.9.1 (2026-04-06)
+
+### Bug Fixes
+
+- track Shell/Nix/Just in constellation, filter markup only ([a441a55](https://github.com/urmzd/github-insights/commit/a441a55de8f2fe76cbaabf566b7f9c70d069e345))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.9.0...v3.9.1)
+
+
 ## 3.9.0 (2026-04-06)
 
 ### Features
