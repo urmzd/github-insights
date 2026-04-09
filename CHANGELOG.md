@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.10.0 (2026-04-09)
+
+### Features
+
+- **cli**: standardize --format flag, add update and --verbose ([41f79ba](https://github.com/urmzd/github-insights/commit/41f79bab93bac32c0ec4db054210aad98ae2c7b8))
+
+### Miscellaneous
+
+- format imports and option declarations ([23a87fc](https://github.com/urmzd/github-insights/commit/23a87fc3cef88ba8b52a25f7a04d977a0dcc8c87))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.9.2...v3.10.0)
+
+
 ## 3.9.2 (2026-04-06)
 
 ### Bug Fixes
