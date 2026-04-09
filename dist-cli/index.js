@@ -62172,13 +62172,18 @@ function wrappy (fn, cb) {
 /***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
 
 __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony import */ var commander__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(8179);
-/* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8518);
-/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(7306);
-/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3916);
-/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(3979);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_4__]);
-([ink__WEBPACK_IMPORTED_MODULE_1__, _tui_App_js__WEBPACK_IMPORTED_MODULE_4__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var node_child_process__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(1421);
+/* harmony import */ var node_child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(node_child_process__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var commander__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8179);
+/* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8518);
+/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7306);
+/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(3916);
+/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(8109);
+/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(3979);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_6__]);
+([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_6__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+
+
 
 
 
@@ -62186,7 +62191,7 @@ var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink_
 
 // Hardcoded at build time — update via `npm version`
 const version = "3.4.0";
-const program = new commander__WEBPACK_IMPORTED_MODULE_0__/* .Command */ .uB()
+const program = new commander__WEBPACK_IMPORTED_MODULE_1__/* .Command */ .uB()
     .name("github-insights")
     .description("Generate GitHub profile insights and visualizations")
     .version(version);
@@ -62194,11 +62199,11 @@ program
     .command("init")
     .description("Create a github-insights.yml config file")
     .action(() => {
-    if ((0,_config_js__WEBPACK_IMPORTED_MODULE_2__/* .configExists */ .fi)()) {
+    if ((0,_config_js__WEBPACK_IMPORTED_MODULE_3__/* .configExists */ .fi)()) {
         console.log("github-insights.yml already exists, skipping.");
     }
     else {
-        const path = (0,_config_js__WEBPACK_IMPORTED_MODULE_2__/* .initConfig */ .pw)();
+        const path = (0,_config_js__WEBPACK_IMPORTED_MODULE_3__/* .initConfig */ .pw)();
         console.log(`Created ${path} — edit it to customize your profile.`);
     }
 });
@@ -62212,7 +62217,10 @@ program
     .option("--template <name>", "Template preset", process.env.TEMPLATE || "showcase")
     .option("--sections <list>", "Comma-separated section list")
     .option("--fail-fast", "Exit with an error instead of falling back to heuristics when AI is unavailable", false)
-    .option("--export-json", "Export underlying JSON data alongside SVGs for auditing", false)
+    .option("--verbose", "Show TUI progress (default: silent when not a TTY)", process.stdout.isTTY)
+    .addOption(new commander__WEBPACK_IMPORTED_MODULE_1__/* .Option */ .c$("--format <format>", "Output format")
+    .choices(["json", "human"])
+    .default("human"))
     .action((opts) => {
     const token = opts.token || "";
     const username = opts.username || "";
@@ -62242,11 +62250,34 @@ program
                 .filter(Boolean)
             : [],
         failFast: opts.failFast,
-        exportJson: opts.exportJson,
+        exportJson: opts.format === "json",
     };
-    (0,ink__WEBPACK_IMPORTED_MODULE_1__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_4__/* .App */ .q, { config: config, onExit: (err) => {
-            process.exitCode = err ? (0,_errors_js__WEBPACK_IMPORTED_MODULE_3__/* .getExitCode */ .OF)(err) : 0;
-        } }));
+    if (opts.verbose) {
+        (0,ink__WEBPACK_IMPORTED_MODULE_2__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_6__/* .App */ .q, { config: config, onExit: (err) => {
+                process.exitCode = err ? (0,_errors_js__WEBPACK_IMPORTED_MODULE_4__/* .getExitCode */ .OF)(err) : 0;
+            } }));
+    }
+    else {
+        const callbacks = {
+            onPhaseStart() { },
+            onPhaseComplete() { },
+            onProgress() { },
+            onError(err) {
+                process.stderr.write(`error: ${err.message}\n`);
+            },
+        };
+        (0,_pipeline_js__WEBPACK_IMPORTED_MODULE_5__/* .runPipeline */ .a)(config, callbacks).catch((err) => {
+            process.exitCode = (0,_errors_js__WEBPACK_IMPORTED_MODULE_4__/* .getExitCode */ .OF)(err);
+        });
+    }
+});
+program
+    .command("update")
+    .description("Update github-insights to the latest version")
+    .action(() => {
+    (0,node_child_process__WEBPACK_IMPORTED_MODULE_0__.execSync)("npm install -g @urmzd/github-insights@latest", {
+        stdio: "inherit",
+    });
 });
 program.parse();
 
@@ -76396,7 +76427,6 @@ const SECTION_PRESETS = {
         "spotlight",
         "velocity",
         "rhythm",
-        "constellation",
         "stack",
         "portfolio",
         "impact",
@@ -76414,14 +76444,23 @@ const DEFAULT_SECTIONS = SECTION_PRESETS.showcase;
 const DEFAULT_CONFIG_ASSET = (0,external_node_path_.join)((0,external_node_path_.dirname)((0,external_node_url_.fileURLToPath)(import.meta.url)), "templates", "github-insights.default.yaml");
 // ── Public API ────────────────────────────────────────────────────────────
 function resolveTemplateSections(templateName, explicitSections) {
+    let sections;
     if (explicitSections && explicitSections.length > 0) {
         const valid = explicitSections.filter((s) => SectionSchema.safeParse(s).success);
-        return valid.length > 0 ? valid : DEFAULT_SECTIONS;
+        sections =
+            valid.length > 0 ? valid : DEFAULT_SECTIONS;
     }
-    if (templateName && SECTION_PRESETS[templateName]) {
-        return SECTION_PRESETS[templateName];
+    else if (templateName && SECTION_PRESETS[templateName]) {
+        sections = SECTION_PRESETS[templateName];
     }
-    return DEFAULT_SECTIONS;
+    else {
+        sections = DEFAULT_SECTIONS;
+    }
+    // constellation and stack are mutually exclusive — keep constellation
+    if (sections.includes("constellation") && sections.includes("stack")) {
+        sections = sections.filter((s) => s !== "stack");
+    }
+    return sections;
 }
 function parseUserConfig(raw, format = "yaml") {
     const parsed = format === "toml"
@@ -95154,9 +95193,10 @@ cliCursor.toggle = (force, writableStream) => {
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   c$: () => (/* binding */ Option),
 /* harmony export */   uB: () => (/* binding */ Command)
 /* harmony export */ });
-/* unused harmony exports program, createCommand, createArgument, createOption, CommanderError, InvalidArgumentError, InvalidOptionArgumentError, Argument, Option, Help */
+/* unused harmony exports program, createCommand, createArgument, createOption, CommanderError, InvalidArgumentError, InvalidOptionArgumentError, Argument, Help */
 /* harmony import */ var _index_js__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(8909);
 
 

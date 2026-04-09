@@ -1,9 +1,10 @@
-import { Command } from "commander";
+import { execSync } from "node:child_process";
+import { Command, Option } from "commander";
 import { render } from "ink";
 import React from "react";
 import { configExists, initConfig } from "./config.js";
 import { getExitCode } from "./errors.js";
-import type { PipelineConfig } from "./pipeline.js";
+import { type PipelineCallbacks, type PipelineConfig, runPipeline } from "./pipeline.js";
 import { App } from "./tui/App.js";
 import type { TemplateName } from "./types.js";
 
@@ -57,10 +58,11 @@ program
     "Exit with an error instead of falling back to heuristics when AI is unavailable",
     false,
   )
-  .option(
-    "--export-json",
-    "Export underlying JSON data alongside SVGs for auditing",
-    false,
+  .option("--verbose", "Show TUI progress (default: silent when not a TTY)", process.stdout.isTTY)
+  .addOption(
+    new Option("--format <format>", "Output format")
+      .choices(["json", "human"])
+      .default("human"),
   )
   .action((opts) => {
     const token = opts.token || "";
@@ -95,17 +97,47 @@ program
             .filter(Boolean)
         : [],
       failFast: opts.failFast,
-      exportJson: opts.exportJson,
+      exportJson: opts.format === "json",
     };
 
-    render(
-      <App
-        config={config}
-        onExit={(err) => {
-          process.exitCode = err ? getExitCode(err) : 0;
-        }}
-      />,
-    );
+    if (opts.verbose) {
+      render(
+        <App
+          config={config}
+          onExit={(err) => {
+            process.exitCode = err ? getExitCode(err) : 0;
+          }}
+        />,
+      );
+    } else {
+      const callbacks: PipelineCallbacks = {
+        onPhaseStart() {},
+        onPhaseComplete() {},
+        onProgress() {},
+        onError(err) {
+          process.stderr.write(`error: ${err.message}\n`);
+        },
+      };
+      runPipeline(config, callbacks).catch((err: unknown) => {
+        process.exitCode = getExitCode(err);
+      });
+    }
+  });
+
+program
+  .command("update")
+  .description("Update github-insights to the latest version")
+  .action(() => {
+    execSync("npm install -g @urmzd/github-insights@latest", {
+      stdio: "inherit",
+    });
+  });
+
+program
+  .command("version")
+  .description("Print version")
+  .action(() => {
+    console.log(`github-insights ${version}`);
   });
 
 program.parse();
