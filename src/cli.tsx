@@ -4,7 +4,11 @@ import { render } from "ink";
 import React from "react";
 import { configExists, initConfig } from "./config.js";
 import { getExitCode } from "./errors.js";
-import { type PipelineCallbacks, type PipelineConfig, runPipeline } from "./pipeline.js";
+import {
+  type PipelineCallbacks,
+  type PipelineConfig,
+  runPipeline,
+} from "./pipeline.js";
 import { App } from "./tui/App.js";
 import type { TemplateName } from "./types.js";
 
@@ -58,7 +62,11 @@ program
     "Exit with an error instead of falling back to heuristics when AI is unavailable",
     false,
   )
-  .option("--verbose", "Show TUI progress (default: silent when not a TTY)", process.stdout.isTTY)
+  .option(
+    "--verbose",
+    "Show TUI progress (default: silent when not a TTY)",
+    process.stdout.isTTY,
+  )
   .addOption(
     new Option("--format <format>", "Output format")
       .choices(["json", "human"])
