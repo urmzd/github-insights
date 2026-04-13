@@ -1,8 +1,11 @@
-branches: [main]
-tag_prefix: "v"
-floating_tags: true
+# sr v4 configuration
+# Reference: https://github.com/urmzd/sr#configuration
 
-types:
+commit:
+  pattern: ^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?:\s+(?P<description>.+)
+  breaking_section: Breaking Changes
+  misc_section: Miscellaneous
+  types:
   - name: feat
     bump: minor
     section: Features
@@ -24,41 +27,14 @@ types:
   - name: test
   - name: build
   - name: style
-
-version_files:
+release:
+  branches:
+  - main
+  tag_prefix: v
+  changelog:
+    file: CHANGELOG.md
+  version_files:
   - package.json
-
-changelog:
-  file: CHANGELOG.md
-
-artifacts:
+  floating_tags: true
+  artifacts:
   - dist.tar.gz
-
-hooks:
-  commit-msg:
-    - sr hook commit-msg
-  pre-commit:
-    - step: format
-      patterns:
-        - "*.ts"
-        - "*.tsx"
-      rules:
-        - "npm run fmt:fix"
-    - step: lint
-      patterns:
-        - "*.ts"
-        - "*.tsx"
-      rules:
-        - "npm run lint"
-    - step: typecheck
-      patterns:
-        - "*.ts"
-        - "*.tsx"
-      rules:
-        - "npm run typecheck"
-    - step: test
-      patterns:
-        - "*.ts"
-        - "*.tsx"
-      rules:
-        - "npm run test"
