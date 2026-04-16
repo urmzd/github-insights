@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.10.1 (2026-04-16)
+
+### Bug Fixes
+
+- **ci**: migrate sr v4 to v7 for artifact and input support (#23) ([ef3969f](https://github.com/urmzd/github-insights/commit/ef3969fefa107bcad9c76290a15550f8e9c529ad))
+
+### Misc
+
+- migrate sr config and action to v4 ([45f25c0](https://github.com/urmzd/github-insights/commit/45f25c09666d840f5dc3cac915d17dfa42fa6166))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.10.0...v3.10.1)
+
+
 ## 3.10.0 (2026-04-09)
 
 ### Features
