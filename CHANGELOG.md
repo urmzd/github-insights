@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.10.2 (2026-04-16)
+
+### Refactoring
+
+- replace embed-src references with fsrc (#24) ([8caf23b](https://github.com/urmzd/github-insights/commit/8caf23ba2e8124dd7f7683ee9f1f0af4aa28fe78))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.10.1...v3.10.2)
+
+
 ## 3.10.1 (2026-04-16)
 
 ### Bug Fixes
