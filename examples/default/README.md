@@ -76,7 +76,7 @@ Stars: 1 · Languages: Lua, Rust, Vim Script · **Active**
 | [github-insights](https://github.com/urmzd/github-insights) | AI-powered GitHub profile metrics with SVG visualizations, project classification, and README generation—available as CLI, npm package, and GitHub Action. | - | TypeScript, Shell |
 | [agentspec](https://github.com/urmzd/agentspec) | Universal agent skill and sub-agent manager with a terminal user interface, written in Rust for orchestrating complex agent behaviors. | - | Rust, Shell |
 | [dotfiles](https://github.com/urmzd/dotfiles) | Modern dotfiles managed with Chezmoi and Nix, enabling one-command environment setup for macOS and Linux with Neovim, Tmux, Zsh, and custom development shells. | 2 | Shell, Lua, Go Template |
-| [embed-src](https://github.com/urmzd/embed-src) | CLI, crate, and GitHub Action for embedding source files into any text file using comment markers, streamlining documentation and code sharing. | 1 | Rust, Python, Shell |
+| [fsrc](https://github.com/urmzd/fsrc) | CLI, crate, and GitHub Action for embedding source files into any text file using comment markers, streamlining documentation and code sharing. | 1 | Rust, Python, Shell |
 
 ### SDKs
 
