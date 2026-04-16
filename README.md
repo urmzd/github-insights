@@ -61,7 +61,7 @@ Run `github-insights generate` locally for a full TUI experience with live phase
 
 ```sh
 # One-line install
-curl -fsSL https://raw.githubusercontent.com/urmzd/github-insights/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/urmzd/github-insights/main/install.sh | sh
 
 # Or via npm
 npm install -g @urmzd/github-insights
