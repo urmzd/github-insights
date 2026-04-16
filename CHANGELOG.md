@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.10.3 (2026-04-16)
+
+### Bug Fixes
+
+- standardize install script to POSIX sh ([3737ca0](https://github.com/urmzd/github-insights/commit/3737ca0161df378b6610db1028a0d0d7db717d21))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.10.2...v3.10.3)
+
+
 ## 3.10.2 (2026-04-16)
 
 ### Refactoring
