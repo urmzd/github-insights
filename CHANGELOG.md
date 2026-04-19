@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.10.5 (2026-04-19)
+
+### Bug Fixes
+
+- **ci**: drop removed sr action force input ([09ac92c](https://github.com/urmzd/github-insights/commit/09ac92c2832b225a287143f85750620151a8865f))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.10.4...v3.10.5)
+
+
 ## 3.10.4 (2026-04-19)
 
 ### Refactoring
