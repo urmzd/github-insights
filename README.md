@@ -13,11 +13,9 @@
 
 <p align="center">
   <a href="https://github.com/urmzd/github-insights/actions/workflows/ci.yml"><img src="https://github.com/urmzd/github-insights/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/urmzd/github-insights/actions/workflows/release.yml"><img src="https://github.com/urmzd/github-insights/actions/workflows/release.yml/badge.svg" alt="Release"></a>
-  <a href="https://github.com/urmzd/github-insights/issues"><img src="https://img.shields.io/github/issues/urmzd/github-insights" alt="Issues"></a>
-  <a href="https://github.com/urmzd/github-insights/pulls"><img src="https://img.shields.io/github/issues-pr/urmzd/github-insights" alt="Pull Requests"></a>
-  <a href="https://github.com/urmzd/github-insights/blob/main/LICENSE"><img src="https://img.shields.io/github/license/urmzd/github-insights" alt="License"></a>
-  <a href="https://www.npmjs.com/package/@urmzd/github-insights"><img src="https://img.shields.io/npm/v/@urmzd/github-insights" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@urmzd/github-insights"><img src="https://img.shields.io/npm/v/@urmzd/github-insights" alt="npm"></a>
+  &nbsp;
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/github-insights" alt="License"></a>
 </p>
 
 ## Showcase
@@ -34,6 +32,18 @@
 </table>
 
 Run `github-insights generate` locally for a full TUI experience with live phase tracking, spinners, and timing for each pipeline step.
+
+## Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [AI Features](#ai-features)
+- [Sections](#sections)
+- [Local Development](#local-development)
+- [Output Files](#output-files)
+- [Agent Skill](#agent-skill)
+- [License](#license)
 
 ## Features
 
@@ -346,6 +356,8 @@ npm run fmt:fix     # format fix
 
 ## Agent Skill
 
-This project ships an [Agent Skill](https://github.com/vercel-labs/skills) for use with Claude Code, Cursor, and other compatible agents.
+This repo's conventions are available as portable agent skills in [`skills/`](skills/).
 
-Available as portable agent skills in [`skills/`](skills/).
+## License
+
+[Apache-2.0](LICENSE)
