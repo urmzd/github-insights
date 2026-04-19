@@ -57,16 +57,8 @@ jobs:
       - name: Release
         id: sr
         uses: urmzd/sr@v7
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           force: ${{ inputs.force }}
-
-      - name: Publish to npm
-        if: steps.sr.outputs.released == 'true'
-        run: |
-          CURRENT=$(node -p "require('./package.json').version")
-          TARGET="${{ steps.sr.outputs.version }}"
-          if [ "$CURRENT" != "$TARGET" ]; then
-            npm version "$TARGET" --no-git-tag-version
-          fi
-          npm publish --provenance --access public

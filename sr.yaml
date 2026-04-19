@@ -62,3 +62,6 @@ packages:
       - package.json
     artifacts:
       - dist.tar.gz
+    hooks:
+      post_release:
+        - npm publish --provenance --access public
