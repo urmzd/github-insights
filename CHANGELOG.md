@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.10.4 (2026-04-19)
+
+### Refactoring
+
+- move npm publish into sr hooks.post_release ([71b5dfa](https://github.com/urmzd/github-insights/commit/71b5dfae57350e12d97cbb35bf07dc1d1cabe2f8))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.10.3...v3.10.4)
+
+
 ## 3.10.3 (2026-04-16)
 
 ### Bug Fixes
