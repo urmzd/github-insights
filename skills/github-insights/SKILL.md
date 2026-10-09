@@ -40,7 +40,6 @@ on:
 
 permissions:
   contents: write
-  models: read
 
 jobs:
   generate:
@@ -92,7 +91,7 @@ sections:
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `github-token` | `${{ github.token }}` | Needs `contents: write` + `models: read` |
+| `github-token` | `${{ github.token }}` | Needs `contents: write` |
 | `username` | `${{ github.repository_owner }}` | GitHub login to generate metrics for |
 | `output-dir` | `assets/insights` | Directory for SVG output files |
 | `commit-push` | `true` (CI) / `false` (local) | Whether to commit and push |
@@ -101,6 +100,12 @@ sections:
 | `readme-path` | `README.md` (CI) / `_README.md` (local) | Set to `none` to skip |
 | `template` | `showcase` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) |
 | `sections` | (all) | Comma-separated section keys to include |
+| `ai-base-url` | `http://localhost:11434/v1` | OpenAI-compatible endpoint; empty or `none` disables AI |
+| `ai-model` | `qwen3.5:4b` | Model served by the endpoint |
+| `ai-api-key` | (empty) | Bearer key for hosted providers; Ollama needs none |
+| `ai-reasoning-effort` | `none` | `reasoning_effort` sent with requests; empty omits it |
+
+The CLI takes the same settings as `--ai-base-url`, `--ai-model`, `--ai-api-key`, `--ai-reasoning-effort` or the `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_REASONING_EFFORT` env vars. If the endpoint is unset or unreachable, the run logs one notice and still writes every SVG.
 
 ### Section keys
 
@@ -131,7 +136,8 @@ Inputs -> Fetch (parallel) -> AI calls -> Transform -> Compute velocity/rhythm/c
 | File | Role |
 |------|------|
 | `src/index.ts` | Orchestration: fetch -> transform -> render -> write -> commit |
-| `src/api.ts` | GitHub GraphQL queries + GitHub Models AI calls |
+| `src/api.ts` | GitHub GraphQL queries + AI preamble and classification calls |
+| `src/ai.ts` | OpenAI-compatible Chat Completions client (default: local Ollama) |
 | `src/metrics.ts` | Data aggregation, velocity/rhythm/constellation computation, section building |
 | `src/config.ts` | YAML/TOML config loading |
 | `src/types.ts` | All TypeScript interfaces |
@@ -178,7 +184,8 @@ Only rendered when there are projects with language data. Ensure repos have dete
 Only rendered when the user has contributed to external (non-owned) repositories.
 
 ### AI preamble is empty or generic
-- The AI call uses `gpt-4.1` via GitHub Models — it needs diverse profile data to generate good output
+- The AI call goes to `ai-base-url` (default: local Ollama at `http://localhost:11434/v1` with `qwen3.5:4b`). On GitHub-hosted runners there is no Ollama, so AI is skipped unless `ai-base-url` and `ai-api-key` point at a hosted provider
+- It needs diverse profile data to generate good output
 - Provide `title` in config for better results
 - Create a custom `PREAMBLE.md` to bypass AI entirely
 
