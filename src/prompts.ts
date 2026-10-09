@@ -1,12 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_AI_MODEL } from "./ai.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface PromptValves {
   model: string;
   temperature: number;
+  /** Sent as `reasoning_effort` when set (e.g. `none` to skip thinking). */
+  reasoning_effort?: string;
   system: string;
   user: string;
 }
@@ -29,15 +32,14 @@ function loadDefault(filename: string): string {
   return readFileSync(join(PROMPTS_DIR, filename), "utf-8").trim();
 }
 
-const DEFAULTS: ResolvedPrompts = {
+// The model is filled in from the endpoint config (`ai-model`) at resolution time.
+const DEFAULTS: Record<keyof ResolvedPrompts, Omit<PromptValves, "model">> = {
   preamble: {
-    model: "openai/gpt-4.1",
     temperature: 0.5,
     system: loadDefault("preamble-system.txt"),
     user: loadDefault("preamble-user.txt"),
   },
   classification: {
-    model: "openai/gpt-4.1",
     temperature: 0.15,
     system: loadDefault("classification-system.txt"),
     user: loadDefault("classification-user.txt"),
@@ -70,24 +72,35 @@ function resolvePromptValue(
 
 function resolveValves(
   overrides: Partial<PromptValves> | undefined,
-  defaults: PromptValves,
+  defaults: Omit<PromptValves, "model">,
+  endpoint: EndpointDefaults,
 ): PromptValves {
   return {
-    model: overrides?.model || defaults.model,
+    model: overrides?.model || endpoint.model,
     temperature: overrides?.temperature ?? defaults.temperature,
+    reasoning_effort: overrides?.reasoning_effort ?? endpoint.reasoningEffort,
     system: resolvePromptValue(overrides?.system, defaults.system),
     user: resolvePromptValue(overrides?.user, defaults.user),
   };
 }
 
+/** Endpoint-level defaults that per-task `ai.*` config values override. */
+export interface EndpointDefaults {
+  model: string;
+  reasoningEffort?: string;
+}
+
+/** Per-task config overrides win; otherwise every task uses the endpoint defaults. */
 export function resolvePrompts(
   aiConfig: AIConfig | undefined,
+  endpoint: EndpointDefaults = { model: DEFAULT_AI_MODEL },
 ): ResolvedPrompts {
   return {
-    preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble),
+    preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble, endpoint),
     classification: resolveValves(
       aiConfig?.classification,
       DEFAULTS.classification,
+      endpoint,
     ),
   };
 }

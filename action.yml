@@ -7,7 +7,7 @@ branding:
 
 inputs:
   github-token:
-    description: "GitHub token (needs repo read + models:read for AI project classification and preamble generation)"
+    description: "GitHub token (needs repo read)"
     default: ${{ github.token }}
   username:
     description: "GitHub username to generate metrics for"
@@ -39,6 +39,18 @@ inputs:
   sections:
     description: "Comma-separated ordered list of sections: spotlight, velocity, rhythm, constellation, impact, portfolio. Overrides 'template' preset."
     default: ""
+  ai-base-url:
+    description: "OpenAI-compatible API base URL for AI summaries and classification. Defaults to local Ollama, which is not available on GitHub-hosted runners, so AI is skipped there unless you point this at a hosted provider. Set to an empty string or 'none' to disable AI."
+    default: "http://localhost:11434/v1"
+  ai-model:
+    description: "Model name served by ai-base-url (for Ollama, any pulled model works)"
+    default: "qwen3.5:4b"
+  ai-api-key:
+    description: "API key sent as a Bearer token. Ollama needs none; hosted providers do. Pass it from a secret."
+    default: ""
+  ai-reasoning-effort:
+    description: "reasoning_effort sent with each request. 'none' turns off thinking for local models and lets gpt-6 models accept temperature. Set to an empty string to omit it for models that reject the parameter."
+    default: "none"
   fail-fast:
     description: "Exit with an error instead of falling back to heuristics when AI is unavailable"
     default: "false"

@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { resolveAIEndpoint } from "./ai.js";
 import { getExitCode, InsightsError } from "./errors.js";
 import type { PipelineCallbacks, PipelineConfig } from "./pipeline.js";
 import { runPipeline } from "./pipeline.js";
@@ -24,6 +25,14 @@ async function run(): Promise<void> {
   const failFast = (core.getInput("fail-fast") || "false") === "true";
   const exportJson = (core.getInput("export-json") || "false") === "true";
   const cache = (core.getInput("cache") || "true") !== "false";
+  // action.yml supplies the defaults; an explicit empty ai-base-url disables AI.
+  const ai = resolveAIEndpoint({
+    baseUrl: core.getInput("ai-base-url"),
+    model: core.getInput("ai-model"),
+    apiKey: core.getInput("ai-api-key"),
+    reasoningEffort: core.getInput("ai-reasoning-effort"),
+  });
+  if (ai.apiKey) core.setSecret(ai.apiKey);
 
   const templateName: TemplateName =
     (core.getInput("template") as TemplateName) || "showcase";
@@ -38,6 +47,7 @@ async function run(): Promise<void> {
 
   const config: PipelineConfig = {
     token,
+    ai,
     username,
     outputDir,
     commitPush,
@@ -62,6 +72,9 @@ async function run(): Promise<void> {
     },
     onProgress(message) {
       core.info(message);
+    },
+    onNotice(message) {
+      core.notice(message);
     },
     onError(error) {
       core.setFailed(error.message);

@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, relative } from "node:path";
+import { type AIEndpoint, isAIDisabled, probeAIEndpoint } from "./ai.js";
 import { AICache, hashAIInputs } from "./ai-cache.js";
 import {
   fetchAIPreamble,
@@ -13,7 +14,7 @@ import {
 import { generateFullSvg, wrapSectionSvg } from "./components/full-svg.js";
 import { renderSection } from "./components/section.js";
 import { loadUserConfig, resolveTemplateSections } from "./config.js";
-import { InsightsError } from "./errors.js";
+import { ErrorCode, InsightsError } from "./errors.js";
 import {
   buildExamplesGallery,
   buildExamplesHtmlGallery,
@@ -55,11 +56,15 @@ export interface PipelineCallbacks {
   onPhaseStart(phase: PipelinePhase, label: string): void;
   onPhaseComplete(phase: PipelinePhase, summary: string): void;
   onProgress(message: string): void;
+  /** One-off notice the user should see even in quiet mode (e.g. AI disabled). */
+  onNotice(message: string): void;
   onError(error: Error): void;
 }
 
 export interface PipelineConfig {
   token: string;
+  /** OpenAI-compatible endpoint for AI summaries and classification. */
+  ai: AIEndpoint;
   username: string;
   outputDir: string;
   commitPush: boolean;
@@ -114,7 +119,7 @@ export async function runPipeline(
     requestedSections,
   );
 
-  const prompts = resolvePrompts(userConfig.ai);
+  const prompts = resolvePrompts(userConfig.ai, config.ai);
 
   if (!config.token) throw new Error("github-token is required");
   if (!config.username) throw new Error("username is required");
@@ -144,6 +149,29 @@ export async function runPipeline(
     ? AICache.load(`${config.outputDir}/.ai-cache.json`)
     : undefined;
 
+  // Checked lazily (cache hits need no endpoint) and at most once, so an
+  // unreachable or unset endpoint yields a single notice, not one per task.
+  let aiGate: Promise<boolean> | undefined;
+  const aiAvailable = (): Promise<boolean> => {
+    aiGate ??= (async () => {
+      const reason = isAIDisabled(config.ai)
+        ? "no AI endpoint configured (ai-base-url is empty)"
+        : await probeAIEndpoint(config.ai);
+      if (!reason) return true;
+      if (failFast) {
+        throw new InsightsError(
+          `AI unavailable: ${reason}`,
+          ErrorCode.AI_UNAVAILABLE,
+        );
+      }
+      cb.onNotice(
+        `AI disabled: ${reason}. Generating SVGs without AI summaries or classification.`,
+      );
+      return false;
+    })();
+    return aiGate;
+  };
+
   cb.onPhaseStart("classify", "Classifying projects");
   const classificationInputs = buildClassificationInputs(
     repos,
@@ -163,10 +191,10 @@ export async function runPipeline(
   if (cachedClassifications) {
     aiClassifications = cachedClassifications;
     cb.onProgress("Classification inputs unchanged, using cached AI results");
-  } else {
+  } else if (await aiAvailable()) {
     try {
       aiClassifications = await fetchProjectClassifications(
-        config.token,
+        config.ai,
         classificationInputs,
         prompts.classification,
       );
@@ -325,11 +353,11 @@ export async function runPipeline(
       preamble = aiCache?.get<string>("preamble", preambleHash);
       if (preamble) {
         cb.onProgress("Preamble inputs unchanged, using cached AI preamble");
-      } else {
+      } else if (await aiAvailable()) {
         cb.onProgress("Generating preamble with AI...");
         try {
           preamble = await fetchAIPreamble(
-            config.token,
+            config.ai,
             preambleContext,
             prompts.preamble,
           );

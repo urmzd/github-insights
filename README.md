@@ -57,6 +57,7 @@ Run `github-insights generate` locally for a full TUI experience with live phase
 - **AI preamble generation** — auto-generated profile introduction (or supply your own `PREAMBLE.md`)
 - **AI project classification** — repos classified by status (active/maintained/inactive) and purpose (Developer Tools/SDKs/Applications/Research)
 - **CLI / TUI** — local generation with an interactive terminal UI (Ink-based), live progress, and phase timing; powered by [Commander](https://www.npmjs.com/package/commander) with `init` and `generate` subcommands
+- **Provider-neutral AI**: any OpenAI-compatible Chat Completions endpoint; defaults to local [Ollama](https://ollama.com), and SVGs are still generated when no endpoint is reachable
 - **Configurable AI prompts** — override model, temperature, and prompt text per AI task via the `ai:` config block; prompts can be inline strings or paths to `.txt`/`.md` files
 - **Config validation** — `github-insights.yml` (or `.yaml` / `.toml`) validated with [Zod](https://www.npmjs.com/package/zod); invalid values are silently ignored with sensible defaults
 - **Exclude archived repos** — archived repositories are excluded from the portfolio by default (`exclude_archived: true`)
@@ -122,6 +123,10 @@ github-insights generate \
 | `--examples-dir <dir>` | Local preset gallery output (`none` to skip) | `examples` (local) / `none` (CI) |
 | `--template <name>` | Template preset | `showcase` |
 | `--sections <list>` | Comma-separated section list (overrides template) | |
+| `--ai-base-url <url>` | OpenAI-compatible API base URL (empty or `none` disables AI) | `$AI_BASE_URL` or `http://localhost:11434/v1` |
+| `--ai-model <model>` | Model served by the endpoint (any pulled Ollama model works) | `$AI_MODEL` or `qwen3.5:4b` |
+| `--ai-api-key <key>` | Bearer key for hosted providers (Ollama needs none) | `$AI_API_KEY` |
+| `--ai-reasoning-effort <effort>` | `reasoning_effort` sent to the model (empty string omits it) | `$AI_REASONING_EFFORT` or `none` |
 | `--fail-fast` | Exit with error instead of falling back to heuristics when AI is unavailable | `false` |
 | `--no-cache` | Recompute AI outputs instead of reusing unchanged cached results | cache enabled |
 | `--format <format>` | Output format (`human` or `json`; `json` exports section data) | `human` |
@@ -139,7 +144,6 @@ on:
 
 permissions:
   contents: write
-  models: read
 
 jobs:
   generate:
@@ -151,7 +155,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The action commits updated SVGs and a generated `README.md` to your repo automatically.
+The action commits updated SVGs and a generated `README.md` to your repo automatically. GitHub-hosted runners have no Ollama, so this minimal workflow skips the AI parts (one notice in the log) and still renders every SVG. To enable AI in Actions, see [Using a hosted provider in Actions](#using-a-hosted-provider-in-actions).
 
 > **Branch protection?** The default `GITHUB_TOKEN` cannot push to branches with protection rules. Use a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) or a [GitHub App](https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps) token instead — pass it as `github-token: ${{ secrets.YOUR_PAT }}`.
 
@@ -159,7 +163,7 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `github-token` | GitHub token (needs `repo` read + `models:read` for AI) | `${{ github.token }}` |
+| `github-token` | GitHub token (needs `repo` read) | `${{ github.token }}` |
 | `template` | Section preset (`classic`, `modern`, `minimal`, `ecosystem`, `showcase`) | `showcase` |
 | `sections` | Comma-separated ordered list of sections (overrides `template`) | _(empty — uses template)_ |
 | `config-file` | Path to config file (also accepts `.yaml` / `.toml`) | `github-insights.yml` |
@@ -170,6 +174,10 @@ The action commits updated SVGs and a generated `README.md` to your repo automat
 | `commit-message` | Commit message for generated files | `chore: update metrics` |
 | `commit-name` | Git user name for commits | `github-actions[bot]` |
 | `commit-email` | Git user email for commits | `41898282+github-actions[bot]@users.noreply.github.com` |
+| `ai-base-url` | OpenAI-compatible API base URL (empty or `none` disables AI) | `http://localhost:11434/v1` |
+| `ai-model` | Model served by `ai-base-url` | `qwen3.5:4b` |
+| `ai-api-key` | Bearer key for hosted providers; pass it from a secret | _(empty)_ |
+| `ai-reasoning-effort` | `reasoning_effort` sent to the model (empty string omits it) | `none` |
 | `fail-fast` | Exit with error instead of falling back to heuristics when AI is unavailable | `false` |
 | `export-json` | Export section JSON data alongside SVGs | `false` |
 | `cache` | Reuse previous AI outputs when inputs are unchanged (stored in `<output-dir>/.ai-cache.json`) | `true` |
@@ -197,16 +205,18 @@ sections:                   # explicit section order (overrides template)
   - portfolio
   - impact
 
-# AI prompt valves — override model, temperature, or prompt text per task.
+# AI prompt valves: override model, temperature, reasoning effort, or prompt text per task.
+# The endpoint and default model come from ai-base-url / ai-model.
 # Values can be inline strings or paths to .txt/.md files.
 ai:
   preamble:
-    model: openai/gpt-4.1    # GitHub Models model ID (publisher/model)
+    model: qwen3.5:4b        # overrides ai-model for this task
     temperature: 0.5
+    reasoning_effort: none   # overrides ai-reasoning-effort for this task
     system: prompts/preamble-system.txt
     user: prompts/preamble-user.txt
   classification:
-    model: openai/gpt-4.1
+    model: qwen3.5:4b
     temperature: 0.15
     system: prompts/classification-system.txt
     user: prompts/classification-user.txt
@@ -224,40 +234,61 @@ To use your own text instead, create a `PREAMBLE.md` file in the repo root, or p
 
 ### Project Classification
 
-The action uses GitHub Models (default: `openai/gpt-4.1`) to classify repositories by maintenance status (active/maintained/inactive) and purpose category (Developer Tools, SDKs, Applications, Research & Experiments), with AI-generated summaries for each project. The AI also ranks spotlight candidates.
+The pipeline calls an OpenAI-compatible Chat Completions endpoint (default: local Ollama with `qwen3.5:4b`) to classify repositories by maintenance status (active/maintained/inactive) and purpose category (Developer Tools, SDKs, Applications, Research & Experiments), with AI-generated summaries for each project. The AI also ranks spotlight candidates.
+
+Requests use the standard `/chat/completions` shape with a strict `json_schema` response format, which Ollama, OpenAI, and most compatible servers support. `temperature` is omitted for `gpt-6*` models unless the reasoning effort is `none`.
+
+If the endpoint is unset or unreachable, the run logs one notice and continues: SVGs and the README are still written, projects fall back to heuristic classification, and the preamble falls back to your bio. The run never fails for this unless `fail-fast` is on.
+
+### Running locally with Ollama
+
+```sh
+# Pull the default model (any other pulled model works too)
+ollama pull qwen3.5:4b
+
+# Ollama serves its OpenAI-compatible API at http://localhost:11434/v1 by default
+github-insights generate --token "$(gh auth token)" --username your-username
+
+# Use a different local model
+github-insights generate --ai-model qwen2.5-coder:3b
+```
+
+`--ai-reasoning-effort none` (the default) turns off thinking, which keeps small local reasoning models fast and stops them from spending their context before they emit the JSON answer.
+
+### Using a hosted provider in Actions
+
+Point `ai-base-url` at any hosted OpenAI-compatible endpoint and pass its key from a repository secret:
+
+```yaml
+- uses: urmzd/github-insights@main
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    ai-base-url: https://api.openai.com/v1
+    ai-model: gpt-6-luna
+    ai-api-key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Some models reject the `reasoning_effort` parameter. For those, set `ai-reasoning-effort: ""` to omit it.
 
 ### Customizing AI Prompts
 
-You can override the model, temperature, system prompt, and user prompt for both AI tasks via the `ai:` block in `github-insights.yml`:
+You can override the model, temperature, reasoning effort, system prompt, and user prompt for both AI tasks via the `ai:` block in `github-insights.yml`:
 
 ```yaml
 ai:
   preamble:
-    model: openai/gpt-4.1 # any GitHub Models model ID
+    model: qwen3.5:4b # any model the endpoint serves
     temperature: 0.5
     system: prompts/my-system-prompt.txt   # file path or inline string
     user: prompts/my-user-prompt.txt
   classification:
-    model: openai/gpt-4.1
+    model: qwen3.5:4b
     temperature: 0.15
     system: "You are a project classifier."  # inline string
     user: prompts/classification-user.txt
 ```
 
 Prompt values that end in `.txt` or `.md` (or are absolute paths) are read from disk; all other values are used as inline prompt text. If a file path is specified but the file is not found, the built-in default prompt is used with a warning.
-
-> [!NOTE]
-> Model availability depends on your Copilot plan. Without a paid Copilot plan, only low/high rate-limit-tier models (e.g. `openai/gpt-4.1`, `meta/llama-4-maverick-17b-128e-instruct-fp8`) are usable — custom-tier models such as `openai/gpt-5` and `openai/o3` return `400 Unavailable model`. See the [GitHub Models catalog](https://github.com/marketplace?type=models) and [rate limits](https://docs.github.com/en/github-models/use-github-models/prototyping-with-ai-models#rate-limits).
-
-### Token Permissions
-
-For AI features, your workflow needs:
-
-```yaml
-permissions:
-  contents: write  # to commit generated files
-  models: read     # for AI project classification and preamble generation
-```
 
 ### Exit Codes
 
@@ -267,7 +298,7 @@ permissions:
 | 1 | General error |
 | 2 | Rate limited (AI API) |
 | 3 | AI unavailable (network, bad response, empty output) |
-| 4 | Authentication failed (invalid or insufficient token permissions) |
+| 4 | Authentication failed (invalid GitHub token or AI API key) |
 | 5 | API error |
 
 By default, AI failures are non-fatal — the pipeline falls back to heuristic classification and skips the AI preamble. Set `fail-fast: true` (action) or `--fail-fast` (CLI) to treat AI failures as errors with the appropriate exit code.
