@@ -165,6 +165,9 @@ export function App({ config, onExit }: AppProps) {
       onProgress(message) {
         setProgressMessages((prev) => [...prev, message]);
       },
+      onNotice(message) {
+        setProgressMessages((prev) => [...prev, message]);
+      },
       onError(err) {
         setError(err.message);
       },

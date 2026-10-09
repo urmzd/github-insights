@@ -2,6 +2,12 @@ import { execSync } from "node:child_process";
 import { Command, Option } from "commander";
 import { render } from "ink";
 import React from "react";
+import {
+  DEFAULT_AI_BASE_URL,
+  DEFAULT_AI_MODEL,
+  DEFAULT_AI_REASONING_EFFORT,
+  resolveAIEndpoint,
+} from "./ai.js";
 import { configExists, initConfig } from "./config.js";
 import { getExitCode } from "./errors.js";
 import {
@@ -68,6 +74,26 @@ program
   )
   .option("--sections <list>", "Comma-separated section list")
   .option(
+    "--ai-base-url <url>",
+    "OpenAI-compatible API base URL (empty or 'none' disables AI)",
+    process.env.AI_BASE_URL ?? DEFAULT_AI_BASE_URL,
+  )
+  .option(
+    "--ai-model <model>",
+    "Model name served by the endpoint (any pulled Ollama model works)",
+    process.env.AI_MODEL || DEFAULT_AI_MODEL,
+  )
+  .option(
+    "--ai-api-key <key>",
+    "API key for hosted providers (Ollama needs none)",
+    process.env.AI_API_KEY,
+  )
+  .option(
+    "--ai-reasoning-effort <effort>",
+    "reasoning_effort sent to the model (empty string omits it)",
+    process.env.AI_REASONING_EFFORT ?? DEFAULT_AI_REASONING_EFFORT,
+  )
+  .option(
     "--fail-fast",
     "Exit with an error instead of falling back to heuristics when AI is unavailable",
     false,
@@ -104,6 +130,12 @@ program
     const sectionsRaw = opts.sections || process.env.SECTIONS || "";
     const config: PipelineConfig = {
       token,
+      ai: resolveAIEndpoint({
+        baseUrl: opts.aiBaseUrl,
+        model: opts.aiModel,
+        apiKey: opts.aiApiKey,
+        reasoningEffort: opts.aiReasoningEffort,
+      }),
       username,
       outputDir: opts.outputDir,
       commitPush: false,
@@ -139,6 +171,9 @@ program
         onPhaseStart() {},
         onPhaseComplete() {},
         onProgress() {},
+        onNotice(message) {
+          process.stderr.write(`notice: ${message}\n`);
+        },
         onError(err) {
           process.stderr.write(`error: ${err.message}\n`);
         },

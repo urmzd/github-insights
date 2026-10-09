@@ -2,6 +2,7 @@ import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, relative } from "node:path";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
+import { resolveAIEndpoint } from "./ai.js";
 import { AICache, hashAIInputs } from "./ai-cache.js";
 import {
   fetchAIPreamble,
@@ -51,7 +52,13 @@ async function run(): Promise<void> {
     const readmePath =
       core.getInput("readme-path") || (process.env.CI ? "README.md" : "none");
     const userConfig = loadUserConfig(configPath);
-    const prompts = resolvePrompts(userConfig.ai);
+    const ai = resolveAIEndpoint({
+      baseUrl: core.getInput("ai-base-url"),
+      model: core.getInput("ai-model"),
+      apiKey: core.getInput("ai-api-key"),
+      reasoningEffort: core.getInput("ai-reasoning-effort"),
+    });
+    const prompts = resolvePrompts(userConfig.ai, ai);
     const cacheEnabled =
       (core.getInput("cache") || "true") === "true" &&
       userConfig.cache !== false;
@@ -110,7 +117,7 @@ async function run(): Promise<void> {
     core.info(`User profile: ${userProfile.name || username}`);
 
     // ── Transform ─────────────────────────────────────────────────────────
-    core.info("Fetching project classifications from GitHub Models...");
+    core.info("Fetching project classifications from the AI endpoint...");
     const classificationInputs = buildClassificationInputs(
       repos,
       contributionData,
@@ -132,7 +139,7 @@ async function run(): Promise<void> {
     } else {
       try {
         aiClassifications = await fetchProjectClassifications(
-          token,
+          ai,
           classificationInputs,
           prompts.classification,
         );
@@ -247,7 +254,7 @@ async function run(): Promise<void> {
           core.info("No PREAMBLE.md found, generating with AI...");
           try {
             preamble = await fetchAIPreamble(
-              token,
+              ai,
               preambleContext,
               prompts.preamble,
             );

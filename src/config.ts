@@ -57,6 +57,7 @@ const promptValvesSchema = z
   .object({
     model: optionalTrimmedString,
     temperature: z.number().min(0).max(2).optional(),
+    reasoning_effort: optionalTrimmedString,
     system: optionalTrimmedString,
     user: optionalTrimmedString,
   })
