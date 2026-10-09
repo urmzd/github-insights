@@ -40565,6 +40565,149 @@ function getExitCode(error) {
     return EXIT_CODES.UNKNOWN;
 }
 
+;// CONCATENATED MODULE: ./src/ai.ts
+
+// ── Endpoint config ────────────────────────────────────────────────────────
+/** Ollama's OpenAI-compatible API on its default port. */
+const DEFAULT_AI_BASE_URL = "http://localhost:11434/v1";
+/** Small local model; any model pulled into Ollama (or served by the endpoint) works. */
+const DEFAULT_AI_MODEL = "qwen3.5:4b";
+/**
+ * Small local thinking models spend their context on reasoning and can return
+ * empty content under structured output, so thinking is off by default.
+ */
+const DEFAULT_AI_REASONING_EFFORT = "none";
+/**
+ * Normalize raw settings. An unset reasoning effort falls back to the default;
+ * an explicit empty string omits the parameter for models that reject it.
+ */
+const resolveAIEndpoint = (opts) => ({
+    baseUrl: (opts.baseUrl ?? "").trim(),
+    model: opts.model?.trim() || DEFAULT_AI_MODEL,
+    apiKey: opts.apiKey?.trim() || undefined,
+    reasoningEffort: opts.reasoningEffort === undefined
+        ? DEFAULT_AI_REASONING_EFFORT
+        : opts.reasoningEffort.trim() || undefined,
+});
+const isAIDisabled = (endpoint) => {
+    const url = endpoint.baseUrl.trim().toLowerCase();
+    return url === "" || url === "none" || url === "off";
+};
+const joinUrl = (baseUrl, path) => `${baseUrl.replace(/\/+$/, "")}/${path}`;
+const authHeaders = (endpoint) => endpoint.apiKey ? { Authorization: `Bearer ${endpoint.apiKey}` } : {};
+// ── Reachability ───────────────────────────────────────────────────────────
+/**
+ * Check that something answers at the endpoint. Any HTTP response counts as
+ * reachable (auth and model errors surface on the real call). Returns a
+ * human-readable reason when the endpoint is unreachable, otherwise undefined.
+ */
+const probeAIEndpoint = async (endpoint, timeoutMs = 5000) => {
+    try {
+        await fetch(joinUrl(endpoint.baseUrl, "models"), {
+            headers: authHeaders(endpoint),
+            signal: AbortSignal.timeout(timeoutMs),
+        });
+        return undefined;
+    }
+    catch (err) {
+        return `${endpoint.baseUrl} is unreachable (${describeFetchError(err)})`;
+    }
+};
+/** Prefer the socket error code (ECONNREFUSED, ENOTFOUND) over "fetch failed". */
+const describeFetchError = (err) => {
+    if (!(err instanceof Error))
+        return String(err);
+    const cause = err.cause;
+    return cause?.code || cause?.message || err.message || err.name;
+};
+// ── Request shape ──────────────────────────────────────────────────────────
+/**
+ * GPT-6 family models reject `temperature` unless reasoning effort is `none`.
+ * Matches bare and publisher-prefixed names (`gpt-6-luna`, `openai/gpt-6`).
+ */
+const supportsTemperature = (model, reasoningEffort) => {
+    const name = (model.split("/").pop() ?? "").toLowerCase();
+    if (!name.startsWith("gpt-6"))
+        return true;
+    return reasoningEffort === "none";
+};
+/** Standard Chat Completions body with strict JSON-schema structured output. */
+const buildChatBody = (req) => {
+    const body = {
+        model: req.model,
+        messages: [
+            { role: "system", content: req.system },
+            { role: "user", content: req.user },
+        ],
+        response_format: {
+            type: "json_schema",
+            json_schema: { name: req.schemaName, strict: true, schema: req.schema },
+        },
+    };
+    if (req.reasoningEffort)
+        body.reasoning_effort = req.reasoningEffort;
+    if (supportsTemperature(req.model, req.reasoningEffort)) {
+        body.temperature = req.temperature;
+    }
+    return body;
+};
+// ── Transport ──────────────────────────────────────────────────────────────
+const MAX_RETRIES = 3;
+const fetchWithRetry = async (url, init, label) => {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        let res;
+        try {
+            res = await fetch(url, init);
+        }
+        catch (err) {
+            throw new InsightsError(`${label}: network error: ${err instanceof Error ? err.message : String(err)}`, ErrorCode.AI_UNAVAILABLE);
+        }
+        if (res.status !== 429)
+            return res;
+        if (attempt === MAX_RETRIES) {
+            throw new InsightsError(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`, ErrorCode.RATE_LIMITED);
+        }
+        const retryAfter = res.headers.get("retry-after");
+        const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
+        console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((r) => setTimeout(r, waitSec * 1000));
+    }
+    /* istanbul ignore next — unreachable, loop always returns or throws */
+    throw new InsightsError(`${label}: rate limited`, ErrorCode.RATE_LIMITED);
+};
+/** Some models wrap JSON in markdown fences even under structured output. */
+const stripFences = (content) => content
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/, "")
+    .replace(/\n?```\s*$/, "")
+    .trim();
+/** POST a Chat Completions request and parse the message content as JSON. */
+const requestChatJSON = async (endpoint, req, label) => {
+    const res = await fetchWithRetry(joinUrl(endpoint.baseUrl, "chat/completions"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders(endpoint) },
+        body: JSON.stringify(buildChatBody(req)),
+    }, label);
+    if (res.status === 401 || res.status === 403) {
+        throw new InsightsError(`AI endpoint auth error (${label}): ${res.status}`, ErrorCode.AUTH_FAILED);
+    }
+    if (!res.ok) {
+        const detail = (await res.text().catch(() => "")).slice(0, 200);
+        throw new InsightsError(`AI endpoint error (${label}): ${res.status}${detail ? ` ${detail}` : ""}`, ErrorCode.AI_UNAVAILABLE);
+    }
+    const json = (await res.json());
+    const content = json.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+        throw new InsightsError(`AI endpoint returned empty content (${label})`, ErrorCode.AI_UNAVAILABLE);
+    }
+    try {
+        return JSON.parse(stripFences(content));
+    }
+    catch {
+        throw new InsightsError(`AI endpoint returned invalid JSON (${label})`, ErrorCode.AI_UNAVAILABLE);
+    }
+};
+
 ;// CONCATENATED MODULE: external "node:child_process"
 const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
 ;// CONCATENATED MODULE: external "node:fs"
@@ -40657,20 +40800,20 @@ const external_node_url_namespaceObject = __WEBPACK_EXTERNAL_createRequire(impor
 
 
 
+
 // ── Default prompt loading ─────────────────────────────────────────────────
 const PROMPTS_DIR = (0,external_node_path_namespaceObject.join)((0,external_node_path_namespaceObject.dirname)((0,external_node_url_namespaceObject.fileURLToPath)(import.meta.url)), "prompts");
 function loadDefault(filename) {
     return (0,external_node_fs_namespaceObject.readFileSync)((0,external_node_path_namespaceObject.join)(PROMPTS_DIR, filename), "utf-8").trim();
 }
+// The model is filled in from the endpoint config (`ai-model`) at resolution time.
 const DEFAULTS = {
     preamble: {
-        model: "openai/gpt-4.1",
         temperature: 0.5,
         system: loadDefault("preamble-system.txt"),
         user: loadDefault("preamble-user.txt"),
     },
     classification: {
-        model: "openai/gpt-4.1",
         temperature: 0.15,
         system: loadDefault("classification-system.txt"),
         user: loadDefault("classification-user.txt"),
@@ -40694,18 +40837,20 @@ function resolvePromptValue(value, fallback) {
     }
     return trimmed;
 }
-function resolveValves(overrides, defaults) {
+function resolveValves(overrides, defaults, endpoint) {
     return {
-        model: overrides?.model || defaults.model,
+        model: overrides?.model || endpoint.model,
         temperature: overrides?.temperature ?? defaults.temperature,
+        reasoning_effort: overrides?.reasoning_effort ?? endpoint.reasoningEffort,
         system: resolvePromptValue(overrides?.system, defaults.system),
         user: resolvePromptValue(overrides?.user, defaults.user),
     };
 }
-function resolvePrompts(aiConfig) {
+/** Per-task config overrides win; otherwise every task uses the endpoint defaults. */
+function resolvePrompts(aiConfig, endpoint = { model: DEFAULT_AI_MODEL }) {
     return {
-        preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble),
-        classification: resolveValves(aiConfig?.classification, DEFAULTS.classification),
+        preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble, endpoint),
+        classification: resolveValves(aiConfig?.classification, DEFAULTS.classification, endpoint),
     };
 }
 // ── Template interpolation ─────────────────────────────────────────────────
@@ -40718,29 +40863,7 @@ function interpolate(template, vars) {
 
 
 
-const MAX_RETRIES = 3;
-const fetchWithRetry = async (url, init, label) => {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        let res;
-        try {
-            res = await fetch(url, init);
-        }
-        catch (err) {
-            throw new InsightsError(`${label}: network error: ${err instanceof Error ? err.message : String(err)}`, ErrorCode.AI_UNAVAILABLE);
-        }
-        if (res.status !== 429)
-            return res;
-        if (attempt === MAX_RETRIES) {
-            throw new InsightsError(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`, ErrorCode.RATE_LIMITED);
-        }
-        const retryAfter = res.headers.get("retry-after");
-        const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
-        console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
-        await new Promise((r) => setTimeout(r, waitSec * 1000));
-    }
-    /* istanbul ignore next — unreachable, loop always returns or throws */
-    throw new InsightsError(`${label}: rate limited`, ErrorCode.RATE_LIMITED);
-};
+
 const MANIFEST_FILES = (/* unused pure expression or super */ null && ([
     "package.json",
     "Cargo.toml",
@@ -40959,7 +41082,7 @@ const fetchUserProfile = async (graphql, username) => {
         };
     }
 };
-const fetchAIPreamble = async (token, context, valves) => {
+const fetchAIPreamble = async (endpoint, context, valves) => {
     const { profile, userConfig, languages, spotlightProjects, complexProjects } = context;
     const langLines = languages
         .map((l) => `- ${l.name}: ${l.percent}%`)
@@ -40990,43 +41113,20 @@ const fetchAIPreamble = async (token, context, valves) => {
         complexProjects: complexProjectLines || "None",
         activeProjects: spotlightLines || "None",
     });
-    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-        method: "POST",
-        headers: {
-            Authorization: `bearer ${token}`,
-            "Content-Type": "application/json",
+    const parsed = await requestChatJSON(endpoint, {
+        model: valves.model,
+        temperature: valves.temperature,
+        reasoningEffort: valves.reasoning_effort,
+        system: valves.system,
+        user: prompt,
+        schemaName: "preamble",
+        schema: {
+            type: "object",
+            properties: { preamble: { type: "string" } },
+            required: ["preamble"],
+            additionalProperties: false,
         },
-        body: JSON.stringify({
-            model: valves.model,
-            messages: [
-                { role: "system", content: valves.system },
-                { role: "user", content: prompt },
-            ],
-            temperature: valves.temperature,
-            response_format: {
-                type: "json_schema",
-                json_schema: {
-                    name: "preamble",
-                    strict: true,
-                    schema: {
-                        type: "object",
-                        properties: { preamble: { type: "string" } },
-                        required: ["preamble"],
-                        additionalProperties: false,
-                    },
-                },
-            },
-        }),
-    }, "Preamble");
-    if (res.status === 401 || res.status === 403) {
-        throw new InsightsError(`GitHub Models API auth error (preamble): ${res.status}`, ErrorCode.AUTH_FAILED);
-    }
-    if (!res.ok) {
-        throw new InsightsError(`GitHub Models API error (preamble): ${res.status}`, ErrorCode.AI_UNAVAILABLE);
-    }
-    const json = (await res.json());
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content);
+    }, "preamble");
     const raw = parsed.preamble;
     if (!raw) {
         throw new InsightsError("AI preamble response contained no preamble field", ErrorCode.AI_UNAVAILABLE);
@@ -41045,81 +41145,58 @@ const fetchAIPreamble = async (token, context, valves) => {
     }
     return cleaned;
 };
-const fetchProjectClassifications = async (token, repos, valves) => {
+const fetchProjectClassifications = async (endpoint, repos, valves) => {
     const repoData = JSON.stringify(repos, null, 2);
     const prompt = interpolate(valves.user, { repoData });
-    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-        method: "POST",
-        headers: {
-            Authorization: `bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model: valves.model,
-            messages: [
-                { role: "system", content: valves.system },
-                { role: "user", content: prompt },
-            ],
-            temperature: valves.temperature,
-            response_format: {
-                type: "json_schema",
-                json_schema: {
-                    name: "project_classifications",
-                    strict: true,
-                    schema: {
+    const parsed = await requestChatJSON(endpoint, {
+        model: valves.model,
+        temperature: valves.temperature,
+        reasoningEffort: valves.reasoning_effort,
+        system: valves.system,
+        user: prompt,
+        schemaName: "project_classifications",
+        schema: {
+            type: "object",
+            properties: {
+                classifications: {
+                    type: "array",
+                    items: {
                         type: "object",
                         properties: {
-                            classifications: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        name: { type: "string" },
-                                        status: {
-                                            type: "string",
-                                            enum: ["active", "maintained", "inactive"],
-                                        },
-                                        summary: { type: "string" },
-                                        category: {
-                                            type: "string",
-                                            enum: [
-                                                "Developer Tools",
-                                                "SDKs",
-                                                "Applications",
-                                                "Research & Experiments",
-                                            ],
-                                        },
-                                        spotlight_rank: {
-                                            type: ["integer", "null"],
-                                        },
-                                    },
-                                    required: [
-                                        "name",
-                                        "status",
-                                        "summary",
-                                        "category",
-                                        "spotlight_rank",
-                                    ],
-                                    additionalProperties: false,
-                                },
+                            name: { type: "string" },
+                            status: {
+                                type: "string",
+                                enum: ["active", "maintained", "inactive"],
+                            },
+                            summary: { type: "string" },
+                            category: {
+                                type: "string",
+                                enum: [
+                                    "Developer Tools",
+                                    "SDKs",
+                                    "Applications",
+                                    "Research & Experiments",
+                                ],
+                            },
+                            spotlight_rank: {
+                                type: ["integer", "null"],
                             },
                         },
-                        required: ["classifications"],
+                        required: [
+                            "name",
+                            "status",
+                            "summary",
+                            "category",
+                            "spotlight_rank",
+                        ],
                         additionalProperties: false,
                     },
                 },
             },
-        }),
-    }, "Classifications");
-    if (res.status === 401 || res.status === 403) {
-        throw new InsightsError(`GitHub Models API auth error (classifications): ${res.status}`, ErrorCode.AUTH_FAILED);
-    }
-    if (!res.ok) {
-        throw new InsightsError(`GitHub Models API error (classifications): ${res.status}`, ErrorCode.AI_UNAVAILABLE);
-    }
-    const json = (await res.json());
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content);
+            required: ["classifications"],
+            additionalProperties: false,
+        },
+    }, "classifications");
     return (parsed.classifications || [])
         .filter((c) => c.name &&
         (c.status === "active" ||
@@ -56280,6 +56357,7 @@ const lenientTemplate = schemas_string()
 const promptValvesSchema = object({
     model: optionalTrimmedString,
     temperature: schemas_number().min(0).max(2).optional(),
+    reasoning_effort: optionalTrimmedString,
     system: optionalTrimmedString,
     user: optionalTrimmedString,
 })
@@ -58200,6 +58278,7 @@ function getTemplate(_name) {
 
 
 
+
 // ── Git helper ──────────────────────────────────────────────────────────────
 function git(args) {
     return new Promise((resolve, reject) => {
@@ -58226,7 +58305,7 @@ async function runPipeline(config, cb) {
         ? config.requestedSections
         : userConfig.sections || [];
     const resolvedSections = resolveTemplateSections(templateName, requestedSections);
-    const prompts = resolvePrompts(userConfig.ai);
+    const prompts = resolvePrompts(userConfig.ai, config.ai);
     if (!config.token)
         throw new Error("github-token is required");
     if (!config.username)
@@ -58249,6 +58328,24 @@ async function runPipeline(config, cb) {
     const aiCache = cacheEnabled
         ? AICache.load(`${config.outputDir}/.ai-cache.json`)
         : undefined;
+    // Checked lazily (cache hits need no endpoint) and at most once, so an
+    // unreachable or unset endpoint yields a single notice, not one per task.
+    let aiGate;
+    const aiAvailable = () => {
+        aiGate ??= (async () => {
+            const reason = isAIDisabled(config.ai)
+                ? "no AI endpoint configured (ai-base-url is empty)"
+                : await probeAIEndpoint(config.ai);
+            if (!reason)
+                return true;
+            if (failFast) {
+                throw new InsightsError(`AI unavailable: ${reason}`, ErrorCode.AI_UNAVAILABLE);
+            }
+            cb.onNotice(`AI disabled: ${reason}. Generating SVGs without AI summaries or classification.`);
+            return false;
+        })();
+        return aiGate;
+    };
     cb.onPhaseStart("classify", "Classifying projects");
     const classificationInputs = buildClassificationInputs(repos, contributionData);
     const classificationHash = hashAIInputs("classifications", classificationInputs, prompts.classification);
@@ -58258,9 +58355,9 @@ async function runPipeline(config, cb) {
         aiClassifications = cachedClassifications;
         cb.onProgress("Classification inputs unchanged, using cached AI results");
     }
-    else {
+    else if (await aiAvailable()) {
         try {
-            aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
+            aiClassifications = await fetchProjectClassifications(config.ai, classificationInputs, prompts.classification);
             aiCache?.set("classifications", classificationHash, aiClassifications);
         }
         catch (err) {
@@ -58362,10 +58459,10 @@ async function runPipeline(config, cb) {
             if (preamble) {
                 cb.onProgress("Preamble inputs unchanged, using cached AI preamble");
             }
-            else {
+            else if (await aiAvailable()) {
                 cb.onProgress("Generating preamble with AI...");
                 try {
-                    preamble = await fetchAIPreamble(config.token, preambleContext, prompts.preamble);
+                    preamble = await fetchAIPreamble(config.ai, preambleContext, prompts.preamble);
                     aiCache?.set("preamble", preambleHash, preamble);
                 }
                 catch (err) {
@@ -58497,6 +58594,7 @@ async function runPipeline(config, cb) {
 
 
 
+
 async function run() {
     const token = lib_core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
     const username = lib_core.getInput("username") || process.env.GITHUB_REPOSITORY_OWNER || "";
@@ -58512,6 +58610,15 @@ async function run() {
     const failFast = (lib_core.getInput("fail-fast") || "false") === "true";
     const exportJson = (lib_core.getInput("export-json") || "false") === "true";
     const cache = (lib_core.getInput("cache") || "true") !== "false";
+    // action.yml supplies the defaults; an explicit empty ai-base-url disables AI.
+    const ai = resolveAIEndpoint({
+        baseUrl: lib_core.getInput("ai-base-url"),
+        model: lib_core.getInput("ai-model"),
+        apiKey: lib_core.getInput("ai-api-key"),
+        reasoningEffort: lib_core.getInput("ai-reasoning-effort"),
+    });
+    if (ai.apiKey)
+        lib_core.setSecret(ai.apiKey);
     const templateName = lib_core.getInput("template") || "showcase";
     const sectionsInput = lib_core.getInput("sections") || "";
     const requestedSections = sectionsInput.length > 0
@@ -58522,6 +58629,7 @@ async function run() {
         : [];
     const config = {
         token,
+        ai,
         username,
         outputDir,
         commitPush,
@@ -58545,6 +58653,9 @@ async function run() {
         },
         onProgress(message) {
             lib_core.info(message);
+        },
+        onNotice(message) {
+            lib_core.notice(message);
         },
         onError(error) {
             lib_core.setFailed(error.message);

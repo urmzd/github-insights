@@ -40188,7 +40188,7 @@ module.exports.mockErrors = mockErrors
 
 const { InvalidArgumentError } = __nccwpck_require__(8707)
 const { kClients, kRunning, kClose, kDestroy, kDispatch, kInterceptors } = __nccwpck_require__(6443)
-const DispatcherBase = __nccwpck_require__(1)
+const DispatcherBase = __nccwpck_require__(2382)
 const Pool = __nccwpck_require__(5076)
 const Client = __nccwpck_require__(6197)
 const util = __nccwpck_require__(3440)
@@ -42963,7 +42963,7 @@ const { pipeline } = __nccwpck_require__(2203)
 const util = __nccwpck_require__(3440)
 const timers = __nccwpck_require__(8804)
 const Request = __nccwpck_require__(4655)
-const DispatcherBase = __nccwpck_require__(1)
+const DispatcherBase = __nccwpck_require__(2382)
 const {
   RequestContentLengthMismatchError,
   ResponseContentLengthMismatchError,
@@ -47769,7 +47769,7 @@ module.exports = {
 
 /***/ }),
 
-/***/ 1:
+/***/ 2382:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
@@ -59480,7 +59480,7 @@ module.exports = class FixedQueue {
 
 
 
-const DispatcherBase = __nccwpck_require__(1)
+const DispatcherBase = __nccwpck_require__(2382)
 const FixedQueue = __nccwpck_require__(4869)
 const { kConnected, kSize, kRunning, kPending, kQueued, kBusy, kFree, kUrl, kClose, kDestroy, kDispatch } = __nccwpck_require__(6443)
 const PoolStats = __nccwpck_require__(4622)
@@ -59841,7 +59841,7 @@ const { kProxy, kClose, kDestroy, kInterceptors } = __nccwpck_require__(6443)
 const { URL } = __nccwpck_require__(7016)
 const Agent = __nccwpck_require__(9965)
 const Pool = __nccwpck_require__(5076)
-const DispatcherBase = __nccwpck_require__(1)
+const DispatcherBase = __nccwpck_require__(2382)
 const { InvalidArgumentError, RequestAbortedError } = __nccwpck_require__(8707)
 const buildConnector = __nccwpck_require__(9136)
 
@@ -62168,6 +62168,165 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 1:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
+
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   J5: () => (/* binding */ DEFAULT_AI_MODEL),
+/* harmony export */   Zk: () => (/* binding */ DEFAULT_AI_REASONING_EFFORT),
+/* harmony export */   gz: () => (/* binding */ resolveAIEndpoint),
+/* harmony export */   kq: () => (/* binding */ probeAIEndpoint),
+/* harmony export */   tA: () => (/* binding */ DEFAULT_AI_BASE_URL),
+/* harmony export */   tV: () => (/* binding */ isAIDisabled),
+/* harmony export */   w2: () => (/* binding */ requestChatJSON)
+/* harmony export */ });
+/* unused harmony exports supportsTemperature, buildChatBody */
+/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(3916);
+
+// ── Endpoint config ────────────────────────────────────────────────────────
+/** Ollama's OpenAI-compatible API on its default port. */
+const DEFAULT_AI_BASE_URL = "http://localhost:11434/v1";
+/** Small local model; any model pulled into Ollama (or served by the endpoint) works. */
+const DEFAULT_AI_MODEL = "qwen3.5:4b";
+/**
+ * Small local thinking models spend their context on reasoning and can return
+ * empty content under structured output, so thinking is off by default.
+ */
+const DEFAULT_AI_REASONING_EFFORT = "none";
+/**
+ * Normalize raw settings. An unset reasoning effort falls back to the default;
+ * an explicit empty string omits the parameter for models that reject it.
+ */
+const resolveAIEndpoint = (opts) => ({
+    baseUrl: (opts.baseUrl ?? "").trim(),
+    model: opts.model?.trim() || DEFAULT_AI_MODEL,
+    apiKey: opts.apiKey?.trim() || undefined,
+    reasoningEffort: opts.reasoningEffort === undefined
+        ? DEFAULT_AI_REASONING_EFFORT
+        : opts.reasoningEffort.trim() || undefined,
+});
+const isAIDisabled = (endpoint) => {
+    const url = endpoint.baseUrl.trim().toLowerCase();
+    return url === "" || url === "none" || url === "off";
+};
+const joinUrl = (baseUrl, path) => `${baseUrl.replace(/\/+$/, "")}/${path}`;
+const authHeaders = (endpoint) => endpoint.apiKey ? { Authorization: `Bearer ${endpoint.apiKey}` } : {};
+// ── Reachability ───────────────────────────────────────────────────────────
+/**
+ * Check that something answers at the endpoint. Any HTTP response counts as
+ * reachable (auth and model errors surface on the real call). Returns a
+ * human-readable reason when the endpoint is unreachable, otherwise undefined.
+ */
+const probeAIEndpoint = async (endpoint, timeoutMs = 5000) => {
+    try {
+        await fetch(joinUrl(endpoint.baseUrl, "models"), {
+            headers: authHeaders(endpoint),
+            signal: AbortSignal.timeout(timeoutMs),
+        });
+        return undefined;
+    }
+    catch (err) {
+        return `${endpoint.baseUrl} is unreachable (${describeFetchError(err)})`;
+    }
+};
+/** Prefer the socket error code (ECONNREFUSED, ENOTFOUND) over "fetch failed". */
+const describeFetchError = (err) => {
+    if (!(err instanceof Error))
+        return String(err);
+    const cause = err.cause;
+    return cause?.code || cause?.message || err.message || err.name;
+};
+// ── Request shape ──────────────────────────────────────────────────────────
+/**
+ * GPT-6 family models reject `temperature` unless reasoning effort is `none`.
+ * Matches bare and publisher-prefixed names (`gpt-6-luna`, `openai/gpt-6`).
+ */
+const supportsTemperature = (model, reasoningEffort) => {
+    const name = (model.split("/").pop() ?? "").toLowerCase();
+    if (!name.startsWith("gpt-6"))
+        return true;
+    return reasoningEffort === "none";
+};
+/** Standard Chat Completions body with strict JSON-schema structured output. */
+const buildChatBody = (req) => {
+    const body = {
+        model: req.model,
+        messages: [
+            { role: "system", content: req.system },
+            { role: "user", content: req.user },
+        ],
+        response_format: {
+            type: "json_schema",
+            json_schema: { name: req.schemaName, strict: true, schema: req.schema },
+        },
+    };
+    if (req.reasoningEffort)
+        body.reasoning_effort = req.reasoningEffort;
+    if (supportsTemperature(req.model, req.reasoningEffort)) {
+        body.temperature = req.temperature;
+    }
+    return body;
+};
+// ── Transport ──────────────────────────────────────────────────────────────
+const MAX_RETRIES = 3;
+const fetchWithRetry = async (url, init, label) => {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        let res;
+        try {
+            res = await fetch(url, init);
+        }
+        catch (err) {
+            throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`${label}: network error: ${err instanceof Error ? err.message : String(err)}`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.AI_UNAVAILABLE);
+        }
+        if (res.status !== 429)
+            return res;
+        if (attempt === MAX_RETRIES) {
+            throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.RATE_LIMITED);
+        }
+        const retryAfter = res.headers.get("retry-after");
+        const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
+        console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((r) => setTimeout(r, waitSec * 1000));
+    }
+    /* istanbul ignore next — unreachable, loop always returns or throws */
+    throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`${label}: rate limited`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.RATE_LIMITED);
+};
+/** Some models wrap JSON in markdown fences even under structured output. */
+const stripFences = (content) => content
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/, "")
+    .replace(/\n?```\s*$/, "")
+    .trim();
+/** POST a Chat Completions request and parse the message content as JSON. */
+const requestChatJSON = async (endpoint, req, label) => {
+    const res = await fetchWithRetry(joinUrl(endpoint.baseUrl, "chat/completions"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders(endpoint) },
+        body: JSON.stringify(buildChatBody(req)),
+    }, label);
+    if (res.status === 401 || res.status === 403) {
+        throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`AI endpoint auth error (${label}): ${res.status}`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.AUTH_FAILED);
+    }
+    if (!res.ok) {
+        const detail = (await res.text().catch(() => "")).slice(0, 200);
+        throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`AI endpoint error (${label}): ${res.status}${detail ? ` ${detail}` : ""}`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.AI_UNAVAILABLE);
+    }
+    const json = (await res.json());
+    const content = json.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+        throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`AI endpoint returned empty content (${label})`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.AI_UNAVAILABLE);
+    }
+    try {
+        return JSON.parse(stripFences(content));
+    }
+    catch {
+        throw new _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .InsightsError */ .KH(`AI endpoint returned invalid JSON (${label})`, _errors_js__WEBPACK_IMPORTED_MODULE_0__/* .ErrorCode */ .O4.AI_UNAVAILABLE);
+    }
+};
+
+
+/***/ }),
+
 /***/ 1167:
 /***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
 
@@ -62176,12 +62335,14 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var node_child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(node_child_process__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var commander__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(8179);
 /* harmony import */ var ink__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8518);
-/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7306);
-/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(3916);
-/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(7752);
-/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(3979);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_6__]);
-([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_6__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var _ai_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(1);
+/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(7306);
+/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(3916);
+/* harmony import */ var _pipeline_js__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(7752);
+/* harmony import */ var _tui_App_js__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(3979);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_7__]);
+([ink__WEBPACK_IMPORTED_MODULE_2__, _tui_App_js__WEBPACK_IMPORTED_MODULE_7__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+
 
 
 
@@ -62199,11 +62360,11 @@ program
     .command("init")
     .description("Create a github-insights.yml config file")
     .action(() => {
-    if ((0,_config_js__WEBPACK_IMPORTED_MODULE_3__/* .configExists */ .fi)()) {
+    if ((0,_config_js__WEBPACK_IMPORTED_MODULE_4__/* .configExists */ .fi)()) {
         console.log("github-insights.yml already exists, skipping.");
     }
     else {
-        const path = (0,_config_js__WEBPACK_IMPORTED_MODULE_3__/* .initConfig */ .pw)();
+        const path = (0,_config_js__WEBPACK_IMPORTED_MODULE_4__/* .initConfig */ .pw)();
         console.log(`Created ${path} — edit it to customize your profile.`);
     }
 });
@@ -62218,6 +62379,10 @@ program
     .option("--examples-dir <dir>", "Local examples output directory (set to 'none' to skip)", process.env.EXAMPLES_DIR || (process.env.CI ? "none" : "examples"))
     .option("--template <name>", "Template preset", process.env.TEMPLATE || "showcase")
     .option("--sections <list>", "Comma-separated section list")
+    .option("--ai-base-url <url>", "OpenAI-compatible API base URL (empty or 'none' disables AI)", process.env.AI_BASE_URL ?? _ai_js__WEBPACK_IMPORTED_MODULE_3__/* .DEFAULT_AI_BASE_URL */ .tA)
+    .option("--ai-model <model>", "Model name served by the endpoint (any pulled Ollama model works)", process.env.AI_MODEL || _ai_js__WEBPACK_IMPORTED_MODULE_3__/* .DEFAULT_AI_MODEL */ .J5)
+    .option("--ai-api-key <key>", "API key for hosted providers (Ollama needs none)", process.env.AI_API_KEY)
+    .option("--ai-reasoning-effort <effort>", "reasoning_effort sent to the model (empty string omits it)", process.env.AI_REASONING_EFFORT ?? _ai_js__WEBPACK_IMPORTED_MODULE_3__/* .DEFAULT_AI_REASONING_EFFORT */ .Zk)
     .option("--fail-fast", "Exit with an error instead of falling back to heuristics when AI is unavailable", false)
     .option("--no-cache", "Always call AI models, even when inputs are unchanged since the last run")
     .option("--verbose", "Show TUI progress (default: silent when not a TTY)", process.stdout.isTTY)
@@ -62238,6 +62403,12 @@ program
     const sectionsRaw = opts.sections || process.env.SECTIONS || "";
     const config = {
         token,
+        ai: (0,_ai_js__WEBPACK_IMPORTED_MODULE_3__/* .resolveAIEndpoint */ .gz)({
+            baseUrl: opts.aiBaseUrl,
+            model: opts.aiModel,
+            apiKey: opts.aiApiKey,
+            reasoningEffort: opts.aiReasoningEffort,
+        }),
         username,
         outputDir: opts.outputDir,
         commitPush: false,
@@ -62259,8 +62430,8 @@ program
         examplesDir: opts.examplesDir,
     };
     if (opts.verbose) {
-        (0,ink__WEBPACK_IMPORTED_MODULE_2__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_6__/* .App */ .q, { config: config, onExit: (err) => {
-                process.exitCode = err ? (0,_errors_js__WEBPACK_IMPORTED_MODULE_4__/* .getExitCode */ .OF)(err) : 0;
+        (0,ink__WEBPACK_IMPORTED_MODULE_2__/* .render */ .XX)(h(_tui_App_js__WEBPACK_IMPORTED_MODULE_7__/* .App */ .q, { config: config, onExit: (err) => {
+                process.exitCode = err ? (0,_errors_js__WEBPACK_IMPORTED_MODULE_5__/* .getExitCode */ .OF)(err) : 0;
             } }));
     }
     else {
@@ -62268,12 +62439,15 @@ program
             onPhaseStart() { },
             onPhaseComplete() { },
             onProgress() { },
+            onNotice(message) {
+                process.stderr.write(`notice: ${message}\n`);
+            },
             onError(err) {
                 process.stderr.write(`error: ${err.message}\n`);
             },
         };
-        (0,_pipeline_js__WEBPACK_IMPORTED_MODULE_5__/* .runPipeline */ .a)(config, callbacks).catch((err) => {
-            process.exitCode = (0,_errors_js__WEBPACK_IMPORTED_MODULE_4__/* .getExitCode */ .OF)(err);
+        (0,_pipeline_js__WEBPACK_IMPORTED_MODULE_6__/* .runPipeline */ .a)(config, callbacks).catch((err) => {
+            process.exitCode = (0,_errors_js__WEBPACK_IMPORTED_MODULE_5__/* .getExitCode */ .OF)(err);
         });
     }
 });
@@ -76374,6 +76548,7 @@ const lenientTemplate = schemas_string()
 const promptValvesSchema = object({
     model: optionalTrimmedString,
     temperature: schemas_number().min(0).max(2).optional(),
+    reasoning_effort: optionalTrimmedString,
     system: optionalTrimmedString,
     user: optionalTrimmedString,
 })
@@ -76591,6 +76766,8 @@ var external_node_child_process_ = __nccwpck_require__(1421);
 var external_node_fs_ = __nccwpck_require__(3024);
 // EXTERNAL MODULE: external "node:path"
 var external_node_path_ = __nccwpck_require__(6760);
+// EXTERNAL MODULE: ./src/ai.ts
+var ai = __nccwpck_require__(1);
 // EXTERNAL MODULE: external "node:crypto"
 var external_node_crypto_ = __nccwpck_require__(7598);
 ;// CONCATENATED MODULE: ./src/ai-cache.ts
@@ -76679,20 +76856,20 @@ var external_node_url_ = __nccwpck_require__(3136);
 
 
 
+
 // ── Default prompt loading ─────────────────────────────────────────────────
 const PROMPTS_DIR = (0,external_node_path_.join)((0,external_node_path_.dirname)((0,external_node_url_.fileURLToPath)(import.meta.url)), "prompts");
 function loadDefault(filename) {
     return (0,external_node_fs_.readFileSync)((0,external_node_path_.join)(PROMPTS_DIR, filename), "utf-8").trim();
 }
+// The model is filled in from the endpoint config (`ai-model`) at resolution time.
 const DEFAULTS = {
     preamble: {
-        model: "openai/gpt-4.1",
         temperature: 0.5,
         system: loadDefault("preamble-system.txt"),
         user: loadDefault("preamble-user.txt"),
     },
     classification: {
-        model: "openai/gpt-4.1",
         temperature: 0.15,
         system: loadDefault("classification-system.txt"),
         user: loadDefault("classification-user.txt"),
@@ -76716,18 +76893,20 @@ function resolvePromptValue(value, fallback) {
     }
     return trimmed;
 }
-function resolveValves(overrides, defaults) {
+function resolveValves(overrides, defaults, endpoint) {
     return {
-        model: overrides?.model || defaults.model,
+        model: overrides?.model || endpoint.model,
         temperature: overrides?.temperature ?? defaults.temperature,
+        reasoning_effort: overrides?.reasoning_effort ?? endpoint.reasoningEffort,
         system: resolvePromptValue(overrides?.system, defaults.system),
         user: resolvePromptValue(overrides?.user, defaults.user),
     };
 }
-function resolvePrompts(aiConfig) {
+/** Per-task config overrides win; otherwise every task uses the endpoint defaults. */
+function resolvePrompts(aiConfig, endpoint = { model: ai/* DEFAULT_AI_MODEL */.J5 }) {
     return {
-        preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble),
-        classification: resolveValves(aiConfig?.classification, DEFAULTS.classification),
+        preamble: resolveValves(aiConfig?.preamble, DEFAULTS.preamble, endpoint),
+        classification: resolveValves(aiConfig?.classification, DEFAULTS.classification, endpoint),
     };
 }
 // ── Template interpolation ─────────────────────────────────────────────────
@@ -76740,29 +76919,7 @@ function interpolate(template, vars) {
 
 
 
-const MAX_RETRIES = 3;
-const fetchWithRetry = async (url, init, label) => {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        let res;
-        try {
-            res = await fetch(url, init);
-        }
-        catch (err) {
-            throw new errors/* InsightsError */.KH(`${label}: network error: ${err instanceof Error ? err.message : String(err)}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
-        }
-        if (res.status !== 429)
-            return res;
-        if (attempt === MAX_RETRIES) {
-            throw new errors/* InsightsError */.KH(`${label}: rate limited after ${MAX_RETRIES + 1} attempts`, errors/* ErrorCode */.O4.RATE_LIMITED);
-        }
-        const retryAfter = res.headers.get("retry-after");
-        const waitSec = retryAfter ? Math.min(Number(retryAfter) || 10, 60) : 10;
-        console.warn(`${label}: rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
-        await new Promise((r) => setTimeout(r, waitSec * 1000));
-    }
-    /* istanbul ignore next — unreachable, loop always returns or throws */
-    throw new errors/* InsightsError */.KH(`${label}: rate limited`, errors/* ErrorCode */.O4.RATE_LIMITED);
-};
+
 const MANIFEST_FILES = (/* unused pure expression or super */ null && ([
     "package.json",
     "Cargo.toml",
@@ -76981,7 +77138,7 @@ const fetchUserProfile = async (graphql, username) => {
         };
     }
 };
-const fetchAIPreamble = async (token, context, valves) => {
+const fetchAIPreamble = async (endpoint, context, valves) => {
     const { profile, userConfig, languages, spotlightProjects, complexProjects } = context;
     const langLines = languages
         .map((l) => `- ${l.name}: ${l.percent}%`)
@@ -77012,43 +77169,20 @@ const fetchAIPreamble = async (token, context, valves) => {
         complexProjects: complexProjectLines || "None",
         activeProjects: spotlightLines || "None",
     });
-    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-        method: "POST",
-        headers: {
-            Authorization: `bearer ${token}`,
-            "Content-Type": "application/json",
+    const parsed = await (0,ai/* requestChatJSON */.w2)(endpoint, {
+        model: valves.model,
+        temperature: valves.temperature,
+        reasoningEffort: valves.reasoning_effort,
+        system: valves.system,
+        user: prompt,
+        schemaName: "preamble",
+        schema: {
+            type: "object",
+            properties: { preamble: { type: "string" } },
+            required: ["preamble"],
+            additionalProperties: false,
         },
-        body: JSON.stringify({
-            model: valves.model,
-            messages: [
-                { role: "system", content: valves.system },
-                { role: "user", content: prompt },
-            ],
-            temperature: valves.temperature,
-            response_format: {
-                type: "json_schema",
-                json_schema: {
-                    name: "preamble",
-                    strict: true,
-                    schema: {
-                        type: "object",
-                        properties: { preamble: { type: "string" } },
-                        required: ["preamble"],
-                        additionalProperties: false,
-                    },
-                },
-            },
-        }),
-    }, "Preamble");
-    if (res.status === 401 || res.status === 403) {
-        throw new errors/* InsightsError */.KH(`GitHub Models API auth error (preamble): ${res.status}`, errors/* ErrorCode */.O4.AUTH_FAILED);
-    }
-    if (!res.ok) {
-        throw new errors/* InsightsError */.KH(`GitHub Models API error (preamble): ${res.status}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
-    }
-    const json = (await res.json());
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content);
+    }, "preamble");
     const raw = parsed.preamble;
     if (!raw) {
         throw new errors/* InsightsError */.KH("AI preamble response contained no preamble field", errors/* ErrorCode */.O4.AI_UNAVAILABLE);
@@ -77067,81 +77201,58 @@ const fetchAIPreamble = async (token, context, valves) => {
     }
     return cleaned;
 };
-const fetchProjectClassifications = async (token, repos, valves) => {
+const fetchProjectClassifications = async (endpoint, repos, valves) => {
     const repoData = JSON.stringify(repos, null, 2);
     const prompt = interpolate(valves.user, { repoData });
-    const res = await fetchWithRetry("https://models.github.ai/inference/chat/completions", {
-        method: "POST",
-        headers: {
-            Authorization: `bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model: valves.model,
-            messages: [
-                { role: "system", content: valves.system },
-                { role: "user", content: prompt },
-            ],
-            temperature: valves.temperature,
-            response_format: {
-                type: "json_schema",
-                json_schema: {
-                    name: "project_classifications",
-                    strict: true,
-                    schema: {
+    const parsed = await (0,ai/* requestChatJSON */.w2)(endpoint, {
+        model: valves.model,
+        temperature: valves.temperature,
+        reasoningEffort: valves.reasoning_effort,
+        system: valves.system,
+        user: prompt,
+        schemaName: "project_classifications",
+        schema: {
+            type: "object",
+            properties: {
+                classifications: {
+                    type: "array",
+                    items: {
                         type: "object",
                         properties: {
-                            classifications: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        name: { type: "string" },
-                                        status: {
-                                            type: "string",
-                                            enum: ["active", "maintained", "inactive"],
-                                        },
-                                        summary: { type: "string" },
-                                        category: {
-                                            type: "string",
-                                            enum: [
-                                                "Developer Tools",
-                                                "SDKs",
-                                                "Applications",
-                                                "Research & Experiments",
-                                            ],
-                                        },
-                                        spotlight_rank: {
-                                            type: ["integer", "null"],
-                                        },
-                                    },
-                                    required: [
-                                        "name",
-                                        "status",
-                                        "summary",
-                                        "category",
-                                        "spotlight_rank",
-                                    ],
-                                    additionalProperties: false,
-                                },
+                            name: { type: "string" },
+                            status: {
+                                type: "string",
+                                enum: ["active", "maintained", "inactive"],
+                            },
+                            summary: { type: "string" },
+                            category: {
+                                type: "string",
+                                enum: [
+                                    "Developer Tools",
+                                    "SDKs",
+                                    "Applications",
+                                    "Research & Experiments",
+                                ],
+                            },
+                            spotlight_rank: {
+                                type: ["integer", "null"],
                             },
                         },
-                        required: ["classifications"],
+                        required: [
+                            "name",
+                            "status",
+                            "summary",
+                            "category",
+                            "spotlight_rank",
+                        ],
                         additionalProperties: false,
                     },
                 },
             },
-        }),
-    }, "Classifications");
-    if (res.status === 401 || res.status === 403) {
-        throw new errors/* InsightsError */.KH(`GitHub Models API auth error (classifications): ${res.status}`, errors/* ErrorCode */.O4.AUTH_FAILED);
-    }
-    if (!res.ok) {
-        throw new errors/* InsightsError */.KH(`GitHub Models API error (classifications): ${res.status}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
-    }
-    const json = (await res.json());
-    const content = json.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content);
+            required: ["classifications"],
+            additionalProperties: false,
+        },
+    }, "classifications");
     return (parsed.classifications || [])
         .filter((c) => c.name &&
         (c.status === "active" ||
@@ -79173,6 +79284,7 @@ function getTemplate(_name) {
 
 
 
+
 // ── Git helper ──────────────────────────────────────────────────────────────
 function git(args) {
     return new Promise((resolve, reject) => {
@@ -79199,7 +79311,7 @@ async function runPipeline(config, cb) {
         ? config.requestedSections
         : userConfig.sections || [];
     const resolvedSections = (0,src_config/* resolveTemplateSections */.jt)(templateName, requestedSections);
-    const prompts = resolvePrompts(userConfig.ai);
+    const prompts = resolvePrompts(userConfig.ai, config.ai);
     if (!config.token)
         throw new Error("github-token is required");
     if (!config.username)
@@ -79222,6 +79334,24 @@ async function runPipeline(config, cb) {
     const aiCache = cacheEnabled
         ? AICache.load(`${config.outputDir}/.ai-cache.json`)
         : undefined;
+    // Checked lazily (cache hits need no endpoint) and at most once, so an
+    // unreachable or unset endpoint yields a single notice, not one per task.
+    let aiGate;
+    const aiAvailable = () => {
+        aiGate ??= (async () => {
+            const reason = (0,ai/* isAIDisabled */.tV)(config.ai)
+                ? "no AI endpoint configured (ai-base-url is empty)"
+                : await (0,ai/* probeAIEndpoint */.kq)(config.ai);
+            if (!reason)
+                return true;
+            if (failFast) {
+                throw new errors/* InsightsError */.KH(`AI unavailable: ${reason}`, errors/* ErrorCode */.O4.AI_UNAVAILABLE);
+            }
+            cb.onNotice(`AI disabled: ${reason}. Generating SVGs without AI summaries or classification.`);
+            return false;
+        })();
+        return aiGate;
+    };
     cb.onPhaseStart("classify", "Classifying projects");
     const classificationInputs = buildClassificationInputs(repos, contributionData);
     const classificationHash = hashAIInputs("classifications", classificationInputs, prompts.classification);
@@ -79231,9 +79361,9 @@ async function runPipeline(config, cb) {
         aiClassifications = cachedClassifications;
         cb.onProgress("Classification inputs unchanged, using cached AI results");
     }
-    else {
+    else if (await aiAvailable()) {
         try {
-            aiClassifications = await fetchProjectClassifications(config.token, classificationInputs, prompts.classification);
+            aiClassifications = await fetchProjectClassifications(config.ai, classificationInputs, prompts.classification);
             aiCache?.set("classifications", classificationHash, aiClassifications);
         }
         catch (err) {
@@ -79335,10 +79465,10 @@ async function runPipeline(config, cb) {
             if (preamble) {
                 cb.onProgress("Preamble inputs unchanged, using cached AI preamble");
             }
-            else {
+            else if (await aiAvailable()) {
                 cb.onProgress("Generating preamble with AI...");
                 try {
-                    preamble = await fetchAIPreamble(config.token, preambleContext, prompts.preamble);
+                    preamble = await fetchAIPreamble(config.ai, preambleContext, prompts.preamble);
                     aiCache?.set("preamble", preambleHash, preamble);
                 }
                 catch (err) {
@@ -79596,6 +79726,9 @@ function App({ config, onExit }) {
                     : p));
             },
             onProgress(message) {
+                setProgressMessages((prev) => [...prev, message]);
+            },
+            onNotice(message) {
                 setProgressMessages((prev) => [...prev, message]);
             },
             onError(err) {
