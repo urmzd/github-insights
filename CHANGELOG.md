@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.11.1 (2026-10-09)
+
+### Bug Fixes
+
+- replace retired GitHub Models with an OpenAI-compatible endpoint (Ollama by default) (#27) ([2eb168a](https://github.com/urmzd/github-insights/commit/2eb168a3d7409ac6936b679e063110c3eeeeaa59))
+
+[Full Changelog](https://github.com/urmzd/github-insights/compare/v3.11.0...v3.11.1)
+
+
 ## 3.11.0 (2026-07-15)
 
 ### Features
